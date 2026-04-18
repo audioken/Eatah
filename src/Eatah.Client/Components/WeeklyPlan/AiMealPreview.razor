@@ -1,0 +1,100 @@
+@namespace Eatah.Client.Components.WeeklyPlan
+
+@if (IsOpen)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @onclick="HandleBackdrop">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md flex flex-col" @onclick:stopPropagation="true">
+            <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+                <h2 class="text-lg font-semibold">AI-förslag för @DayLabel</h2>
+                <button type="button" class="text-slate-400 hover:text-slate-700" @onclick="Close">✕</button>
+            </div>
+
+            <div class="p-5 space-y-4">
+                @if (IsLoading)
+                {
+                    <div class="text-center text-slate-500 py-6">Genererar förslag…</div>
+                }
+                else if (Error is not null)
+                {
+                    <div class="p-3 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm">
+                        @Error
+                    </div>
+                }
+                else if (Meal is not null)
+                {
+                    <div class="p-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+                        Den här maträtten är inte sparad till databasen ännu.
+                    </div>
+
+                    <div>
+                        <h3 class="text-xl font-semibold">@Meal.Name</h3>
+                        <div class="mt-1 text-sm text-slate-600 flex items-center gap-3">
+                            <span>@CategoryLabel(Meal.Category)</span>
+                            @if (Meal.CookingTimeMinutes.HasValue)
+                            {
+                                <span>~@Meal.CookingTimeMinutes min</span>
+                            }
+                        </div>
+                    </div>
+
+                    <div>
+                        <p class="text-xs uppercase tracking-wide text-slate-500 mb-1">Ingredienser</p>
+                        <div class="flex flex-wrap gap-1">
+                            @foreach (var ingredient in Meal.Ingredients)
+                            {
+                                <span class="text-xs px-2 py-0.5 bg-slate-100 text-slate-700 rounded">@ingredient</span>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="px-5 py-4 border-t border-slate-200 flex items-center justify-end gap-2">
+                <button type="button" class="px-4 py-2 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50"
+                        @onclick="Close">
+                    Avbryt
+                </button>
+                <button type="button"
+                        class="px-4 py-2 rounded-md bg-brand-600 text-white font-semibold hover:bg-brand-700 disabled:opacity-50"
+                        disabled="@(Meal is null || IsLoading)" @onclick="HandleSave">
+                    Spara till databasen
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public DayOfWeek? Day { get; set; }
+    [Parameter] public AiGeneratedMealResponse? Meal { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public EventCallback OnSave { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private string DayLabel => Day switch
+    {
+        DayOfWeek.Monday => "måndag",
+        DayOfWeek.Tuesday => "tisdag",
+        DayOfWeek.Wednesday => "onsdag",
+        DayOfWeek.Thursday => "torsdag",
+        DayOfWeek.Friday => "fredag",
+        DayOfWeek.Saturday => "lördag",
+        DayOfWeek.Sunday => "söndag",
+        _ => string.Empty
+    };
+
+    private static string CategoryLabel(MealCategory c) => c switch
+    {
+        MealCategory.Meat => "Kött",
+        MealCategory.Fish => "Fisk",
+        MealCategory.Vegetarian => "Vegetariskt",
+        MealCategory.Vegan => "Veganskt",
+        _ => c.ToString()
+    };
+
+    private Task Close() => OnClose.InvokeAsync();
+    private Task HandleBackdrop() => Close();
+    private Task HandleSave() => OnSave.InvokeAsync();
+}

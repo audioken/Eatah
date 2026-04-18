@@ -10,6 +10,10 @@ public static class AiEndpoints
             .WithTags("DietProfiles")
             .WithName("GenerateDietProfile");
 
+        app.MapPost("/api/ai/meals/generate", GenerateMeal)
+            .WithTags("AI")
+            .WithName("GenerateAiMeal");
+
         return app;
     }
 
@@ -40,6 +44,34 @@ public static class AiEndpoints
                 title: "AI-tjänsten misslyckades");
         }
     }
+
+    private static async Task<IResult> GenerateMeal(
+        GenerateMealRequest request,
+        AiMealGenerator generator,
+        IValidator<GenerateMealRequest> validator,
+        ILogger<AiMealGenerator> logger,
+        CancellationToken cancellationToken)
+    {
+        var validation = await validator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
+        {
+            return Results.ValidationProblem(validation.ToDictionary());
+        }
+
+        try
+        {
+            var meal = await generator.GenerateAsync(request, cancellationToken);
+            return Results.Ok(meal);
+        }
+        catch (AiServiceException ex)
+        {
+            logger.LogWarning(ex, "AI-generering av maträtt misslyckades.");
+            return Results.Problem(
+                detail: ex.Message,
+                statusCode: StatusCodes.Status502BadGateway,
+                title: "AI-tjänsten misslyckades");
+        }
+    }
 }
 
 public static class AiServiceExtensions
@@ -56,7 +88,9 @@ public static class AiServiceExtensions
         });
 
         services.AddScoped<AiDietRuleGenerator>();
+        services.AddScoped<AiMealGenerator>();
         services.AddScoped<IValidator<GenerateDietProfileRequest>, GenerateDietProfileRequestValidator>();
+        services.AddScoped<IValidator<GenerateMealRequest>, GenerateMealRequestValidator>();
 
         return services;
     }

@@ -17,3 +17,13 @@ public class GenerateDietProfileRequestValidator : AbstractValidator<GenerateDie
             .InclusiveBetween(0.0, 1.0).WithMessage("Strictness måste vara mellan 0.0 och 1.0.");
     }
 }
+
+public class GenerateMealRequestValidator : AbstractValidator<GenerateMealRequest>
+{
+    public GenerateMealRequestValidator()
+    {
+        RuleFor(x => x.Category!.Value)
+            .IsInEnum().WithMessage("Ogiltig kategori.")
+            .When(x => x.Category.HasValue);
+    }
+}

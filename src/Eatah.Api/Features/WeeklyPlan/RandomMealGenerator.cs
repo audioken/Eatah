@@ -10,6 +10,13 @@ public interface IRandomMealGenerator
         IReadOnlyList<DayOfWeek> days,
         DietProfile? profile,
         double strictness);
+
+    Meal? GenerateForDay(
+        IReadOnlyList<Meal> availableMeals,
+        Eatah.Domain.Entities.WeeklyPlan currentPlan,
+        DayOfWeek targetDay,
+        DietProfile? profile,
+        double strictness);
 }
 
 public class RandomMealGenerator : IRandomMealGenerator
@@ -67,6 +74,85 @@ public class RandomMealGenerator : IRandomMealGenerator
         }
 
         return best ?? PickWithoutRepetition(availableMeals, days.Count, Random.Shared);
+    }
+
+    public Meal? GenerateForDay(
+        IReadOnlyList<Meal> availableMeals,
+        Eatah.Domain.Entities.WeeklyPlan currentPlan,
+        DayOfWeek targetDay,
+        DietProfile? profile,
+        double strictness)
+    {
+        ArgumentNullException.ThrowIfNull(availableMeals);
+        ArgumentNullException.ThrowIfNull(currentPlan);
+
+        if (availableMeals.Count == 0)
+        {
+            return null;
+        }
+
+        var clampedStrictness = Math.Clamp(strictness, 0.0, 1.0);
+
+        // Avoid picking meals already assigned to other days when possible.
+        var assignedMealIds = currentPlan.Days
+            .Where(d => d.DayOfWeek != targetDay && d.MealId.HasValue)
+            .Select(d => d.MealId!.Value)
+            .ToHashSet();
+
+        var candidatePool = availableMeals.Where(m => !assignedMealIds.Contains(m.Id)).ToList();
+        if (candidatePool.Count == 0)
+        {
+            candidatePool = availableMeals.ToList();
+        }
+
+        if (profile is null || clampedStrictness <= 0.0)
+        {
+            return candidatePool[Random.Shared.Next(candidatePool.Count)];
+        }
+
+        var iterations = Math.Max(1, (int)Math.Round(clampedStrictness * MaxIterations));
+        Meal? best = null;
+        var bestScore = -1.0;
+
+        for (var i = 0; i < iterations; i++)
+        {
+            var candidate = candidatePool[Random.Shared.Next(candidatePool.Count)];
+            var score = ScoreSingleDayCandidate(candidate, currentPlan, targetDay, profile);
+            if (score > bestScore)
+            {
+                bestScore = score;
+                best = candidate;
+                if (score >= 1.0)
+                {
+                    break;
+                }
+            }
+        }
+
+        return best ?? candidatePool[Random.Shared.Next(candidatePool.Count)];
+    }
+
+    private double ScoreSingleDayCandidate(
+        Meal candidate,
+        Eatah.Domain.Entities.WeeklyPlan currentPlan,
+        DayOfWeek targetDay,
+        DietProfile profile)
+    {
+        var virtualDays = currentPlan.Days.Select(d => new DayPlan
+        {
+            Id = Guid.NewGuid(),
+            DayOfWeek = d.DayOfWeek,
+            MealId = d.DayOfWeek == targetDay ? candidate.Id : d.MealId,
+            Meal = d.DayOfWeek == targetDay ? candidate : d.Meal
+        }).ToList();
+
+        var virtualPlan = new Eatah.Domain.Entities.WeeklyPlan
+        {
+            Id = Guid.NewGuid(),
+            Days = virtualDays
+        };
+
+        return _evaluator.Evaluate(virtualPlan, profile).OverallScore;
     }
 
     private double ScoreCandidate(

@@ -14,6 +14,7 @@ public record MealResponse(
     Guid Id,
     string Name,
     MealCategory Category,
+    int? CookingTimeMinutes,
     DateTime CreatedAt,
     List<IngredientDto> Ingredients);
 
@@ -34,11 +35,25 @@ public record WeeklyPlanResponse(
 
 public record AssignMealRequest(Guid MealId);
 
-public record CreateMealRequest(string Name, MealCategory Category, List<string> Ingredients);
+public record CreateMealRequest(string Name, MealCategory Category, List<string> Ingredients, int? CookingTimeMinutes);
 
-public record UpdateMealRequest(string Name, MealCategory Category, List<string> Ingredients);
+public record UpdateMealRequest(string Name, MealCategory Category, List<string> Ingredients, int? CookingTimeMinutes);
 
 public record RandomizeWeeklyPlanRequest(Guid? ProfileId, double Strictness);
+
+public record RandomizeDayRequest(Guid? ProfileId, double Strictness);
+
+public record GenerateMealRequest(
+    MealCategory? Category,
+    Guid? DietProfileId,
+    Guid? WeeklyPlanId,
+    DayOfWeek? TargetDay);
+
+public record AiGeneratedMealResponse(
+    string Name,
+    MealCategory Category,
+    int? CookingTimeMinutes,
+    List<string> Ingredients);
 
 public record DietRuleResponse(
     Guid Id,

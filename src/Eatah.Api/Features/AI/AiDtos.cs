@@ -16,3 +16,15 @@ public record AiGeneratedRule(
 public record AiGeneratedProfile(
     string Name,
     List<AiGeneratedRule> Rules);
+
+public record GenerateMealRequest(
+    MealCategory? Category,
+    Guid? DietProfileId,
+    Guid? WeeklyPlanId,
+    DayOfWeek? TargetDay);
+
+public record AiGeneratedMealResponse(
+    string Name,
+    MealCategory Category,
+    int? CookingTimeMinutes,
+    List<string> Ingredients);

@@ -5,10 +5,13 @@
 		@onclick="HandleClick">
 	<div class="flex items-center justify-between mb-2">
 		<span class="text-sm font-semibold text-slate-500 uppercase tracking-wide">@DayLabel</span>
-		@if (Day.Meal is not null)
-		{
-			<CategoryBadge Meal="Day.Meal" />
-		}
+		<div class="flex items-center gap-1">
+			@if (Day.Meal is not null)
+			{
+				<CategoryBadge Meal="Day.Meal" />
+			}
+			<DayRandomizeMenu OnRandomDb="HandleRandomDb" OnRandomAi="HandleRandomAi" />
+		</div>
 	</div>
 
 	@if (Day.Meal is not null)
@@ -34,6 +37,8 @@
 	[Parameter, EditorRequired] public DayPlanResponse Day { get; set; } = default!;
 	[Parameter] public EventCallback<DayPlanResponse> OnSelect { get; set; }
 	[Parameter] public EventCallback<DayPlanResponse> OnClear { get; set; }
+	[Parameter] public EventCallback<DayPlanResponse> OnRandomDb { get; set; }
+	[Parameter] public EventCallback<DayPlanResponse> OnRandomAi { get; set; }
 
 	private string DayLabel => Day.DayOfWeek switch
 	{
@@ -49,4 +54,6 @@
 
 	private Task HandleClick() => OnSelect.InvokeAsync(Day);
 	private Task HandleClear() => OnClear.InvokeAsync(Day);
+	private Task HandleRandomDb() => OnRandomDb.InvokeAsync(Day);
+	private Task HandleRandomAi() => OnRandomAi.InvokeAsync(Day);
 }

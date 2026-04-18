@@ -32,29 +32,22 @@
 	}
 </div>
 
-<MealForm IsOpen="_formOpen"
-		  Meal="_editing"
-		  OnSubmit="SaveAsync"
-		  OnClose="CloseForm" />
+<MealForm IsOpen="_formOpen" Meal="_editing" OnSubmit="SaveAsync" OnClose="CloseForm" />
 
 @if (_deleting is not null)
 {
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-		 @onclick="CancelDelete">
-		<div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-5 space-y-4"
-			 @onclick:stopPropagation="true">
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @onclick="CancelDelete">
+		<div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-5 space-y-4" @onclick:stopPropagation="true">
 			<h2 class="text-lg font-semibold">Ta bort maträtt?</h2>
 			<p class="text-sm text-slate-600">
 				Är du säker på att du vill ta bort <strong>@_deleting.Name</strong>? Detta går inte att ångra.
 			</p>
 			<div class="flex items-center justify-end gap-2">
-				<button type="button"
-						class="px-4 py-2 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50"
+				<button type="button" class="px-4 py-2 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50"
 						@onclick="CancelDelete">
 					Avbryt
 				</button>
-				<button type="button"
-						class="px-4 py-2 rounded-md bg-red-600 text-white font-semibold hover:bg-red-700"
+				<button type="button" class="px-4 py-2 rounded-md bg-red-600 text-white font-semibold hover:bg-red-700"
 						@onclick="ConfirmDeleteAsync">
 					Ta bort
 				</button>
@@ -116,7 +109,8 @@
 		{
 			if (_editing is null)
 			{
-				var created = await Api.CreateMealAsync(new CreateMealRequest(result.Name, result.Category, result.Ingredients));
+				var created = await Api.CreateMealAsync(new CreateMealRequest(result.Name, result.Category, result.Ingredients,
+result.CookingTimeMinutes));
 				if (created is not null)
 				{
 					_meals = [.. _meals, created];
@@ -124,7 +118,8 @@
 			}
 			else
 			{
-				var updated = await Api.UpdateMealAsync(_editing.Id, new UpdateMealRequest(result.Name, result.Category, result.Ingredients));
+				var updated = await Api.UpdateMealAsync(_editing.Id, new UpdateMealRequest(result.Name, result.Category,
+result.Ingredients, result.CookingTimeMinutes));
 				if (updated is not null)
 				{
 					_meals = _meals.Select(m => m.Id == updated.Id ? updated : m).ToList();

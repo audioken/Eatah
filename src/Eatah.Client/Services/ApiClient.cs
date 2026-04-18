@@ -86,6 +86,34 @@ public class ApiClient
         return await response.Content.ReadFromJsonAsync<WeeklyPlanResponse>(cancellationToken: cancellationToken);
     }
 
+    public async Task<WeeklyPlanResponse?> RandomizeDayAsync(
+        Guid planId,
+        DayOfWeek day,
+        Guid? profileId,
+        double strictness,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _http.PostAsJsonAsync(
+            $"api/weeklyplans/{planId}/days/{day}/randomize",
+            new RandomizeDayRequest(profileId, strictness),
+            cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<WeeklyPlanResponse>(cancellationToken: cancellationToken);
+    }
+
+    public async Task<AiGeneratedMealResponse?> GenerateAiMealAsync(
+        GenerateMealRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _http.PostAsJsonAsync("api/ai/meals/generate", request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            var detail = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new HttpRequestException($"AI-generering misslyckades ({(int)response.StatusCode}): {detail}");
+        }
+        return await response.Content.ReadFromJsonAsync<AiGeneratedMealResponse>(cancellationToken: cancellationToken);
+    }
+
     public async Task<List<DietProfileResponse>> GetDietProfilesAsync(CancellationToken cancellationToken = default)
     {
         return await _http.GetFromJsonAsync<List<DietProfileResponse>>("api/dietprofiles", cancellationToken)

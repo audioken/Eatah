@@ -3,9 +3,8 @@
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
 	@foreach (var day in OrderedDays)
 	{
-		<DayCard Day="day"
-				 OnSelect="OnDaySelected"
-				 OnClear="OnDayCleared" />
+		<DayCard Day="day" OnSelect="OnDaySelected" OnClear="OnDayCleared" OnRandomDb="OnDayRandomDb"
+				 OnRandomAi="OnDayRandomAi" />
 	}
 </div>
 
@@ -24,6 +23,8 @@
 	[Parameter, EditorRequired] public IReadOnlyList<DayPlanResponse> Days { get; set; } = [];
 	[Parameter] public EventCallback<DayPlanResponse> OnDaySelected { get; set; }
 	[Parameter] public EventCallback<DayPlanResponse> OnDayCleared { get; set; }
+	[Parameter] public EventCallback<DayPlanResponse> OnDayRandomDb { get; set; }
+	[Parameter] public EventCallback<DayPlanResponse> OnDayRandomAi { get; set; }
 
 	private IEnumerable<DayPlanResponse> OrderedDays =>
 		WeekOrder

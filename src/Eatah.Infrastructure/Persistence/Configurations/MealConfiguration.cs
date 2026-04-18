@@ -26,6 +26,9 @@ public class MealConfiguration : IEntityTypeConfiguration<Meal>
             .HasMaxLength(50)
             .IsRequired();
 
+        builder.Property(m => m.CookingTimeMinutes)
+            .HasColumnName("cooking_time_minutes");
+
         builder.Property(m => m.CreatedAt)
             .HasColumnName("created_at")
             .HasDefaultValueSql("NOW()");

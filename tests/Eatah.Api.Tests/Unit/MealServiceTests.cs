@@ -39,7 +39,8 @@ public class MealServiceTests
         var request = new CreateMealRequest(
             "  Kycklinggryta  ",
             MealCategory.Meat,
-            ["  Kyckling  ", "Ris"]);
+            ["  Kyckling  ", "Ris"],
+            null);
 
         var result = await _sut.CreateAsync(request, CancellationToken.None);
 
@@ -54,7 +55,7 @@ public class MealServiceTests
     {
         _repo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Meal?)null);
-        var request = new UpdateMealRequest("X", MealCategory.Fish, ["Lax"]);
+        var request = new UpdateMealRequest("X", MealCategory.Fish, ["Lax"], null);
 
         Func<Task> act = () => _sut.UpdateAsync(Guid.NewGuid(), request, CancellationToken.None);
 
@@ -74,7 +75,7 @@ public class MealServiceTests
         };
         _repo.Setup(r => r.GetByIdAsync(id, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
 
-        var result = await _sut.UpdateAsync(id, new UpdateMealRequest("Nytt", MealCategory.Fish, ["Lax"]), CancellationToken.None);
+        var result = await _sut.UpdateAsync(id, new UpdateMealRequest("Nytt", MealCategory.Fish, ["Lax"], null), CancellationToken.None);
 
         result.Name.Should().Be("Nytt");
         result.Category.Should().Be(MealCategory.Fish);

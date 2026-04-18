@@ -19,6 +19,10 @@ public class CreateMealRequestValidator : AbstractValidator<CreateMealRequest>
         RuleForEach(x => x.Ingredients)
             .NotEmpty().WithMessage("Ingrediensen får inte vara tom.")
             .MaximumLength(200).WithMessage("Ingrediensens namn får vara max 200 tecken.");
+
+        RuleFor(x => x.CookingTimeMinutes!.Value)
+            .InclusiveBetween(1, 600).WithMessage("Tillagningstiden måste vara mellan 1 och 600 minuter.")
+            .When(x => x.CookingTimeMinutes.HasValue);
     }
 }
 

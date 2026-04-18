@@ -1,0 +1,44 @@
+@namespace Eatah.Client.Components.WeeklyPlan
+
+<div class="relative inline-block">
+    <button type="button" class="text-slate-400 hover:text-brand-600 text-sm" title="Slumpa maträtt"
+            @onclick:stopPropagation="true" @onclick="Toggle">
+        🎲
+    </button>
+
+    @if (_open)
+    {
+        <div class="fixed inset-0 z-40" @onclick:stopPropagation="true" @onclick="Close"></div>
+        <div class="absolute right-0 mt-1 z-50 w-44 bg-white border border-slate-200 rounded-md shadow-lg py-1 text-sm"
+             @onclick:stopPropagation="true">
+            <button type="button" class="w-full text-left px-3 py-2 hover:bg-slate-50" @onclick="HandleDb">
+                🎲 Slumpa från databasen
+            </button>
+            <button type="button" class="w-full text-left px-3 py-2 hover:bg-slate-50" @onclick="HandleAi">
+                ✨ Slumpa med AI
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public EventCallback OnRandomDb { get; set; }
+    [Parameter] public EventCallback OnRandomAi { get; set; }
+
+    private bool _open;
+
+    private void Toggle() => _open = !_open;
+    private void Close() => _open = false;
+
+    private async Task HandleDb()
+    {
+        _open = false;
+        await OnRandomDb.InvokeAsync();
+    }
+
+    private async Task HandleAi()
+    {
+        _open = false;
+        await OnRandomAi.InvokeAsync();
+    }
+}

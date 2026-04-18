@@ -1,26 +1,41 @@
 @namespace Eatah.Client.Components.WeeklyPlan
+@using Eatah.Client.Components.Meals
 
 @if (IsOpen)
 {
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-		 @onclick="HandleBackdropClick">
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @onclick="HandleBackdropClick">
 		<div class="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col"
 			 @onclick:stopPropagation="true">
 			<div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
 				<h2 class="text-lg font-semibold">
 					Välj maträtt för @DayLabel
 				</h2>
-				<button type="button"
-						class="text-slate-400 hover:text-slate-700"
-						@onclick="Close">✕</button>
+				<button type="button" class="text-slate-400 hover:text-slate-700" @onclick="Close">✕</button>
 			</div>
 
-			<div class="p-4 border-b border-slate-100">
-				<input type="text"
-					   class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"
-					   placeholder="Sök maträtt…"
-					   @bind="_query"
-					   @bind:event="oninput" />
+			<div class="p-4 border-b border-slate-100 space-y-3">
+				<div class="flex items-center gap-2">
+					<input type="text"
+						   class="flex-1 px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"
+						   placeholder="Sök maträtt…" @bind="_query" @bind:event="oninput" />
+					<button type="button"
+							class="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-md bg-brand-600 text-white hover:bg-brand-700"
+							title="Skapa ny maträtt" @onclick="OpenCreate">
+						<span class="text-lg leading-none">＋</span>
+					</button>
+				</div>
+
+				<div class="flex flex-wrap gap-1">
+					@foreach (var option in CategoryOptions)
+					{
+						var isActive = _categoryFilter == option.Value;
+						<button type="button"
+								class="@(isActive ? "px-2.5 py-1 text-xs rounded-full bg-brand-600 text-white border border-brand-600" : "px-2.5 py-1 text-xs rounded-full bg-white text-slate-600 border border-slate-300 hover:bg-slate-50")"
+								@onclick="() => SetCategory(option.Value)">
+							@option.Label
+						</button>
+					}
+				</div>
 			</div>
 
 			<div class="flex-1 overflow-y-auto divide-y divide-slate-100">
@@ -30,7 +45,7 @@
 				}
 				else if (!FilteredMeals.Any())
 				{
-					<div class="p-4 text-slate-500">Inga maträtter matchar sökningen.</div>
+					<div class="p-4 text-slate-500">Inga maträtter matchar.</div>
 				}
 				else
 				{
@@ -39,7 +54,13 @@
 						<button type="button"
 								class="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center justify-between gap-3"
 								@onclick="() => HandleSelect(meal)">
-							<span class="font-medium">@meal.Name</span>
+							<div class="flex flex-col">
+								<span class="font-medium">@meal.Name</span>
+								@if (meal.CookingTimeMinutes.HasValue)
+								{
+									<span class="text-xs text-slate-500">~@meal.CookingTimeMinutes min</span>
+								}
+							</div>
 							<CategoryBadge Meal="new MealSummaryResponse(meal.Id, meal.Name, meal.Category)" />
 						</button>
 					}
@@ -49,21 +70,44 @@
 	</div>
 }
 
+<MealForm IsOpen="_createOpen" InitialCategory="_categoryFilter" OnSubmit="HandleCreateAsync" OnClose="CloseCreate" />
+
 @code {
 	[Parameter] public bool IsOpen { get; set; }
 	[Parameter] public DayOfWeek? Day { get; set; }
 	[Parameter] public IReadOnlyList<MealResponse>? Meals { get; set; }
 	[Parameter] public EventCallback<MealResponse> OnSelect { get; set; }
 	[Parameter] public EventCallback OnClose { get; set; }
+	[Parameter] public EventCallback<MealForm.MealFormResult> OnCreate { get; set; }
 
 	private string _query = string.Empty;
+	private MealCategory? _categoryFilter;
+	private bool _createOpen;
 
-	private IEnumerable<MealResponse> FilteredMeals =>
-		Meals is null
-			? []
-			: string.IsNullOrWhiteSpace(_query)
-				? Meals
-				: Meals.Where(m => m.Name.Contains(_query, StringComparison.OrdinalIgnoreCase));
+	private record CategoryOption(MealCategory? Value, string Label);
+
+	private static readonly CategoryOption[] CategoryOptions =
+	[
+	new(null, "Alla"),
+new(MealCategory.Meat, "Kött"),
+new(MealCategory.Fish, "Fisk"),
+new(MealCategory.Vegetarian, "Vegetariskt"),
+new(MealCategory.Vegan, "Veganskt")
+	];
+
+	private IEnumerable<MealResponse> FilteredMeals
+	{
+		get
+		{
+			if (Meals is null) return [];
+			IEnumerable<MealResponse> list = Meals;
+			if (_categoryFilter.HasValue)
+				list = list.Where(m => m.Category == _categoryFilter.Value);
+			if (!string.IsNullOrWhiteSpace(_query))
+				list = list.Where(m => m.Name.Contains(_query, StringComparison.OrdinalIgnoreCase));
+			return list;
+		}
+	}
 
 	private string DayLabel => Day switch
 	{
@@ -77,17 +121,30 @@
 		_ => string.Empty
 	};
 
+	private void SetCategory(MealCategory? category) => _categoryFilter = category;
+
 	private async Task HandleSelect(MealResponse meal)
 	{
 		await OnSelect.InvokeAsync(meal);
 		_query = string.Empty;
+		_categoryFilter = null;
 	}
 
 	private Task Close()
 	{
 		_query = string.Empty;
+		_categoryFilter = null;
 		return OnClose.InvokeAsync();
 	}
 
 	private Task HandleBackdropClick() => Close();
+
+	private void OpenCreate() => _createOpen = true;
+	private void CloseCreate() => _createOpen = false;
+
+	private async Task HandleCreateAsync(MealForm.MealFormResult result)
+	{
+		_createOpen = false;
+		await OnCreate.InvokeAsync(result);
+	}
 }

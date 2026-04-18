@@ -29,7 +29,7 @@ public class MealsEndpointsTests : IClassFixture<EatahWebApplicationFactory>
     public async Task Create_ShouldReturnCreated_AndPersist()
     {
         var client = _factory.CreateClient();
-        var request = new CreateMealRequest("Testrätt", MealCategory.Vegan, ["A", "B"]);
+        var request = new CreateMealRequest("Testrätt", MealCategory.Vegan, ["A", "B"], null);
 
         var response = await client.PostAsJsonAsync("api/meals", request);
 
@@ -43,7 +43,7 @@ public class MealsEndpointsTests : IClassFixture<EatahWebApplicationFactory>
     public async Task Create_ShouldReturn400_WhenNameIsEmpty()
     {
         var client = _factory.CreateClient();
-        var request = new CreateMealRequest("", MealCategory.Meat, ["A"]);
+        var request = new CreateMealRequest("", MealCategory.Meat, ["A"], null);
 
         var response = await client.PostAsJsonAsync("api/meals", request);
 
@@ -54,7 +54,7 @@ public class MealsEndpointsTests : IClassFixture<EatahWebApplicationFactory>
     public async Task Update_ShouldReturn404_WhenMealDoesNotExist()
     {
         var client = _factory.CreateClient();
-        var request = new UpdateMealRequest("N", MealCategory.Fish, ["Lax"]);
+        var request = new UpdateMealRequest("N", MealCategory.Fish, ["Lax"], null);
 
         var response = await client.PutAsJsonAsync($"api/meals/{Guid.NewGuid()}", request);
 
@@ -66,7 +66,7 @@ public class MealsEndpointsTests : IClassFixture<EatahWebApplicationFactory>
     {
         var client = _factory.CreateClient();
         var created = await client.PostAsJsonAsync("api/meals",
-            new CreateMealRequest("Ta bort mig", MealCategory.Meat, ["x"]));
+            new CreateMealRequest("Ta bort mig", MealCategory.Meat, ["x"], null));
         var meal = await created.Content.ReadFromJsonAsync<MealResponse>();
 
         var response = await client.DeleteAsync($"api/meals/{meal!.Id}");

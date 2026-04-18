@@ -25,7 +25,7 @@
 
 	@if (_isLoading)
 	{
-		<div class="p-8 text-center text-slate-500">Laddar veckoplanâ€¦</div>
+		<div class="p-8 text-center text-slate-500">Laddar veckoplan..</div>
 	}
 	else if (_plan is null)
 	{
@@ -34,9 +34,8 @@
 	else
 	{
 		<div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6">
-			<WeekView Days="_plan.Days"
-					  OnDaySelected="OpenSelector"
-					  OnDayCleared="ClearDayAsync" />
+			<WeekView Days="_plan.Days" OnDaySelected="OpenSelector" OnDayCleared="ClearDayAsync"
+					  OnDayRandomDb="RandomizeDayDbAsync" OnDayRandomAi="StartAiForDayAsync" />
 
 			<aside class="space-y-4">
 				@if (_profiles is { Count: > 0 })
@@ -58,7 +57,7 @@
 					@if (_isEvaluating)
 					{
 						<div class="p-4 rounded-lg border border-slate-200 bg-white text-sm text-slate-500 text-center">
-							UtvÃ¤rderar planâ€¦
+							Utvärderar plan...
 						</div>
 					}
 					else if (_evaluation is not null)
@@ -78,11 +77,16 @@
 	}
 </div>
 
-<MealSelector IsOpen="_selectorOpen"
-			  Day="_selectedDay?.DayOfWeek"
-			  Meals="_meals"
-			  OnSelect="AssignMealAsync"
-			  OnClose="CloseSelector" />
+<MealSelector IsOpen="_selectorOpen" Day="_selectedDay?.DayOfWeek" Meals="_meals" OnSelect="AssignMealAsync"
+			  OnCreate="CreateMealFromSelectorAsync" OnClose="CloseSelector" />
+
+<AiMealPreview IsOpen="_aiPreviewOpen" Day="_aiTargetDay?.DayOfWeek" Meal="_aiMeal" IsLoading="_aiLoading"
+			   Error="@_aiError" OnSave="OpenSaveAiMealForm" OnClose="CloseAiPreview" />
+
+<MealForm IsOpen="_aiSaveFormOpen" InitialName="@_aiMeal?.Name" InitialCategory="_aiMeal?.Category"
+		  InitialIngredients="_aiMeal?.Ingredients" InitialCookingTimeMinutes="_aiMeal?.CookingTimeMinutes"
+		  UnsavedNotice="@($"Spara maträtten till databasen för att tilldela den till {AiTargetDayLabel}.")"
+		  OnSubmit="SaveAiMealAndAssignAsync" OnClose="CloseAiSaveForm" />
 
 @code {
 	private WeeklyPlanResponse? _plan;
@@ -97,6 +101,25 @@
 	private bool _isRandomizing;
 	private bool _isEvaluating;
 	private string? _error;
+
+	private DayPlanResponse? _aiTargetDay;
+	private AiGeneratedMealResponse? _aiMeal;
+	private bool _aiPreviewOpen;
+	private bool _aiLoading;
+	private string? _aiError;
+	private bool _aiSaveFormOpen;
+
+	private string AiTargetDayLabel => _aiTargetDay?.DayOfWeek switch
+	{
+		DayOfWeek.Monday => "måndag",
+		DayOfWeek.Tuesday => "tisdag",
+		DayOfWeek.Wednesday => "onsdag",
+		DayOfWeek.Thursday => "torsdag",
+		DayOfWeek.Friday => "fredag",
+		DayOfWeek.Saturday => "lördag",
+		DayOfWeek.Sunday => "söndag",
+		_ => "vald dag"
+	};
 
 	protected override async Task OnInitializedAsync()
 	{
@@ -251,6 +274,152 @@
 		finally
 		{
 			_isRandomizing = false;
+		}
+	}
+
+	private async Task RandomizeDayDbAsync(DayPlanResponse day)
+	{
+		if (_plan is null)
+		{
+			return;
+		}
+
+		_error = null;
+		try
+		{
+			var updated = await Api.RandomizeDayAsync(_plan.Id, day.DayOfWeek, _selectedProfileId, _strictness);
+			if (updated is not null)
+			{
+				_plan = updated;
+				await EvaluateAsync();
+			}
+		}
+		catch (Exception ex)
+		{
+			_error = $"Kunde inte slumpa dagen: {ex.Message}";
+		}
+	}
+
+	private async Task StartAiForDayAsync(DayPlanResponse day)
+	{
+		if (_plan is null)
+		{
+			return;
+		}
+
+		_aiTargetDay = day;
+		_aiMeal = null;
+		_aiError = null;
+		_aiLoading = true;
+		_aiPreviewOpen = true;
+		try
+		{
+			var request = new GenerateMealRequest(
+				Category: null,
+				DietProfileId: _selectedProfileId,
+				WeeklyPlanId: _plan.Id,
+				TargetDay: day.DayOfWeek);
+			_aiMeal = await Api.GenerateAiMealAsync(request);
+		}
+		catch (Exception ex)
+		{
+			_aiError = $"AI-generering misslyckades: {ex.Message}";
+		}
+		finally
+		{
+			_aiLoading = false;
+		}
+	}
+
+	private void CloseAiPreview()
+	{
+		_aiPreviewOpen = false;
+		_aiMeal = null;
+		_aiError = null;
+		_aiTargetDay = null;
+	}
+
+	private void OpenSaveAiMealForm()
+	{
+		if (_aiMeal is null)
+		{
+			return;
+		}
+		_aiPreviewOpen = false;
+		_aiSaveFormOpen = true;
+	}
+
+	private void CloseAiSaveForm()
+	{
+		_aiSaveFormOpen = false;
+		_aiMeal = null;
+		_aiTargetDay = null;
+	}
+
+	private async Task SaveAiMealAndAssignAsync(MealForm.MealFormResult result)
+	{
+		var targetDay = _aiTargetDay;
+		_aiSaveFormOpen = false;
+		_error = null;
+		try
+		{
+			var created = await Api.CreateMealAsync(new CreateMealRequest(
+				result.Name, result.Category, result.Ingredients, result.CookingTimeMinutes));
+			if (created is not null)
+			{
+				_meals = _meals is null ? [created] : [.. _meals, created];
+				if (_plan is not null && targetDay is not null)
+				{
+					var updated = await Api.AssignMealAsync(_plan.Id, targetDay.DayOfWeek, created.Id);
+					if (updated is not null)
+					{
+						_plan = updated;
+						await EvaluateAsync();
+					}
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			_error = $"Kunde inte spara AI-maträtten: {ex.Message}";
+		}
+		finally
+		{
+			_aiMeal = null;
+			_aiTargetDay = null;
+		}
+	}
+
+	private async Task CreateMealFromSelectorAsync(MealForm.MealFormResult result)
+	{
+		if (_plan is null || _selectedDay is null)
+		{
+			return;
+		}
+
+		_error = null;
+		try
+		{
+			var created = await Api.CreateMealAsync(new CreateMealRequest(
+				result.Name, result.Category, result.Ingredients, result.CookingTimeMinutes));
+			if (created is not null)
+			{
+				_meals = _meals is null ? [created] : [.. _meals, created];
+				var updated = await Api.AssignMealAsync(_plan.Id, _selectedDay.DayOfWeek, created.Id);
+				if (updated is not null)
+				{
+					_plan = updated;
+					await EvaluateAsync();
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			_error = $"Kunde inte skapa maträtten: {ex.Message}";
+		}
+		finally
+		{
+			CloseSelector();
 		}
 	}
 }

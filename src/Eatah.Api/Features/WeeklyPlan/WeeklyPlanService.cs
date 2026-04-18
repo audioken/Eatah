@@ -162,6 +162,37 @@ public class WeeklyPlanService
         return ToResponse(refreshed!);
     }
 
+    public async Task<WeeklyPlanResponse> RandomizeDayAsync(
+        Guid planId,
+        DayOfWeek dayOfWeek,
+        RandomizeDayRequest request,
+        CancellationToken cancellationToken)
+    {
+        var plan = await _repository.GetByIdAsync(planId, cancellationToken)
+            ?? throw new WeeklyPlanNotFoundException(planId);
+
+        var day = plan.Days.FirstOrDefault(d => d.DayOfWeek == dayOfWeek)
+            ?? throw new DayPlanNotFoundException(planId, dayOfWeek);
+
+        var meals = await _mealRepository.GetAllAsync(cancellationToken);
+
+        DietProfile? profile = null;
+        if (request.ProfileId is Guid profileId)
+        {
+            profile = await _profileRepository.GetByIdAsync(profileId, cancellationToken);
+        }
+
+        var chosen = _generator.GenerateForDay(meals, plan, dayOfWeek, profile, request.Strictness);
+
+        day.MealId = chosen?.Id;
+        day.Meal = chosen;
+
+        await _repository.SaveChangesAsync(cancellationToken);
+
+        var refreshed = await _repository.GetByIdAsync(planId, cancellationToken);
+        return ToResponse(refreshed!);
+    }
+
     private static Eatah.Domain.Entities.WeeklyPlan BuildEmptyPlan(int year, int week)
     {
         return new Eatah.Domain.Entities.WeeklyPlan

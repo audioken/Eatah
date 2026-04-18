@@ -38,6 +38,7 @@ public class MealService
             Id = Guid.NewGuid(),
             Name = request.Name.Trim(),
             Category = request.Category,
+            CookingTimeMinutes = request.CookingTimeMinutes,
             Ingredients = request.Ingredients
                 .Select(name => new Ingredient { Id = Guid.NewGuid(), Name = name.Trim() })
                 .ToList()
@@ -75,6 +76,7 @@ public class MealService
             meal.Id,
             meal.Name,
             meal.Category,
+            meal.CookingTimeMinutes,
             meal.CreatedAt,
             meal.Ingredients.Select(i => new IngredientDto(i.Id, i.Name)).ToList());
     }

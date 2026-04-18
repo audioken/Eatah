@@ -25,6 +25,9 @@ public static class WeeklyPlanEndpoints
         group.MapPost("/{id:guid}/randomize", Randomize)
             .WithName("RandomizeWeeklyPlan");
 
+        group.MapPost("/{id:guid}/days/{dayOfWeek}/randomize", RandomizeDay)
+            .WithName("RandomizeDay");
+
         return app;
     }
 
@@ -134,6 +137,35 @@ public static class WeeklyPlanEndpoints
             return Results.NotFound(new { detail = ex.Message });
         }
     }
+
+    private static async Task<IResult> RandomizeDay(
+        Guid id,
+        DayOfWeek dayOfWeek,
+        RandomizeDayRequest request,
+        WeeklyPlanService service,
+        IValidator<RandomizeDayRequest> validator,
+        CancellationToken cancellationToken)
+    {
+        var validation = await validator.ValidateAsync(request, cancellationToken);
+        if (!validation.IsValid)
+        {
+            return Results.ValidationProblem(validation.ToDictionary());
+        }
+
+        try
+        {
+            var plan = await service.RandomizeDayAsync(id, dayOfWeek, request, cancellationToken);
+            return Results.Ok(plan);
+        }
+        catch (WeeklyPlanNotFoundException ex)
+        {
+            return Results.NotFound(new { detail = ex.Message });
+        }
+        catch (DayPlanNotFoundException ex)
+        {
+            return Results.NotFound(new { detail = ex.Message });
+        }
+    }
 }
 
 public static class WeeklyPlanServiceExtensions
@@ -146,6 +178,7 @@ public static class WeeklyPlanServiceExtensions
         services.AddScoped<IValidator<CreateWeeklyPlanRequest>, CreateWeeklyPlanRequestValidator>();
         services.AddScoped<IValidator<AssignMealRequest>, AssignMealRequestValidator>();
         services.AddScoped<IValidator<RandomizeWeeklyPlanRequest>, RandomizeWeeklyPlanRequestValidator>();
+        services.AddScoped<IValidator<RandomizeDayRequest>, RandomizeDayRequestValidator>();
         return services;
     }
 }
