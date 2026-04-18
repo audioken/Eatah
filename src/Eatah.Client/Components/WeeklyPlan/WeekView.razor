@@ -1,0 +1,33 @@
+@namespace Eatah.Client.Components.WeeklyPlan
+
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+	@foreach (var day in OrderedDays)
+	{
+		<DayCard Day="day"
+				 OnSelect="OnDaySelected"
+				 OnClear="OnDayCleared" />
+	}
+</div>
+
+@code {
+	private static readonly DayOfWeek[] WeekOrder =
+	[
+		DayOfWeek.Monday,
+		DayOfWeek.Tuesday,
+		DayOfWeek.Wednesday,
+		DayOfWeek.Thursday,
+		DayOfWeek.Friday,
+		DayOfWeek.Saturday,
+		DayOfWeek.Sunday
+	];
+
+	[Parameter, EditorRequired] public IReadOnlyList<DayPlanResponse> Days { get; set; } = [];
+	[Parameter] public EventCallback<DayPlanResponse> OnDaySelected { get; set; }
+	[Parameter] public EventCallback<DayPlanResponse> OnDayCleared { get; set; }
+
+	private IEnumerable<DayPlanResponse> OrderedDays =>
+		WeekOrder
+			.Select(d => Days.FirstOrDefault(x => x.DayOfWeek == d))
+			.Where(x => x is not null)!
+			.Cast<DayPlanResponse>();
+}

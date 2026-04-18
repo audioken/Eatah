@@ -1,0 +1,14 @@
+﻿@inherits LayoutComponentBase
+
+<GlobalLoadingIndicator />
+
+<div class="min-h-screen flex flex-col md:flex-row">
+	<aside class="md:w-64 bg-slate-900 text-white md:min-h-screen">
+		<NavMenu />
+	</aside>
+
+	<main class="flex-1 p-4 md:p-8">
+		@Body
+	</main>
+</div>
+

@@ -1,0 +1,93 @@
+@namespace Eatah.Client.Components.WeeklyPlan
+
+@if (IsOpen)
+{
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+		 @onclick="HandleBackdropClick">
+		<div class="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col"
+			 @onclick:stopPropagation="true">
+			<div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+				<h2 class="text-lg font-semibold">
+					Välj maträtt för @DayLabel
+				</h2>
+				<button type="button"
+						class="text-slate-400 hover:text-slate-700"
+						@onclick="Close">✕</button>
+			</div>
+
+			<div class="p-4 border-b border-slate-100">
+				<input type="text"
+					   class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"
+					   placeholder="Sök maträtt…"
+					   @bind="_query"
+					   @bind:event="oninput" />
+			</div>
+
+			<div class="flex-1 overflow-y-auto divide-y divide-slate-100">
+				@if (Meals is null)
+				{
+					<div class="p-4 text-slate-500">Laddar maträtter…</div>
+				}
+				else if (!FilteredMeals.Any())
+				{
+					<div class="p-4 text-slate-500">Inga maträtter matchar sökningen.</div>
+				}
+				else
+				{
+					@foreach (var meal in FilteredMeals)
+					{
+						<button type="button"
+								class="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center justify-between gap-3"
+								@onclick="() => HandleSelect(meal)">
+							<span class="font-medium">@meal.Name</span>
+							<CategoryBadge Meal="new MealSummaryResponse(meal.Id, meal.Name, meal.Category)" />
+						</button>
+					}
+				}
+			</div>
+		</div>
+	</div>
+}
+
+@code {
+	[Parameter] public bool IsOpen { get; set; }
+	[Parameter] public DayOfWeek? Day { get; set; }
+	[Parameter] public IReadOnlyList<MealResponse>? Meals { get; set; }
+	[Parameter] public EventCallback<MealResponse> OnSelect { get; set; }
+	[Parameter] public EventCallback OnClose { get; set; }
+
+	private string _query = string.Empty;
+
+	private IEnumerable<MealResponse> FilteredMeals =>
+		Meals is null
+			? []
+			: string.IsNullOrWhiteSpace(_query)
+				? Meals
+				: Meals.Where(m => m.Name.Contains(_query, StringComparison.OrdinalIgnoreCase));
+
+	private string DayLabel => Day switch
+	{
+		DayOfWeek.Monday => "måndag",
+		DayOfWeek.Tuesday => "tisdag",
+		DayOfWeek.Wednesday => "onsdag",
+		DayOfWeek.Thursday => "torsdag",
+		DayOfWeek.Friday => "fredag",
+		DayOfWeek.Saturday => "lördag",
+		DayOfWeek.Sunday => "söndag",
+		_ => string.Empty
+	};
+
+	private async Task HandleSelect(MealResponse meal)
+	{
+		await OnSelect.InvokeAsync(meal);
+		_query = string.Empty;
+	}
+
+	private Task Close()
+	{
+		_query = string.Empty;
+		return OnClose.InvokeAsync();
+	}
+
+	private Task HandleBackdropClick() => Close();
+}

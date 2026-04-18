@@ -1,0 +1,27 @@
+@namespace Eatah.Client.Components.WeeklyPlan
+
+<button type="button"
+		class="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-brand-600 text-white font-semibold shadow hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed"
+		disabled="@IsBusy"
+		@onclick="HandleClick">
+	@if (IsBusy)
+	{
+		<svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+			<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-25" />
+			<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+		</svg>
+		<span>Slumpar…</span>
+	}
+	else
+	{
+		<span>🎲</span>
+		<span>Slumpa vecka</span>
+	}
+</button>
+
+@code {
+	[Parameter] public bool IsBusy { get; set; }
+	[Parameter] public EventCallback OnClick { get; set; }
+
+	private Task HandleClick() => IsBusy ? Task.CompletedTask : OnClick.InvokeAsync();
+}

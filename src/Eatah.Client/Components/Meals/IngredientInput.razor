@@ -1,0 +1,57 @@
+@namespace Eatah.Client.Components.Meals
+
+<div class="space-y-2">
+	<label class="block text-sm font-semibold text-slate-700">Ingredienser</label>
+
+	@for (var i = 0; i < Ingredients.Count; i++)
+	{
+		var index = i;
+		<div class="flex items-center gap-2">
+			<input type="text"
+				   class="flex-1 px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"
+				   placeholder="t.ex. Tomater"
+				   value="@Ingredients[index]"
+				   @oninput="e => Update(index, e.Value?.ToString() ?? string.Empty)" />
+			<button type="button"
+					class="p-2 text-slate-500 hover:text-red-600 disabled:opacity-30"
+					disabled="@(Ingredients.Count <= 1)"
+					title="Ta bort ingrediens"
+					@onclick="() => Remove(index)">
+				✕
+			</button>
+		</div>
+	}
+
+	<button type="button"
+			class="text-sm text-brand-600 hover:text-brand-700 font-medium"
+			@onclick="Add">
+		+ Lägg till ingrediens
+	</button>
+</div>
+
+@code {
+	[Parameter] public List<string> Ingredients { get; set; } = [];
+	[Parameter] public EventCallback<List<string>> IngredientsChanged { get; set; }
+
+	private async Task Update(int index, string value)
+	{
+		Ingredients[index] = value;
+		await IngredientsChanged.InvokeAsync(Ingredients);
+	}
+
+	private async Task Add()
+	{
+		Ingredients.Add(string.Empty);
+		await IngredientsChanged.InvokeAsync(Ingredients);
+	}
+
+	private async Task Remove(int index)
+	{
+		if (Ingredients.Count <= 1)
+		{
+			return;
+		}
+		Ingredients.RemoveAt(index);
+		await IngredientsChanged.InvokeAsync(Ingredients);
+	}
+}

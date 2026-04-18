@@ -1,0 +1,66 @@
+@namespace Eatah.Client.Components.Meals
+
+<div class="space-y-4">
+	<div class="flex flex-col sm:flex-row sm:items-center gap-3">
+		<div class="flex-1">
+			<input type="text"
+				   class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"
+				   placeholder="Sök maträtt…"
+				   @bind="_query"
+				   @bind:event="oninput" />
+		</div>
+		<select class="px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"
+				@bind="_filter">
+			<option value="">Alla kategorier</option>
+			<option value="@MealCategory.Meat">Kött</option>
+			<option value="@MealCategory.Fish">Fisk</option>
+			<option value="@MealCategory.Vegetarian">Vegetariskt</option>
+			<option value="@MealCategory.Vegan">Veganskt</option>
+		</select>
+	</div>
+
+	@if (!FilteredMeals.Any())
+	{
+		<div class="p-6 text-center text-slate-500 border border-dashed border-slate-300 rounded-lg">
+			Inga maträtter matchar dina filter.
+		</div>
+	}
+	else
+	{
+		<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+			@foreach (var meal in FilteredMeals)
+			{
+				<MealCard Meal="meal" OnEdit="OnEdit" OnDelete="OnDelete" />
+			}
+		</div>
+	}
+</div>
+
+@code {
+	[Parameter, EditorRequired] public IReadOnlyList<MealResponse> Meals { get; set; } = [];
+	[Parameter] public EventCallback<MealResponse> OnEdit { get; set; }
+	[Parameter] public EventCallback<MealResponse> OnDelete { get; set; }
+
+	private string _query = string.Empty;
+	private string _filter = string.Empty;
+
+	private IEnumerable<MealResponse> FilteredMeals
+	{
+		get
+		{
+			IEnumerable<MealResponse> result = Meals;
+
+			if (!string.IsNullOrWhiteSpace(_query))
+			{
+				result = result.Where(m => m.Name.Contains(_query, StringComparison.OrdinalIgnoreCase));
+			}
+
+			if (!string.IsNullOrWhiteSpace(_filter) && Enum.TryParse<MealCategory>(_filter, out var cat))
+			{
+				result = result.Where(m => m.Category == cat);
+			}
+
+			return result.OrderBy(m => m.Name);
+		}
+	}
+}

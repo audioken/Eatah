@@ -1,0 +1,171 @@
+@page "/meals"
+@inject ApiClient Api
+
+<div class="max-w-6xl mx-auto">
+	<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+		<div>
+			<h1 class="text-2xl md:text-3xl font-bold">Maträtter</h1>
+			<p class="text-slate-500 text-sm">Skapa, redigera och ta bort maträtter.</p>
+		</div>
+		<button type="button"
+				class="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-brand-600 text-white font-semibold shadow hover:bg-brand-700"
+				@onclick="OpenCreate">
+			<span>➕</span>
+			<span>Ny maträtt</span>
+		</button>
+	</div>
+
+	@if (_error is not null)
+	{
+		<div class="mb-4 p-3 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm">
+			@_error
+		</div>
+	}
+
+	@if (_isLoading)
+	{
+		<div class="p-8 text-center text-slate-500">Laddar maträtter…</div>
+	}
+	else
+	{
+		<MealList Meals="_meals" OnEdit="OpenEdit" OnDelete="RequestDelete" />
+	}
+</div>
+
+<MealForm IsOpen="_formOpen"
+		  Meal="_editing"
+		  OnSubmit="SaveAsync"
+		  OnClose="CloseForm" />
+
+@if (_deleting is not null)
+{
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+		 @onclick="CancelDelete">
+		<div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-5 space-y-4"
+			 @onclick:stopPropagation="true">
+			<h2 class="text-lg font-semibold">Ta bort maträtt?</h2>
+			<p class="text-sm text-slate-600">
+				Är du säker på att du vill ta bort <strong>@_deleting.Name</strong>? Detta går inte att ångra.
+			</p>
+			<div class="flex items-center justify-end gap-2">
+				<button type="button"
+						class="px-4 py-2 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50"
+						@onclick="CancelDelete">
+					Avbryt
+				</button>
+				<button type="button"
+						class="px-4 py-2 rounded-md bg-red-600 text-white font-semibold hover:bg-red-700"
+						@onclick="ConfirmDeleteAsync">
+					Ta bort
+				</button>
+			</div>
+		</div>
+	</div>
+}
+
+@code {
+	private List<MealResponse> _meals = [];
+	private bool _isLoading = true;
+	private bool _formOpen;
+	private MealResponse? _editing;
+	private MealResponse? _deleting;
+	private string? _error;
+
+	protected override async Task OnInitializedAsync() => await LoadAsync();
+
+	private async Task LoadAsync()
+	{
+		_isLoading = true;
+		_error = null;
+		try
+		{
+			_meals = await Api.GetMealsAsync();
+		}
+		catch (Exception ex)
+		{
+			_error = $"Kunde inte ladda maträtter: {ex.Message}";
+		}
+		finally
+		{
+			_isLoading = false;
+		}
+	}
+
+	private void OpenCreate()
+	{
+		_editing = null;
+		_formOpen = true;
+	}
+
+	private void OpenEdit(MealResponse meal)
+	{
+		_editing = meal;
+		_formOpen = true;
+	}
+
+	private void CloseForm()
+	{
+		_formOpen = false;
+		_editing = null;
+	}
+
+	private async Task SaveAsync(MealForm.MealFormResult result)
+	{
+		_error = null;
+		try
+		{
+			if (_editing is null)
+			{
+				var created = await Api.CreateMealAsync(new CreateMealRequest(result.Name, result.Category, result.Ingredients));
+				if (created is not null)
+				{
+					_meals = [.. _meals, created];
+				}
+			}
+			else
+			{
+				var updated = await Api.UpdateMealAsync(_editing.Id, new UpdateMealRequest(result.Name, result.Category, result.Ingredients));
+				if (updated is not null)
+				{
+					_meals = _meals.Select(m => m.Id == updated.Id ? updated : m).ToList();
+				}
+			}
+			CloseForm();
+		}
+		catch (Exception ex)
+		{
+			_error = $"Kunde inte spara maträtten: {ex.Message}";
+		}
+	}
+
+	private void RequestDelete(MealResponse meal)
+	{
+		_deleting = meal;
+	}
+
+	private void CancelDelete()
+	{
+		_deleting = null;
+	}
+
+	private async Task ConfirmDeleteAsync()
+	{
+		if (_deleting is null)
+		{
+			return;
+		}
+
+		var target = _deleting;
+		_deleting = null;
+		_error = null;
+		try
+		{
+			await Api.DeleteMealAsync(target.Id);
+			_meals = _meals.Where(m => m.Id != target.Id).ToList();
+		}
+		catch (Exception ex)
+		{
+			_error = $"Kunde inte ta bort maträtten: {ex.Message}";
+		}
+	}
+}

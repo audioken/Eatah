@@ -1,0 +1,59 @@
+@namespace Eatah.Client.Components.DietRules
+
+<div class="@ContainerClass">
+	<div class="flex items-center justify-between gap-3">
+		<div class="flex items-center gap-2">
+			<span class="@DotClass"></span>
+			<span class="font-semibold text-slate-900">@CategoryLabel</span>
+		</div>
+		<span class="text-sm font-semibold @ScoreTextClass">@Result.Actual / @RangeLabel</span>
+	</div>
+	<p class="mt-1 text-sm text-slate-600">@Result.Message</p>
+</div>
+
+@code {
+	[Parameter, EditorRequired] public RuleResultResponse Result { get; set; } = default!;
+
+	private string CategoryLabel => Result.Category switch
+	{
+		MealCategory.Meat => "Kött",
+		MealCategory.Fish => "Fisk",
+		MealCategory.Vegetarian => "Vegetariskt",
+		MealCategory.Vegan => "Veganskt",
+		_ => Result.Category.ToString()
+	};
+
+	private string RangeLabel => Result.Min == Result.Max
+		? $"{Result.Min}"
+		: $"{Result.Min}–{Result.Max}";
+
+	private Status RuleStatus => (Result.IsMet, Result.Score) switch
+	{
+		(true, _) => Status.Ok,
+		(false, >= 0.5) => Status.Warning,
+		_ => Status.Error
+	};
+
+	private string ContainerClass => RuleStatus switch
+	{
+		Status.Ok => "p-3 rounded-md border border-green-200 bg-green-50",
+		Status.Warning => "p-3 rounded-md border border-yellow-200 bg-yellow-50",
+		_ => "p-3 rounded-md border border-red-200 bg-red-50"
+	};
+
+	private string DotClass => "w-2.5 h-2.5 rounded-full " + RuleStatus switch
+	{
+		Status.Ok => "bg-green-500",
+		Status.Warning => "bg-yellow-500",
+		_ => "bg-red-500"
+	};
+
+	private string ScoreTextClass => RuleStatus switch
+	{
+		Status.Ok => "text-green-700",
+		Status.Warning => "text-yellow-700",
+		_ => "text-red-700"
+	};
+
+	private enum Status { Ok, Warning, Error }
+}

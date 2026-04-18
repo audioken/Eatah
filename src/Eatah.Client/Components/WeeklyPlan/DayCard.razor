@@ -1,0 +1,52 @@
+@namespace Eatah.Client.Components.WeeklyPlan
+
+<button type="button"
+		class="w-full h-full text-left p-4 rounded-lg border border-slate-200 bg-white hover:border-brand-500 hover:shadow-md transition focus:outline-none focus:ring-2 focus:ring-brand-500"
+		@onclick="HandleClick">
+	<div class="flex items-center justify-between mb-2">
+		<span class="text-sm font-semibold text-slate-500 uppercase tracking-wide">@DayLabel</span>
+		@if (Day.Meal is not null)
+		{
+			<CategoryBadge Meal="Day.Meal" />
+		}
+	</div>
+
+	@if (Day.Meal is not null)
+	{
+		<div class="flex items-center justify-between gap-2">
+			<span class="font-medium text-slate-900">@Day.Meal.Name</span>
+			<button type="button"
+					class="text-slate-400 hover:text-red-600 text-sm"
+					title="Ta bort maträtt"
+					@onclick:stopPropagation="true"
+					@onclick="HandleClear">
+				✕
+			</button>
+		</div>
+	}
+	else
+	{
+		<div class="text-slate-400 italic">Ingen maträtt vald</div>
+	}
+</button>
+
+@code {
+	[Parameter, EditorRequired] public DayPlanResponse Day { get; set; } = default!;
+	[Parameter] public EventCallback<DayPlanResponse> OnSelect { get; set; }
+	[Parameter] public EventCallback<DayPlanResponse> OnClear { get; set; }
+
+	private string DayLabel => Day.DayOfWeek switch
+	{
+		DayOfWeek.Monday => "Måndag",
+		DayOfWeek.Tuesday => "Tisdag",
+		DayOfWeek.Wednesday => "Onsdag",
+		DayOfWeek.Thursday => "Torsdag",
+		DayOfWeek.Friday => "Fredag",
+		DayOfWeek.Saturday => "Lördag",
+		DayOfWeek.Sunday => "Söndag",
+		_ => Day.DayOfWeek.ToString()
+	};
+
+	private Task HandleClick() => OnSelect.InvokeAsync(Day);
+	private Task HandleClear() => OnClear.InvokeAsync(Day);
+}

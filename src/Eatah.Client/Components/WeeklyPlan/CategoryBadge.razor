@@ -1,0 +1,35 @@
+@namespace Eatah.Client.Components.WeeklyPlan
+
+@if (Meal is not null)
+{
+	<span class="@BadgeClass">@CategoryLabel</span>
+}
+
+@code {
+	[Parameter, EditorRequired] public MealSummaryResponse? Meal { get; set; }
+
+	private string CategoryLabel => Meal!.Category switch
+	{
+		MealCategory.Meat => "Kött",
+		MealCategory.Fish => "Fisk",
+		MealCategory.Vegetarian => "Vegetariskt",
+		MealCategory.Vegan => "Veganskt",
+		_ => Meal!.Category.ToString()
+	};
+
+	private string BadgeClass
+	{
+		get
+		{
+			var baseClasses = "inline-block text-xs font-semibold px-2 py-0.5 rounded-full text-white ";
+			return baseClasses + Meal!.Category switch
+			{
+				MealCategory.Meat => "bg-red-600",
+				MealCategory.Fish => "bg-blue-600",
+				MealCategory.Vegetarian => "bg-green-600",
+				MealCategory.Vegan => "bg-lime-600",
+				_ => "bg-slate-600"
+			};
+		}
+	}
+}

@@ -1,0 +1,56 @@
+@namespace Eatah.Client.Components.DietRules
+
+<div class="flex flex-col items-center gap-2 p-4 rounded-lg border border-slate-200 bg-white">
+	<div class="relative w-32 h-32">
+		<svg viewBox="0 0 120 120" class="w-full h-full -rotate-90">
+			<circle cx="60" cy="60" r="50"
+					fill="none"
+					stroke="#e2e8f0"
+					stroke-width="12" />
+			<circle cx="60" cy="60" r="50"
+					fill="none"
+					stroke="@StrokeColor"
+					stroke-width="12"
+					stroke-linecap="round"
+					stroke-dasharray="@Circumference"
+					stroke-dashoffset="@DashOffset"
+					style="transition: stroke-dashoffset 600ms ease, stroke 300ms ease;" />
+		</svg>
+		<div class="absolute inset-0 flex flex-col items-center justify-center">
+			<span class="text-3xl font-bold @TextColor">@Percent%</span>
+			<span class="text-xs text-slate-500 uppercase tracking-wide">Poäng</span>
+		</div>
+	</div>
+	<p class="text-sm text-slate-600 text-center">@Label</p>
+</div>
+
+@code {
+	private const double Circumference = 2 * Math.PI * 50;
+
+	[Parameter, EditorRequired] public double Score { get; set; }
+
+	private int Percent => (int)Math.Round(Math.Clamp(Score, 0.0, 1.0) * 100);
+
+	private double DashOffset => Circumference * (1.0 - Math.Clamp(Score, 0.0, 1.0));
+
+	private string StrokeColor => Score switch
+	{
+		>= 0.8 => "#16a34a",
+		>= 0.5 => "#eab308",
+		_ => "#dc2626"
+	};
+
+	private string TextColor => Score switch
+	{
+		>= 0.8 => "text-green-600",
+		>= 0.5 => "text-yellow-600",
+		_ => "text-red-600"
+	};
+
+	private string Label => Score switch
+	{
+		>= 0.8 => "Kostreglerna följs bra",
+		>= 0.5 => "Delvis balanserad vecka",
+		_ => "Reglerna behöver förbättras"
+	};
+}
