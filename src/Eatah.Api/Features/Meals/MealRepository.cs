@@ -46,7 +46,6 @@ public class MealRepository : IMealRepository
 
     public async Task UpdateAsync(Meal meal, CancellationToken cancellationToken)
     {
-        _context.Meals.Update(meal);
         await _context.SaveChangesAsync(cancellationToken);
     }
 

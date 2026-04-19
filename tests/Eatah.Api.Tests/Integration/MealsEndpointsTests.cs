@@ -62,6 +62,33 @@ public class MealsEndpointsTests : IClassFixture<EatahWebApplicationFactory>
     }
 
     [Fact]
+    public async Task Update_ShouldReturn200_AndPersist_WhenAddingIngredientToExistingMeal()
+    {
+        var client = _factory.CreateClient();
+        var createdResponse = await client.PostAsJsonAsync("api/meals",
+            new CreateMealRequest("Pasta", MealCategory.Vegetarian, ["Tomat"], 20));
+        createdResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var created = await createdResponse.Content.ReadFromJsonAsync<MealResponse>();
+
+        var updateRequest = new UpdateMealRequest("Pasta Deluxe", MealCategory.Vegetarian, ["Tomat", "Basilika"], 30);
+        var updateResponse = await client.PutAsJsonAsync($"api/meals/{created!.Id}", updateRequest);
+
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = await updateResponse.Content.ReadFromJsonAsync<MealResponse>();
+        updated.Should().NotBeNull();
+        updated!.Name.Should().Be("Pasta Deluxe");
+        updated.CookingTimeMinutes.Should().Be(30);
+        updated.Ingredients.Should().HaveCount(2);
+        updated.Ingredients.Select(i => i.Name).Should().BeEquivalentTo(["Tomat", "Basilika"]);
+
+        var persisted = await client.GetFromJsonAsync<MealResponse>($"api/meals/{created.Id}");
+        persisted.Should().NotBeNull();
+        persisted!.Ingredients.Should().HaveCount(2);
+        persisted.Ingredients.Select(i => i.Name).Should().BeEquivalentTo(["Tomat", "Basilika"]);
+        persisted.CookingTimeMinutes.Should().Be(30);
+    }
+
+    [Fact]
     public async Task Delete_ShouldRemoveMeal()
     {
         var client = _factory.CreateClient();
