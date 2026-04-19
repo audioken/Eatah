@@ -9,7 +9,7 @@ public interface IMealRepository
     Task<List<Meal>> GetAllAsync(CancellationToken cancellationToken);
     Task<Meal?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
     Task AddAsync(Meal meal, CancellationToken cancellationToken);
-    Task UpdateAsync(Meal meal, CancellationToken cancellationToken);
+    Task ReplaceIngredientsAndUpdateAsync(Meal meal, IReadOnlyCollection<Ingredient> newIngredients, CancellationToken cancellationToken);
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken);
 }
 
@@ -44,12 +44,16 @@ public class MealRepository : IMealRepository
         await _context.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task UpdateAsync(Meal meal, CancellationToken cancellationToken)
+    public async Task ReplaceIngredientsAndUpdateAsync(
+        Meal meal,
+        IReadOnlyCollection<Ingredient> newIngredients,
+        CancellationToken cancellationToken)
     {
-        _context.Meals.Update(meal);
+        _context.Ingredients.RemoveRange(meal.Ingredients);
+        meal.Ingredients = [.. newIngredients];
+        await _context.Ingredients.AddRangeAsync(newIngredients, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
     }
-
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
     {
         var meal = await _context.Meals

@@ -39,7 +39,10 @@ builder.Services.AddSwaggerGen(options =>
     }
 });
 
-builder.Services.AddInfrastructure(builder.Configuration);
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddInfrastructure(builder.Configuration);
+}
 
 builder.Services.AddMealFeature();
 builder.Services.AddWeeklyPlanFeature();

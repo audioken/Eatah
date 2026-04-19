@@ -55,13 +55,14 @@ public class MealService
 
         meal.Name = request.Name.Trim();
         meal.Category = request.Category;
-        meal.Ingredients.Clear();
-        foreach (var name in request.Ingredients)
-        {
-            meal.Ingredients.Add(new Ingredient { Id = Guid.NewGuid(), Name = name.Trim() });
-        }
+        meal.CookingTimeMinutes = request.CookingTimeMinutes;
 
-        await _repository.UpdateAsync(meal, cancellationToken);
+        var newIngredients = request.Ingredients
+            .Select(name => new Ingredient { Id = Guid.NewGuid(), Name = name.Trim() })
+            .ToList();
+
+        await _repository.ReplaceIngredientsAndUpdateAsync(meal, newIngredients, cancellationToken);
+        meal.Ingredients = newIngredients;
         return ToResponse(meal);
     }
 

@@ -71,16 +71,21 @@ public class MealServiceTests
             Id = id,
             Name = "Gammal",
             Category = MealCategory.Meat,
+            CookingTimeMinutes = 10,
             Ingredients = [new Ingredient { Id = Guid.NewGuid(), Name = "Old" }]
         };
         _repo.Setup(r => r.GetByIdAsync(id, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
 
-        var result = await _sut.UpdateAsync(id, new UpdateMealRequest("Nytt", MealCategory.Fish, ["Lax"], null), CancellationToken.None);
+        var result = await _sut.UpdateAsync(id, new UpdateMealRequest("Nytt", MealCategory.Fish, ["Lax"], 25), CancellationToken.None);
 
         result.Name.Should().Be("Nytt");
         result.Category.Should().Be(MealCategory.Fish);
+        result.CookingTimeMinutes.Should().Be(25);
         result.Ingredients.Should().ContainSingle(i => i.Name == "Lax");
-        _repo.Verify(r => r.UpdateAsync(existing, It.IsAny<CancellationToken>()), Times.Once);
+        _repo.Verify(r => r.ReplaceIngredientsAndUpdateAsync(
+            existing,
+            It.Is<IReadOnlyCollection<Ingredient>>(list => list.Count == 1 && list.Single().Name == "Lax"),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
