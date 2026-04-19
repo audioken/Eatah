@@ -82,7 +82,10 @@ public class MealServiceTests
         result.Category.Should().Be(MealCategory.Fish);
         result.CookingTimeMinutes.Should().Be(25);
         result.Ingredients.Should().ContainSingle(i => i.Name == "Lax");
-        _repo.Verify(r => r.UpdateAsync(existing, It.IsAny<CancellationToken>()), Times.Once);
+        _repo.Verify(r => r.ReplaceIngredientsAndUpdateAsync(
+            existing,
+            It.Is<IReadOnlyCollection<Ingredient>>(list => list.Count == 1 && list.Single().Name == "Lax"),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

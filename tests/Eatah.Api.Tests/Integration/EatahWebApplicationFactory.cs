@@ -3,9 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 
 namespace Eatah.Api.Tests.Integration;
@@ -18,19 +16,8 @@ public class EatahWebApplicationFactory : WebApplicationFactory<Program>
     {
         builder.UseEnvironment("Testing");
 
-        builder.ConfigureAppConfiguration((_, config) =>
-        {
-            config.AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=placeholder;Username=u;Password=p"
-            });
-        });
-
         builder.ConfigureTestServices(services =>
         {
-            services.RemoveAll<DbContextOptions<EatahDbContext>>();
-            services.RemoveAll<EatahDbContext>();
-
             services.AddDbContext<EatahDbContext>(options =>
                 options.UseInMemoryDatabase(_databaseName));
         });
