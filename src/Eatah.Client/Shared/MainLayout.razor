@@ -1,14 +1,30 @@
 ﻿@inherits LayoutComponentBase
+@inject ISafeAreaInsetsProvider SafeAreaInsetsProvider
+@inject IJSRuntime JS
 
 <GlobalLoadingIndicator />
 
 <div class="min-h-screen flex flex-col md:flex-row">
-	<aside class="md:w-64 bg-slate-900 text-white md:min-h-screen">
+	<aside class="md:w-64 bg-slate-900 text-white md:min-h-screen safe-area-top">
 		<NavMenu />
 	</aside>
 
-	<main class="flex-1 p-4 md:p-8">
+	<main class="flex-1 p-4 md:p-8 safe-area-bottom">
 		@Body
 	</main>
 </div>
+
+@code {
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			var (top, bottom) = await SafeAreaInsetsProvider.GetInsetsAsync();
+			if (top > 0 || bottom > 0)
+			{
+				await JS.InvokeVoidAsync("applyInsets", top, bottom);
+			}
+		}
+	}
+}
 

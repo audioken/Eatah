@@ -23,6 +23,12 @@ public static class MauiProgram
 		builder.Services.AddSingleton<LoadingState>();
 		builder.Services.AddTransient<LoadingHttpMessageHandler>();
 
+#if ANDROID
+		builder.Services.AddSingleton<ISafeAreaInsetsProvider, Eatah.Client.Platforms.Android.AndroidSafeAreaInsetsProvider>();
+#else
+		builder.Services.AddSingleton<ISafeAreaInsetsProvider, DefaultSafeAreaInsetsProvider>();
+#endif
+
 		builder.Services.AddHttpClient<ApiClient>(client =>
 		{
 			client.BaseAddress = ApiClientOptions.GetBaseAddress();

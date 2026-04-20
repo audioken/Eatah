@@ -33,8 +33,6 @@
 
 <body>
 
-	<div class="status-bar-safe-area"></div>
-
 	<div id="app">Loading...</div>
 
 	<div id="blazor-error-ui">
@@ -42,6 +40,15 @@
 		<a href="" class="reload">Reload</a>
 		<a class="dismiss">🗙</a>
 	</div>
+
+	<script>
+		// Called from MAUI on Android where env(safe-area-inset-*) is not forwarded by WebView.
+		// On iOS the CSS env() fallback is used instead (viewport-fit=cover handles it natively).
+		window.applyInsets = function (top, bottom) {
+			document.documentElement.style.setProperty('--safe-area-inset-top', top + 'px');
+			document.documentElement.style.setProperty('--safe-area-inset-bottom', bottom + 'px');
+		};
+	</script>
 
 	<script src="_framework/blazor.webview.js" autostart="false"></script>
 
