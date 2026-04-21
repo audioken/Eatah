@@ -1,0 +1,115 @@
+@namespace Eatah.Client.Components.WeeklyPlan
+@using Eatah.Client.Services
+@inject ApiClient Api
+
+@if (IsOpen)
+{
+    <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4" @onclick="HandleClose">
+        <div class="w-full max-w-[400px] rounded-[20px] border border-black/10 font-kanit overflow-hidden"
+             style="background: linear-gradient(135deg, #839B7F 0%, #A8D1AA 91.83%); box-shadow: 0px 8px 24px rgba(0,0,0,0.35);"
+             @onclick:stopPropagation="true">
+
+            <div class="px-5 pt-4 pb-3 flex items-center justify-between">
+                <div>
+                    <div class="text-white font-medium text-[20px] leading-tight uppercase tracking-tight">
+                        Ingredienser
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(MealName))
+                    {
+                        <div class="text-dayCardText font-medium text-[14px] leading-tight">@MealName</div>
+                    }
+                </div>
+                <button type="button"
+                        class="inline-flex items-center justify-center w-[32px] h-[32px] rounded-full bg-white/30 hover:bg-white/50 text-white text-base"
+                        title="Stäng" @onclick="HandleClose">
+                    ✕
+                </button>
+            </div>
+
+            <div class="px-3 pb-4 space-y-2 max-h-[60vh] overflow-y-auto">
+                @if (_isLoading)
+                {
+                    <div class="px-3 py-6 text-center text-white/90 text-sm">Laddar ingredienser...</div>
+                }
+                else if (_ingredients is null || _ingredients.Count == 0)
+                {
+                    <div class="px-3 py-6 text-center text-white/90 text-sm">Inga ingredienser registrerade.</div>
+                }
+                else
+                {
+                    @foreach (var name in _ingredients)
+                    {
+                        var isChecked = _checked.Contains(name);
+                        <button type="button"
+                                class="w-full flex items-center gap-3 px-3 py-2 rounded-[12px] border border-black/10 bg-white/40 hover:bg-white/60 transition text-left"
+                                @onclick="() => Toggle(name)">
+                            <span
+                                class="inline-flex items-center justify-center w-[22px] h-[22px] rounded-md border-2 @(isChecked ? "bg-[#7CD331] border-[#7CD331]" : "bg-white/80 border-white")">
+                                @if (isChecked)
+                                {
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="@IconPaths.CheckViewBox" fill="white"
+                                         class="w-3 h-3">
+                                        <path d="@IconPaths.CheckPath" />
+                                    </svg>
+                                }
+                            </span>
+                            <span
+                                class="font-medium text-[15px] @(isChecked ? "line-through text-dayCardText/60" : "text-dayCardText")">
+                                @name
+                            </span>
+                        </button>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public Guid? MealId { get; set; }
+    [Parameter] public string? MealName { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private List<string>? _ingredients;
+    private readonly HashSet<string> _checked = new(StringComparer.OrdinalIgnoreCase);
+    private bool _isLoading;
+    private Guid? _loadedFor;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsOpen && MealId is not null && MealId != _loadedFor)
+        {
+            await LoadAsync(MealId.Value);
+        }
+    }
+
+    private async Task LoadAsync(Guid mealId)
+    {
+        _isLoading = true;
+        try
+        {
+            var meal = await Api.GetMealAsync(mealId);
+            _ingredients = meal?.Ingredients.Select(i => i.Name).ToList() ?? new List<string>();
+            _loadedFor = mealId;
+        }
+        catch
+        {
+            _ingredients = new List<string>();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void Toggle(string name)
+    {
+        if (!_checked.Add(name))
+        {
+            _checked.Remove(name);
+        }
+    }
+
+    private Task HandleClose() => OnClose.InvokeAsync();
+}

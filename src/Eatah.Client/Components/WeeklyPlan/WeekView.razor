@@ -1,6 +1,6 @@
 @namespace Eatah.Client.Components.WeeklyPlan
 
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+<div class="flex flex-col items-center xl:items-start xl:grid xl:grid-cols-2 gap-3">
 	@foreach (var day in OrderedDays)
 	{
 		<DayCard Day="day" OnSelect="OnDaySelected" OnClear="OnDayCleared" OnRandomDb="OnDayRandomDb"

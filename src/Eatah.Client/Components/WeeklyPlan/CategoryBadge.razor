@@ -2,7 +2,7 @@
 
 @if (Meal is not null)
 {
-	<span class="@BadgeClass">@CategoryLabel</span>
+	<span class="@BadgeClass" style="@BadgeStyle">@CategoryLabel</span>
 }
 
 @code {
@@ -10,26 +10,22 @@
 
 	private string CategoryLabel => Meal!.Category switch
 	{
-		MealCategory.Meat => "Kött",
+		MealCategory.Meat => "Rött kött",
 		MealCategory.Fish => "Fisk",
 		MealCategory.Vegetarian => "Vegetariskt",
 		MealCategory.Vegan => "Veganskt",
 		_ => Meal!.Category.ToString()
 	};
 
-	private string BadgeClass
+	private const string BadgeClass =
+		"inline-flex items-center justify-center font-kanit font-normal text-white text-[10px] leading-[10px] px-[7px] py-[4px] rounded-full whitespace-nowrap";
+
+	private string BadgeStyle => Meal!.Category switch
 	{
-		get
-		{
-			var baseClasses = "inline-block text-xs font-semibold px-2 py-0.5 rounded-full text-white ";
-			return baseClasses + Meal!.Category switch
-			{
-				MealCategory.Meat => "bg-red-600",
-				MealCategory.Fish => "bg-blue-600",
-				MealCategory.Vegetarian => "bg-green-600",
-				MealCategory.Vegan => "bg-lime-600",
-				_ => "bg-slate-600"
-			};
-		}
-	}
+		MealCategory.Meat => "background:#A13A3A;",
+		MealCategory.Fish => "background:#005ED9;",
+		MealCategory.Vegetarian => "background:#3C8F3A;",
+		MealCategory.Vegan => "background:#AC279D;",
+		_ => "background:#64748b;"
+	};
 }

@@ -5,11 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 	<title>Eatah</title>
 	<base href="/" />
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&display=swap" rel="stylesheet">
 	<script src="https://cdn.tailwindcss.com"></script>
 	<script>
 		tailwind.config = {
 			theme: {
 				extend: {
+					fontFamily: {
+						kanit: ['Kanit', 'sans-serif']
+					},
 					colors: {
 						brand: {
 							50: '#f0fdf4',
@@ -18,10 +24,12 @@
 							600: '#16a34a',
 							700: '#15803d'
 						},
-						meat: '#dc2626',
-						fish: '#2563eb',
-						vegetarian: '#16a34a',
-						vegan: '#65a30d'
+						meat: '#A13A3A',
+						fish: '#005ED9',
+						poultry: '#D98D00',
+						vegetarian: '#3C8F3A',
+						vegan: '#AC279D',
+						dayCardText: '#333E2F'
 					}
 				}
 			}
