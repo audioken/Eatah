@@ -7,21 +7,21 @@ public class CreateMealRequestValidator : AbstractValidator<CreateMealRequest>
     public CreateMealRequestValidator()
     {
         RuleFor(x => x.Name)
-            .NotEmpty().WithMessage("Maträttens namn är obligatoriskt.")
-            .MaximumLength(200).WithMessage("Namnet får vara max 200 tecken.");
+            .NotEmpty().WithMessage("Meal name is required.")
+            .MaximumLength(200).WithMessage("Name must be at most 200 characters.");
 
         RuleFor(x => x.Category)
-            .IsInEnum().WithMessage("Ogiltig kategori.");
+            .IsInEnum().WithMessage("Invalid meal category.");
 
         RuleFor(x => x.Ingredients)
-            .NotEmpty().WithMessage("Minst en ingrediens krävs.");
+            .NotEmpty().WithMessage("At least one ingredient is required.");
 
         RuleForEach(x => x.Ingredients)
-            .NotEmpty().WithMessage("Ingrediensen får inte vara tom.")
-            .MaximumLength(200).WithMessage("Ingrediensens namn får vara max 200 tecken.");
+            .NotEmpty().WithMessage("Ingredient name cannot be empty.")
+            .MaximumLength(200).WithMessage("Ingredient name must be at most 200 characters.");
 
         RuleFor(x => x.CookingTimeMinutes!.Value)
-            .InclusiveBetween(1, 600).WithMessage("Tillagningstiden måste vara mellan 1 och 600 minuter.")
+            .InclusiveBetween(1, 600).WithMessage("Cooking time must be between 1 and 600 minutes.")
             .When(x => x.CookingTimeMinutes.HasValue);
     }
 }
@@ -31,17 +31,17 @@ public class UpdateMealRequestValidator : AbstractValidator<UpdateMealRequest>
     public UpdateMealRequestValidator()
     {
         RuleFor(x => x.Name)
-            .NotEmpty().WithMessage("Maträttens namn är obligatoriskt.")
-            .MaximumLength(200).WithMessage("Namnet får vara max 200 tecken.");
+            .NotEmpty().WithMessage("Meal name is required.")
+            .MaximumLength(200).WithMessage("Name must be at most 200 characters.");
 
         RuleFor(x => x.Category)
-            .IsInEnum().WithMessage("Ogiltig kategori.");
+            .IsInEnum().WithMessage("Invalid meal category.");
 
         RuleFor(x => x.Ingredients)
-            .NotEmpty().WithMessage("Minst en ingrediens krävs.");
+            .NotEmpty().WithMessage("At least one ingredient is required.");
 
         RuleForEach(x => x.Ingredients)
-            .NotEmpty().WithMessage("Ingrediensen får inte vara tom.")
-            .MaximumLength(200).WithMessage("Ingrediensens namn får vara max 200 tecken.");
+            .NotEmpty().WithMessage("Ingredient name cannot be empty.")
+            .MaximumLength(200).WithMessage("Ingredient name must be at most 200 characters.");
     }
 }

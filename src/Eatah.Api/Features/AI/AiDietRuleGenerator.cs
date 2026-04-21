@@ -103,12 +103,12 @@ public class AiDietRuleGenerator
         }
         catch (JsonException ex)
         {
-            throw new AiServiceException("Kunde inte tolka svaret från AI-tjänsten.", ex);
+            throw new AiServiceException(Common.ErrorCodes.AiInvalidResponse, "Could not parse AI service response.", ex);
         }
 
         if (parsed is null || parsed.Rules is null || parsed.Rules.Count == 0)
         {
-            throw new AiServiceException("AI-tjänsten returnerade inga kostregler.");
+            throw new AiServiceException(Common.ErrorCodes.AiInvalidResponse, "AI service returned no diet rules.");
         }
 
         var name = string.IsNullOrWhiteSpace(parsed.Name) ? fallbackName : parsed.Name.Trim();
@@ -149,7 +149,7 @@ public class AiDietRuleGenerator
 
         if (validatedRules.Count == 0)
         {
-            throw new AiServiceException("AI-tjänsten returnerade inga giltiga kostregler.");
+            throw new AiServiceException(Common.ErrorCodes.AiInvalidResponse, "AI service returned no valid diet rules.");
         }
 
         return new AiGeneratedProfile(name, validatedRules);

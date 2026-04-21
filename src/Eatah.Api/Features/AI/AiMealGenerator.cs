@@ -118,17 +118,17 @@ public class AiMealGenerator
         }
         catch (JsonException ex)
         {
-            throw new AiServiceException("Kunde inte tolka svaret från AI-tjänsten.", ex);
+            throw new AiServiceException(Common.ErrorCodes.AiInvalidResponse, "Could not parse AI service response.", ex);
         }
 
         if (parsed is null || string.IsNullOrWhiteSpace(parsed.Name))
         {
-            throw new AiServiceException("AI-tjänsten returnerade inget giltigt rättnamn.");
+            throw new AiServiceException(Common.ErrorCodes.AiInvalidResponse, "AI service did not return a valid meal name.");
         }
 
         if (!Enum.IsDefined(typeof(MealCategory), parsed.Category))
         {
-            throw new AiServiceException("AI-tjänsten returnerade en okänd kategori.");
+            throw new AiServiceException(Common.ErrorCodes.AiInvalidResponse, "AI service returned an unknown meal category.");
         }
 
         var ingredients = (parsed.Ingredients ?? new List<string>())
@@ -140,7 +140,7 @@ public class AiMealGenerator
 
         if (ingredients.Count == 0)
         {
-            throw new AiServiceException("AI-tjänsten returnerade inga ingredienser.");
+            throw new AiServiceException(Common.ErrorCodes.AiInvalidResponse, "AI service returned no ingredients.");
         }
 
         int? cookingTime = parsed.CookingTimeMinutes;

@@ -1,33 +1,10 @@
 using System.Globalization;
+using Eatah.Api.Common;
 using Eatah.Api.Features.DietRules;
 using Eatah.Api.Features.Meals;
 using Eatah.Domain.Entities;
 
 namespace Eatah.Api.Features.WeeklyPlan;
-
-public class WeeklyPlanNotFoundException : Exception
-{
-    public WeeklyPlanNotFoundException(Guid id)
-        : base($"Veckoplan med id {id} hittades inte.")
-    {
-    }
-}
-
-public class WeeklyPlanConflictException : Exception
-{
-    public WeeklyPlanConflictException(int year, int week)
-        : base($"En veckoplan för {year} vecka {week} finns redan.")
-    {
-    }
-}
-
-public class DayPlanNotFoundException : Exception
-{
-    public DayPlanNotFoundException(Guid planId, DayOfWeek day)
-        : base($"Dagen {day} finns inte i veckoplan {planId}.")
-    {
-    }
-}
 
 public class WeeklyPlanService
 {
@@ -72,12 +49,12 @@ public class WeeklyPlanService
         return ToResponse(plan);
     }
 
-    public async Task<WeeklyPlanResponse> CreateAsync(CreateWeeklyPlanRequest request, CancellationToken cancellationToken)
+    public async Task<Result<WeeklyPlanResponse>> CreateAsync(CreateWeeklyPlanRequest request, CancellationToken cancellationToken)
     {
         var existing = await _repository.GetByYearWeekAsync(request.Year, request.WeekNumber, cancellationToken);
         if (existing is not null)
         {
-            throw new WeeklyPlanConflictException(request.Year, request.WeekNumber);
+            return WeeklyPlanErrors.Conflict(request.Year, request.WeekNumber);
         }
 
         var plan = BuildEmptyPlan(request.Year, request.WeekNumber);
@@ -85,20 +62,29 @@ public class WeeklyPlanService
         return ToResponse(plan);
     }
 
-    public async Task<WeeklyPlanResponse> AssignMealAsync(
+    public async Task<Result<WeeklyPlanResponse>> AssignMealAsync(
         Guid planId,
         DayOfWeek dayOfWeek,
         Guid mealId,
         CancellationToken cancellationToken)
     {
-        var plan = await _repository.GetByIdAsync(planId, cancellationToken)
-            ?? throw new WeeklyPlanNotFoundException(planId);
+        var plan = await _repository.GetByIdAsync(planId, cancellationToken);
+        if (plan is null)
+        {
+            return WeeklyPlanErrors.NotFound(planId);
+        }
 
-        var day = plan.Days.FirstOrDefault(d => d.DayOfWeek == dayOfWeek)
-            ?? throw new DayPlanNotFoundException(planId, dayOfWeek);
+        var day = plan.Days.FirstOrDefault(d => d.DayOfWeek == dayOfWeek);
+        if (day is null)
+        {
+            return WeeklyPlanErrors.DayNotFound(planId, dayOfWeek);
+        }
 
-        var meal = await _mealRepository.GetByIdAsync(mealId, cancellationToken)
-            ?? throw new MealNotFoundException(mealId);
+        var meal = await _mealRepository.GetByIdAsync(mealId, cancellationToken);
+        if (meal is null)
+        {
+            return Error.NotFound(ErrorCodes.MealNotFound, $"Meal with id {mealId} was not found.");
+        }
 
         day.MealId = meal.Id;
         day.Meal = meal;
@@ -110,16 +96,22 @@ public class WeeklyPlanService
         return ToResponse(refreshed!);
     }
 
-    public async Task<WeeklyPlanResponse> ClearDayAsync(
+    public async Task<Result<WeeklyPlanResponse>> ClearDayAsync(
         Guid planId,
         DayOfWeek dayOfWeek,
         CancellationToken cancellationToken)
     {
-        var plan = await _repository.GetByIdAsync(planId, cancellationToken)
-            ?? throw new WeeklyPlanNotFoundException(planId);
+        var plan = await _repository.GetByIdAsync(planId, cancellationToken);
+        if (plan is null)
+        {
+            return WeeklyPlanErrors.NotFound(planId);
+        }
 
-        var day = plan.Days.FirstOrDefault(d => d.DayOfWeek == dayOfWeek)
-            ?? throw new DayPlanNotFoundException(planId, dayOfWeek);
+        var day = plan.Days.FirstOrDefault(d => d.DayOfWeek == dayOfWeek);
+        if (day is null)
+        {
+            return WeeklyPlanErrors.DayNotFound(planId, dayOfWeek);
+        }
 
         day.MealId = null;
         day.Meal = null;
@@ -128,13 +120,16 @@ public class WeeklyPlanService
         return ToResponse(plan);
     }
 
-    public async Task<WeeklyPlanResponse> RandomizeAsync(
+    public async Task<Result<WeeklyPlanResponse>> RandomizeAsync(
         Guid planId,
         RandomizeWeeklyPlanRequest request,
         CancellationToken cancellationToken)
     {
-        var plan = await _repository.GetByIdAsync(planId, cancellationToken)
-            ?? throw new WeeklyPlanNotFoundException(planId);
+        var plan = await _repository.GetByIdAsync(planId, cancellationToken);
+        if (plan is null)
+        {
+            return WeeklyPlanErrors.NotFound(planId);
+        }
 
         var meals = await _mealRepository.GetAllAsync(cancellationToken);
 
@@ -162,17 +157,23 @@ public class WeeklyPlanService
         return ToResponse(refreshed!);
     }
 
-    public async Task<WeeklyPlanResponse> RandomizeDayAsync(
+    public async Task<Result<WeeklyPlanResponse>> RandomizeDayAsync(
         Guid planId,
         DayOfWeek dayOfWeek,
         RandomizeDayRequest request,
         CancellationToken cancellationToken)
     {
-        var plan = await _repository.GetByIdAsync(planId, cancellationToken)
-            ?? throw new WeeklyPlanNotFoundException(planId);
+        var plan = await _repository.GetByIdAsync(planId, cancellationToken);
+        if (plan is null)
+        {
+            return WeeklyPlanErrors.NotFound(planId);
+        }
 
-        var day = plan.Days.FirstOrDefault(d => d.DayOfWeek == dayOfWeek)
-            ?? throw new DayPlanNotFoundException(planId, dayOfWeek);
+        var day = plan.Days.FirstOrDefault(d => d.DayOfWeek == dayOfWeek);
+        if (day is null)
+        {
+            return WeeklyPlanErrors.DayNotFound(planId, dayOfWeek);
+        }
 
         var meals = await _mealRepository.GetAllAsync(cancellationToken);
 
@@ -241,4 +242,16 @@ public class WeeklyPlanService
 
         return new WeeklyPlanResponse(plan.Id, plan.Year, plan.WeekNumber, plan.CreatedAt, days);
     }
+}
+
+internal static class WeeklyPlanErrors
+{
+    public static Error NotFound(Guid id) =>
+        Error.NotFound(ErrorCodes.WeeklyPlanNotFound, $"Weekly plan with id {id} was not found.");
+
+    public static Error Conflict(int year, int week) =>
+        Error.Conflict(ErrorCodes.WeeklyPlanConflict, $"A weekly plan for {year} week {week} already exists.");
+
+    public static Error DayNotFound(Guid planId, DayOfWeek day) =>
+        Error.NotFound(ErrorCodes.DayPlanNotFound, $"Day {day} was not found in weekly plan {planId}.");
 }

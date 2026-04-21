@@ -1,15 +1,8 @@
+using Eatah.Api.Common;
 using Eatah.Api.Features.WeeklyPlan;
 using Eatah.Domain.Entities;
 
 namespace Eatah.Api.Features.DietRules;
-
-public class DietProfileNotFoundException : Exception
-{
-    public DietProfileNotFoundException(Guid id)
-        : base($"Kostprofil med id {id} hittades inte.")
-    {
-    }
-}
 
 public class DietRuleService
 {
@@ -33,22 +26,30 @@ public class DietRuleService
         return profiles.Select(ToResponse).ToList();
     }
 
-    public async Task<DietProfileResponse?> GetProfileAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<Result<DietProfileResponse>> GetProfileAsync(Guid id, CancellationToken cancellationToken)
     {
         var profile = await _profileRepository.GetByIdAsync(id, cancellationToken);
-        return profile is null ? null : ToResponse(profile);
+        return profile is null
+            ? DietProfileErrors.NotFound(id)
+            : ToResponse(profile);
     }
 
-    public async Task<DietEvaluationResponse> EvaluateAsync(
+    public async Task<Result<DietEvaluationResponse>> EvaluateAsync(
         Guid weeklyPlanId,
         Guid profileId,
         CancellationToken cancellationToken)
     {
-        var plan = await _weeklyPlanRepository.GetByIdAsync(weeklyPlanId, cancellationToken)
-            ?? throw new WeeklyPlanNotFoundException(weeklyPlanId);
+        var plan = await _weeklyPlanRepository.GetByIdAsync(weeklyPlanId, cancellationToken);
+        if (plan is null)
+        {
+            return Error.NotFound(ErrorCodes.WeeklyPlanNotFound, $"Weekly plan with id {weeklyPlanId} was not found.");
+        }
 
-        var profile = await _profileRepository.GetByIdAsync(profileId, cancellationToken)
-            ?? throw new DietProfileNotFoundException(profileId);
+        var profile = await _profileRepository.GetByIdAsync(profileId, cancellationToken);
+        if (profile is null)
+        {
+            return DietProfileErrors.NotFound(profileId);
+        }
 
         var evaluation = _evaluator.Evaluate(plan, profile);
 
@@ -67,7 +68,7 @@ public class DietRuleService
                 .ToList());
     }
 
-    private static DietProfileResponse ToResponse(DietProfile profile)
+    internal static DietProfileResponse ToResponse(DietProfile profile)
     {
         return new DietProfileResponse(
             profile.Id,
@@ -76,4 +77,10 @@ public class DietRuleService
                 .Select(r => new DietRuleResponse(r.Id, r.Category, r.MinPerWeek, r.MaxPerWeek, r.Description))
                 .ToList());
     }
+}
+
+internal static class DietProfileErrors
+{
+    public static Error NotFound(Guid id) =>
+        Error.NotFound(ErrorCodes.DietProfileNotFound, $"Diet profile with id {id} was not found.");
 }

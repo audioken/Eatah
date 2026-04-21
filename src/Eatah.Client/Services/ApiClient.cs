@@ -1,10 +1,13 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 using Eatah.Client.Services.Contracts;
 
 namespace Eatah.Client.Services;
 
 public class ApiClient
 {
+    private static readonly JsonSerializerOptions ErrorJsonOptions = new(JsonSerializerDefaults.Web);
+
     private readonly HttpClient _http;
 
     public ApiClient(HttpClient http)
@@ -14,38 +17,48 @@ public class ApiClient
 
     public async Task<List<MealResponse>> GetMealsAsync(CancellationToken cancellationToken = default)
     {
-        return await _http.GetFromJsonAsync<List<MealResponse>>("api/meals", cancellationToken)
+        var response = await _http.GetAsync("api/meals", cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<List<MealResponse>>(cancellationToken: cancellationToken)
             ?? [];
     }
 
     public async Task<MealResponse?> GetMealAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return await _http.GetFromJsonAsync<MealResponse>($"api/meals/{id}", cancellationToken);
+        var response = await _http.GetAsync($"api/meals/{id}", cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<MealResponse>(cancellationToken: cancellationToken);
     }
 
     public async Task<MealResponse?> CreateMealAsync(CreateMealRequest request, CancellationToken cancellationToken = default)
     {
         var response = await _http.PostAsJsonAsync("api/meals", request, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await EnsureSuccessAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<MealResponse>(cancellationToken: cancellationToken);
     }
 
     public async Task<MealResponse?> UpdateMealAsync(Guid id, UpdateMealRequest request, CancellationToken cancellationToken = default)
     {
         var response = await _http.PutAsJsonAsync($"api/meals/{id}", request, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await EnsureSuccessAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<MealResponse>(cancellationToken: cancellationToken);
     }
 
     public async Task DeleteMealAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var response = await _http.DeleteAsync($"api/meals/{id}", cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await EnsureSuccessAsync(response, cancellationToken);
     }
 
     public async Task<WeeklyPlanResponse?> GetCurrentWeeklyPlanAsync(CancellationToken cancellationToken = default)
     {
-        return await _http.GetFromJsonAsync<WeeklyPlanResponse>("api/weeklyplans/current", cancellationToken);
+        var response = await _http.GetAsync("api/weeklyplans/current", cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<WeeklyPlanResponse>(cancellationToken: cancellationToken);
     }
 
     public async Task<WeeklyPlanResponse?> AssignMealAsync(
@@ -58,7 +71,7 @@ public class ApiClient
             $"api/weeklyplans/{planId}/days/{day}",
             new AssignMealRequest(mealId),
             cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await EnsureSuccessAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<WeeklyPlanResponse>(cancellationToken: cancellationToken);
     }
 
@@ -68,7 +81,7 @@ public class ApiClient
         CancellationToken cancellationToken = default)
     {
         var response = await _http.DeleteAsync($"api/weeklyplans/{planId}/days/{day}", cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await EnsureSuccessAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<WeeklyPlanResponse>(cancellationToken: cancellationToken);
     }
 
@@ -82,7 +95,7 @@ public class ApiClient
             $"api/weeklyplans/{planId}/randomize",
             new RandomizeWeeklyPlanRequest(profileId, strictness),
             cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await EnsureSuccessAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<WeeklyPlanResponse>(cancellationToken: cancellationToken);
     }
 
@@ -97,7 +110,7 @@ public class ApiClient
             $"api/weeklyplans/{planId}/days/{day}/randomize",
             new RandomizeDayRequest(profileId, strictness),
             cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await EnsureSuccessAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<WeeklyPlanResponse>(cancellationToken: cancellationToken);
     }
 
@@ -106,17 +119,15 @@ public class ApiClient
         CancellationToken cancellationToken = default)
     {
         var response = await _http.PostAsJsonAsync("api/ai/meals/generate", request, cancellationToken);
-        if (!response.IsSuccessStatusCode)
-        {
-            var detail = await response.Content.ReadAsStringAsync(cancellationToken);
-            throw new HttpRequestException($"AI-generering misslyckades ({(int)response.StatusCode}): {detail}");
-        }
+        await EnsureSuccessAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<AiGeneratedMealResponse>(cancellationToken: cancellationToken);
     }
 
     public async Task<List<DietProfileResponse>> GetDietProfilesAsync(CancellationToken cancellationToken = default)
     {
-        return await _http.GetFromJsonAsync<List<DietProfileResponse>>("api/dietprofiles", cancellationToken)
+        var response = await _http.GetAsync("api/dietprofiles", cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<List<DietProfileResponse>>(cancellationToken: cancellationToken)
             ?? [];
     }
 
@@ -129,7 +140,7 @@ public class ApiClient
             $"api/weeklyplans/{planId}/evaluate?profileId={profileId}",
             content: null,
             cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await EnsureSuccessAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<DietEvaluationResponse>(cancellationToken: cancellationToken);
     }
 
@@ -138,11 +149,47 @@ public class ApiClient
         CancellationToken cancellationToken = default)
     {
         var response = await _http.PostAsJsonAsync("api/dietprofiles/generate", request, cancellationToken);
-        if (!response.IsSuccessStatusCode)
-        {
-            var detail = await response.Content.ReadAsStringAsync(cancellationToken);
-            throw new HttpRequestException($"AI-generering misslyckades ({(int)response.StatusCode}): {detail}");
-        }
+        await EnsureSuccessAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<DietProfileResponse>(cancellationToken: cancellationToken);
+    }
+
+    /// <summary>
+    /// Throws an <see cref="ApiException"/> carrying the parsed <see cref="ApiErrorResponse"/>
+    /// when the response is non-success. Falls back to a generic error if the body is not ProblemDetails.
+    /// </summary>
+    private static async Task EnsureSuccessAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        if (response.IsSuccessStatusCode)
+        {
+            return;
+        }
+
+        ApiErrorResponse? error = null;
+        try
+        {
+            error = await response.Content.ReadFromJsonAsync<ApiErrorResponse>(ErrorJsonOptions, cancellationToken);
+        }
+        catch (JsonException)
+        {
+            // Body wasn't ProblemDetails JSON – fall through.
+        }
+        catch (NotSupportedException)
+        {
+            // Non-JSON content type – fall through.
+        }
+
+        error ??= new ApiErrorResponse(
+            Status: (int)response.StatusCode,
+            Title: response.ReasonPhrase,
+            Detail: null,
+            ErrorCode: ApiErrorCodes.Unexpected,
+            Errors: null);
+
+        if (error.Status == 0)
+        {
+            error = error with { Status = (int)response.StatusCode };
+        }
+
+        throw new ApiException(error);
     }
 }

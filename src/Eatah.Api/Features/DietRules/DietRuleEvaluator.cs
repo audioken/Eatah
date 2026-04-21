@@ -70,14 +70,14 @@ public class DietRuleEvaluator : IDietRuleEvaluator
     {
         if (actual >= rule.MinPerWeek && actual <= rule.MaxPerWeek)
         {
-            return (1.0, true, $"{rule.Category}: {actual} tillfällen – inom rekommendation.");
+            return (1.0, true, $"{rule.Category}: {actual} occurrences – within recommendation.");
         }
 
         if (actual < rule.MinPerWeek)
         {
             var score = rule.MinPerWeek == 0 ? 1.0 : (double)actual / rule.MinPerWeek;
             return (Math.Clamp(score, 0.0, 1.0), false,
-                $"{rule.Category}: {actual} tillfällen – under minimum ({rule.MinPerWeek}).");
+                $"{rule.Category}: {actual} occurrences – below minimum ({rule.MinPerWeek}).");
         }
 
         // actual > max
@@ -86,6 +86,6 @@ public class DietRuleEvaluator : IDietRuleEvaluator
         var penalty = (double)over / denominator;
         var overScore = Math.Clamp(1.0 - penalty, 0.0, 1.0);
         return (overScore, false,
-            $"{rule.Category}: {actual} tillfällen – över maximum ({rule.MaxPerWeek}).");
+            $"{rule.Category}: {actual} occurrences – above maximum ({rule.MaxPerWeek}).");
     }
 }

@@ -6,71 +6,15 @@ public static class AiEndpoints
 {
     public static IEndpointRouteBuilder MapAiEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/dietprofiles/generate", GenerateProfile)
+        app.MapPost("/api/dietprofiles/generate", GenerateDietProfile.Handle)
             .WithTags("DietProfiles")
-            .WithName("GenerateDietProfile");
+            .WithName(nameof(GenerateDietProfile));
 
-        app.MapPost("/api/ai/meals/generate", GenerateMeal)
+        app.MapPost("/api/ai/meals/generate", GenerateAiMeal.Handle)
             .WithTags("AI")
-            .WithName("GenerateAiMeal");
+            .WithName(nameof(GenerateAiMeal));
 
         return app;
-    }
-
-    private static async Task<IResult> GenerateProfile(
-        GenerateDietProfileRequest request,
-        AiDietRuleGenerator generator,
-        IValidator<GenerateDietProfileRequest> validator,
-        ILogger<AiDietRuleGenerator> logger,
-        CancellationToken cancellationToken)
-    {
-        var validation = await validator.ValidateAsync(request, cancellationToken);
-        if (!validation.IsValid)
-        {
-            return Results.ValidationProblem(validation.ToDictionary());
-        }
-
-        try
-        {
-            var profile = await generator.GenerateAndSaveAsync(request, cancellationToken);
-            return Results.Created($"/api/dietprofiles/{profile.Id}", profile);
-        }
-        catch (AiServiceException ex)
-        {
-            logger.LogWarning(ex, "AI-generering av kostprofil misslyckades.");
-            return Results.Problem(
-                detail: ex.Message,
-                statusCode: StatusCodes.Status502BadGateway,
-                title: "AI-tjänsten misslyckades");
-        }
-    }
-
-    private static async Task<IResult> GenerateMeal(
-        GenerateMealRequest request,
-        AiMealGenerator generator,
-        IValidator<GenerateMealRequest> validator,
-        ILogger<AiMealGenerator> logger,
-        CancellationToken cancellationToken)
-    {
-        var validation = await validator.ValidateAsync(request, cancellationToken);
-        if (!validation.IsValid)
-        {
-            return Results.ValidationProblem(validation.ToDictionary());
-        }
-
-        try
-        {
-            var meal = await generator.GenerateAsync(request, cancellationToken);
-            return Results.Ok(meal);
-        }
-        catch (AiServiceException ex)
-        {
-            logger.LogWarning(ex, "AI-generering av maträtt misslyckades.");
-            return Results.Problem(
-                detail: ex.Message,
-                statusCode: StatusCodes.Status502BadGateway,
-                title: "AI-tjänsten misslyckades");
-        }
     }
 }
 

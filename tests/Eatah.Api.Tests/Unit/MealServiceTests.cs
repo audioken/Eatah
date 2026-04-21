@@ -1,3 +1,4 @@
+using Eatah.Api.Common;
 using Eatah.Api.Features.Meals;
 using Eatah.Domain.Entities;
 using Moq;
@@ -44,22 +45,25 @@ public class MealServiceTests
 
         var result = await _sut.CreateAsync(request, CancellationToken.None);
 
-        result.Name.Should().Be("Kycklinggryta");
-        result.Ingredients.Should().HaveCount(2);
-        result.Ingredients[0].Name.Should().Be("Kyckling");
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Name.Should().Be("Kycklinggryta");
+        result.Value.Ingredients.Should().HaveCount(2);
+        result.Value.Ingredients[0].Name.Should().Be("Kyckling");
         _repo.Verify(r => r.AddAsync(It.Is<Meal>(m => m.Name == "Kycklinggryta"), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task UpdateAsync_ShouldThrow_WhenMealNotFound()
+    public async Task UpdateAsync_ShouldReturnNotFoundError_WhenMealDoesNotExist()
     {
         _repo.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Meal?)null);
         var request = new UpdateMealRequest("X", MealCategory.Fish, ["Lax"], null);
 
-        Func<Task> act = () => _sut.UpdateAsync(Guid.NewGuid(), request, CancellationToken.None);
+        var result = await _sut.UpdateAsync(Guid.NewGuid(), request, CancellationToken.None);
 
-        await act.Should().ThrowAsync<MealNotFoundException>();
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be(ErrorCodes.MealNotFound);
+        result.Error.StatusCode.Should().Be(404);
     }
 
     [Fact]
@@ -78,10 +82,11 @@ public class MealServiceTests
 
         var result = await _sut.UpdateAsync(id, new UpdateMealRequest("Nytt", MealCategory.Fish, ["Lax"], 25), CancellationToken.None);
 
-        result.Name.Should().Be("Nytt");
-        result.Category.Should().Be(MealCategory.Fish);
-        result.CookingTimeMinutes.Should().Be(25);
-        result.Ingredients.Should().ContainSingle(i => i.Name == "Lax");
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Name.Should().Be("Nytt");
+        result.Value.Category.Should().Be(MealCategory.Fish);
+        result.Value.CookingTimeMinutes.Should().Be(25);
+        result.Value.Ingredients.Should().ContainSingle(i => i.Name == "Lax");
         _repo.Verify(r => r.ReplaceIngredientsAndUpdateAsync(
             existing,
             It.Is<IReadOnlyCollection<Ingredient>>(list => list.Count == 1 && list.Single().Name == "Lax"),
@@ -89,9 +94,23 @@ public class MealServiceTests
     }
 
     [Fact]
-    public async Task DeleteAsync_ShouldReturnRepositoryResult()
+    public async Task DeleteAsync_ShouldReturnSuccess_WhenRepositoryDeletes()
     {
         _repo.Setup(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
-        (await _sut.DeleteAsync(Guid.NewGuid(), CancellationToken.None)).Should().BeTrue();
+
+        var result = await _sut.DeleteAsync(Guid.NewGuid(), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task DeleteAsync_ShouldReturnNotFoundError_WhenRepositoryReturnsFalse()
+    {
+        _repo.Setup(r => r.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
+
+        var result = await _sut.DeleteAsync(Guid.NewGuid(), CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be(ErrorCodes.MealNotFound);
     }
 }

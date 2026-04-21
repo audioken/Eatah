@@ -6,8 +6,17 @@ namespace Eatah.Api.Features.AI;
 
 public class AiServiceException : Exception
 {
-    public AiServiceException(string message) : base(message) { }
-    public AiServiceException(string message, Exception innerException) : base(message, innerException) { }
+    public string Code { get; }
+
+    public AiServiceException(string code, string message) : base(message)
+    {
+        Code = code;
+    }
+
+    public AiServiceException(string code, string message, Exception innerException) : base(message, innerException)
+    {
+        Code = code;
+    }
 }
 
 public interface IAiClient
@@ -32,7 +41,9 @@ public class GeminiClient : IAiClient
     {
         if (string.IsNullOrWhiteSpace(_settings.ApiKey))
         {
-            throw new AiServiceException("AI-tjänsten är inte konfigurerad. Ange AiSettings:ApiKey.");
+            throw new AiServiceException(
+                Common.ErrorCodes.AiServiceNotConfigured,
+                "AI service is not configured. Set AiSettings:ApiKey.");
         }
 
         var url = $"{_settings.Endpoint.TrimEnd('/')}/models/{_settings.Model}:generateContent?key={_settings.ApiKey}";
@@ -69,8 +80,10 @@ public class GeminiClient : IAiClient
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("AI-tjänsten svarade med status {Status}: {Body}", (int)response.StatusCode, body);
-                throw new AiServiceException($"AI-tjänsten svarade med status {(int)response.StatusCode}.");
+                _logger.LogWarning("AI service responded with status {Status}: {Body}", (int)response.StatusCode, body);
+                throw new AiServiceException(
+                    Common.ErrorCodes.AiServiceFailure,
+                    $"AI service responded with status {(int)response.StatusCode}.");
             }
 
             using var document = JsonDocument.Parse(body);
@@ -83,18 +96,24 @@ public class GeminiClient : IAiClient
 
             if (string.IsNullOrWhiteSpace(content))
             {
-                throw new AiServiceException("AI-tjänsten returnerade ett tomt svar.");
+                throw new AiServiceException(
+                    Common.ErrorCodes.AiInvalidResponse,
+                    "AI service returned an empty response.");
             }
 
             return content;
         }
         catch (HttpRequestException ex)
         {
-            throw new AiServiceException("Kunde inte nå AI-tjänsten.", ex);
+            throw new AiServiceException(
+                Common.ErrorCodes.AiServiceFailure,
+                "Could not reach AI service.", ex);
         }
         catch (JsonException ex)
         {
-            throw new AiServiceException("AI-tjänsten returnerade ett ogiltigt svar.", ex);
+            throw new AiServiceException(
+                Common.ErrorCodes.AiInvalidResponse,
+                "AI service returned an invalid response.", ex);
         }
     }
 }

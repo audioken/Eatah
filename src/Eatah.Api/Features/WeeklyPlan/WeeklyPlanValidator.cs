@@ -7,10 +7,10 @@ public class CreateWeeklyPlanRequestValidator : AbstractValidator<CreateWeeklyPl
     public CreateWeeklyPlanRequestValidator()
     {
         RuleFor(x => x.Year)
-            .InclusiveBetween(2000, 2100).WithMessage("Året måste vara mellan 2000 och 2100.");
+            .InclusiveBetween(2000, 2100).WithMessage("Year must be between 2000 and 2100.");
 
         RuleFor(x => x.WeekNumber)
-            .InclusiveBetween(1, 53).WithMessage("Veckonumret måste vara mellan 1 och 53.");
+            .InclusiveBetween(1, 53).WithMessage("Week number must be between 1 and 53.");
     }
 }
 
@@ -19,7 +19,7 @@ public class AssignMealRequestValidator : AbstractValidator<AssignMealRequest>
     public AssignMealRequestValidator()
     {
         RuleFor(x => x.MealId)
-            .NotEmpty().WithMessage("MealId är obligatoriskt.");
+            .NotEmpty().WithMessage("MealId is required.");
     }
 }
 
@@ -28,7 +28,7 @@ public class RandomizeWeeklyPlanRequestValidator : AbstractValidator<RandomizeWe
     public RandomizeWeeklyPlanRequestValidator()
     {
         RuleFor(x => x.Strictness)
-            .InclusiveBetween(0.0, 1.0).WithMessage("Strictness måste vara mellan 0.0 och 1.0.");
+            .InclusiveBetween(0.0, 1.0).WithMessage("Strictness must be between 0.0 and 1.0.");
     }
 }
 
@@ -37,6 +37,6 @@ public class RandomizeDayRequestValidator : AbstractValidator<RandomizeDayReques
     public RandomizeDayRequestValidator()
     {
         RuleFor(x => x.Strictness)
-            .InclusiveBetween(0.0, 1.0).WithMessage("Strictness måste vara mellan 0.0 och 1.0.");
+            .InclusiveBetween(0.0, 1.0).WithMessage("Strictness must be between 0.0 and 1.0.");
     }
 }

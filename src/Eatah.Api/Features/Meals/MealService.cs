@@ -1,14 +1,7 @@
+using Eatah.Api.Common;
 using Eatah.Domain.Entities;
 
 namespace Eatah.Api.Features.Meals;
-
-public class MealNotFoundException : Exception
-{
-    public MealNotFoundException(Guid id)
-        : base($"Maträtt med id {id} hittades inte.")
-    {
-    }
-}
 
 public class MealService
 {
@@ -25,13 +18,15 @@ public class MealService
         return meals.Select(ToResponse).ToList();
     }
 
-    public async Task<MealResponse?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<Result<MealResponse>> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
         var meal = await _repository.GetByIdAsync(id, cancellationToken);
-        return meal is null ? null : ToResponse(meal);
+        return meal is null
+            ? MealErrors.NotFound(id)
+            : ToResponse(meal);
     }
 
-    public async Task<MealResponse> CreateAsync(CreateMealRequest request, CancellationToken cancellationToken)
+    public async Task<Result<MealResponse>> CreateAsync(CreateMealRequest request, CancellationToken cancellationToken)
     {
         var meal = new Meal
         {
@@ -48,10 +43,13 @@ public class MealService
         return ToResponse(meal);
     }
 
-    public async Task<MealResponse> UpdateAsync(Guid id, UpdateMealRequest request, CancellationToken cancellationToken)
+    public async Task<Result<MealResponse>> UpdateAsync(Guid id, UpdateMealRequest request, CancellationToken cancellationToken)
     {
-        var meal = await _repository.GetByIdAsync(id, cancellationToken)
-            ?? throw new MealNotFoundException(id);
+        var meal = await _repository.GetByIdAsync(id, cancellationToken);
+        if (meal is null)
+        {
+            return MealErrors.NotFound(id);
+        }
 
         meal.Name = request.Name.Trim();
         meal.Category = request.Category;
@@ -66,12 +64,13 @@ public class MealService
         return ToResponse(meal);
     }
 
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<Result> DeleteAsync(Guid id, CancellationToken cancellationToken)
     {
-        return await _repository.DeleteAsync(id, cancellationToken);
+        var deleted = await _repository.DeleteAsync(id, cancellationToken);
+        return deleted ? Result.Success() : MealErrors.NotFound(id);
     }
 
-    private static MealResponse ToResponse(Meal meal)
+    internal static MealResponse ToResponse(Meal meal)
     {
         return new MealResponse(
             meal.Id,
@@ -81,4 +80,10 @@ public class MealService
             meal.CreatedAt,
             meal.Ingredients.Select(i => new IngredientDto(i.Id, i.Name)).ToList());
     }
+}
+
+internal static class MealErrors
+{
+    public static Error NotFound(Guid id) =>
+        Error.NotFound(ErrorCodes.MealNotFound, $"Meal with id {id} was not found.");
 }

@@ -1,3 +1,4 @@
+using Eatah.Api.Common;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,15 +20,16 @@ public class GlobalExceptionHandler : IExceptionHandler
         Exception exception,
         CancellationToken cancellationToken)
     {
-        _logger.LogError(exception, "Ohanterat undantag inträffade.");
+        _logger.LogError(exception, "Unhandled exception occurred.");
 
         var problemDetails = new ProblemDetails
         {
             Type = "https://tools.ietf.org/html/rfc7807",
             Status = StatusCodes.Status500InternalServerError,
-            Title = "Ett oväntat fel uppstod.",
-            Detail = _environment.IsDevelopment() ? exception.Message : "Försök igen senare.",
-            Instance = httpContext.Request.Path
+            Title = "An unexpected error occurred.",
+            Detail = _environment.IsDevelopment() ? exception.Message : "Please try again later.",
+            Instance = httpContext.Request.Path,
+            Extensions = { ["errorCode"] = ErrorCodes.Unexpected }
         };
 
         httpContext.Response.StatusCode = problemDetails.Status.Value;

@@ -7,14 +7,14 @@ public class GenerateDietProfileRequestValidator : AbstractValidator<GenerateDie
     public GenerateDietProfileRequestValidator()
     {
         RuleFor(x => x.Name)
-            .NotEmpty().WithMessage("Profilens namn är obligatoriskt.")
-            .MaximumLength(100).WithMessage("Namnet får vara max 100 tecken.");
+            .NotEmpty().WithMessage("Profile name is required.")
+            .MaximumLength(100).WithMessage("Name must be at most 100 characters.");
 
         RuleFor(x => x.Description)
-            .MaximumLength(500).WithMessage("Beskrivningen får vara max 500 tecken.");
+            .MaximumLength(500).WithMessage("Description must be at most 500 characters.");
 
         RuleFor(x => x.Strictness)
-            .InclusiveBetween(0.0, 1.0).WithMessage("Strictness måste vara mellan 0.0 och 1.0.");
+            .InclusiveBetween(0.0, 1.0).WithMessage("Strictness must be between 0.0 and 1.0.");
     }
 }
 
@@ -23,7 +23,7 @@ public class GenerateMealRequestValidator : AbstractValidator<GenerateMealReques
     public GenerateMealRequestValidator()
     {
         RuleFor(x => x.Category!.Value)
-            .IsInEnum().WithMessage("Ogiltig kategori.")
+            .IsInEnum().WithMessage("Invalid meal category.")
             .When(x => x.Category.HasValue);
     }
 }
