@@ -21,6 +21,7 @@ public static class MauiProgram
 #endif
 
 		builder.Services.AddSingleton<LoadingState>();
+		builder.Services.AddSingleton<IngredientCheckState>();
 		builder.Services.AddTransient<LoadingHttpMessageHandler>();
 
 #if ANDROID

@@ -148,7 +148,7 @@ public class WeeklyPlanService
         {
             var chosen = assignments[i];
             orderedDays[i].MealId = chosen?.Id;
-            orderedDays[i].Meal = chosen;
+            orderedDays[i].Meal = null;
         }
 
         await _repository.SaveChangesAsync(cancellationToken);
@@ -186,7 +186,7 @@ public class WeeklyPlanService
         var chosen = _generator.GenerateForDay(meals, plan, dayOfWeek, profile, request.Strictness);
 
         day.MealId = chosen?.Id;
-        day.Meal = chosen;
+        day.Meal = null;
 
         await _repository.SaveChangesAsync(cancellationToken);
 

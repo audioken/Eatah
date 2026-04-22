@@ -1,4 +1,5 @@
 using FluentValidation;
+using Microsoft.Extensions.Options;
 
 namespace Eatah.Api.Features.AI;
 
@@ -24,12 +25,22 @@ public static class AiServiceExtensions
     {
         services.Configure<AiSettings>(configuration.GetSection(AiSettings.SectionName));
 
-        services.AddHttpClient<IAiClient, GeminiClient>((provider, client) =>
+        services.AddHttpClient<GeminiClient>((provider, client) =>
         {
-            var settings = provider
-                .GetRequiredService<Microsoft.Extensions.Options.IOptions<AiSettings>>().Value;
+            var settings = provider.GetRequiredService<IOptions<AiSettings>>().Value;
             client.Timeout = TimeSpan.FromSeconds(Math.Max(1, settings.TimeoutSeconds));
         });
+
+        services.AddHttpClient<AnthropicClient>((provider, client) =>
+        {
+            var settings = provider.GetRequiredService<IOptions<AiSettings>>().Value;
+            client.Timeout = TimeSpan.FromSeconds(Math.Max(1, settings.TimeoutSeconds));
+        });
+
+        services.AddScoped<IAiClient>(sp => new FallbackAiClient(
+            sp.GetRequiredService<GeminiClient>(),
+            sp.GetRequiredService<AnthropicClient>(),
+            sp.GetRequiredService<ILogger<FallbackAiClient>>()));
 
         services.AddScoped<AiDietRuleGenerator>();
         services.AddScoped<AiMealGenerator>();

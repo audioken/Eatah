@@ -1,6 +1,8 @@
 @namespace Eatah.Client.Components.WeeklyPlan
 @using Eatah.Client.Services
+@implements IDisposable
 @inject ApiClient Api
+@inject IngredientCheckState CheckState
 
 @if (IsOpen)
 {
@@ -39,7 +41,7 @@
                 {
                     @foreach (var name in _ingredients)
                     {
-                        var isChecked = _checked.Contains(name);
+                        var isChecked = MealId is Guid id && CheckState.GetChecked(id).Contains(name);
                         <button type="button"
                                 class="w-full flex items-center gap-3 px-3 py-2 rounded-[12px] border border-black/10 bg-white/40 hover:bg-white/60 transition text-left"
                                 @onclick="() => Toggle(name)">
@@ -72,9 +74,13 @@
     [Parameter] public EventCallback OnClose { get; set; }
 
     private List<string>? _ingredients;
-    private readonly HashSet<string> _checked = new(StringComparer.OrdinalIgnoreCase);
     private bool _isLoading;
     private Guid? _loadedFor;
+
+    protected override void OnInitialized()
+    {
+        CheckState.OnChange += StateHasChanged;
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -89,8 +95,17 @@
         _isLoading = true;
         try
         {
-            var meal = await Api.GetMealAsync(mealId);
-            _ingredients = meal?.Ingredients.Select(i => i.Name).ToList() ?? new List<string>();
+            if (CheckState.HasIngredients(mealId))
+            {
+                _ingredients = CheckState.GetIngredients(mealId).ToList();
+            }
+            else
+            {
+                var meal = await Api.GetMealAsync(mealId);
+                var names = meal?.Ingredients.Select(i => i.Name).ToList() ?? new List<string>();
+                CheckState.SetIngredients(mealId, names);
+                _ingredients = names;
+            }
             _loadedFor = mealId;
         }
         catch
@@ -105,11 +120,14 @@
 
     private void Toggle(string name)
     {
-        if (!_checked.Add(name))
-        {
-            _checked.Remove(name);
-        }
+        if (MealId is not Guid id) return;
+        CheckState.Toggle(id, name);
     }
 
     private Task HandleClose() => OnClose.InvokeAsync();
+
+    public void Dispose()
+    {
+        CheckState.OnChange -= StateHasChanged;
+    }
 }
