@@ -12,9 +12,6 @@ public class GenerateDietProfileRequestValidator : AbstractValidator<GenerateDie
 
         RuleFor(x => x.Description)
             .MaximumLength(500).WithMessage("Description must be at most 500 characters.");
-
-        RuleFor(x => x.Strictness)
-            .InclusiveBetween(0.0, 1.0).WithMessage("Strictness must be between 0.0 and 1.0.");
     }
 }
 

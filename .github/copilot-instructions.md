@@ -409,10 +409,8 @@ Poäng per regel = 1.0 om inom [min, max], annars proportionellt avdrag
 Totalpoäng = genomsnitt av alla regelpoäng × 100
 ```
 
-### Strictness-parameter
-- `0.0` = helt slumpmässigt (inga regler beaktas)
-- `0.5` = försöker följa regler men tillåter avvikelser
-- `1.0` = strikt – slumpar om tills reglerna uppfylls (med max iterations)
+### Strikthet
+Slumpmässig generering är alltid maximalt strikt. Om en kostprofil är angiven används alltid max antal iterationer för att hitta bästa möjliga menyplan som uppfyller reglerna.
 
 ### AI-generering av regler
 - Prompten ska specificera att output ska vara JSON med fälten: `category`, `minPerWeek`, `maxPerWeek`, `description`

@@ -36,7 +36,7 @@ public class DietRuleEndpointsTests : IClassFixture<EatahWebApplicationFactory>
         // Randomize to get some meals assigned
         await client.PostAsJsonAsync(
             $"api/weeklyplans/{plan!.Id}/randomize",
-            new RandomizeWeeklyPlanRequest(null, 0.0));
+            new RandomizeWeeklyPlanRequest(null));
 
         var response = await client.PostAsync(
             $"api/weeklyplans/{plan.Id}/evaluate?profileId={profileId}",

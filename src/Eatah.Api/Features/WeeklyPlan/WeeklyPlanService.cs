@@ -146,7 +146,7 @@ public class WeeklyPlanService
         var orderedDays = plan.Days.OrderBy(d => DayOrderIndex(d.DayOfWeek)).ToList();
         var dayOrder = orderedDays.Select(d => d.DayOfWeek).ToList();
 
-        var assignments = _generator.Generate(meals, dayOrder, profile, request.Strictness);
+        var assignments = _generator.Generate(meals, dayOrder, profile);
 
         for (var i = 0; i < orderedDays.Count; i++)
         {
@@ -192,7 +192,7 @@ public class WeeklyPlanService
             profile = await _profileRepository.GetByIdAsync(profileId, cancellationToken);
         }
 
-        var chosen = _generator.GenerateForDay(meals, plan, dayOfWeek, profile, request.Strictness);
+        var chosen = _generator.GenerateForDay(meals, plan, dayOfWeek, profile);
 
         // Only update the FK (see RandomizeAsync for rationale).
         day.MealId = chosen?.Id;

@@ -88,12 +88,11 @@ public class ApiClient
     public async Task<WeeklyPlanResponse?> RandomizeWeekAsync(
         Guid planId,
         Guid? profileId,
-        double strictness,
         CancellationToken cancellationToken = default)
     {
         var response = await _http.PostAsJsonAsync(
             $"api/weeklyplans/{planId}/randomize",
-            new RandomizeWeeklyPlanRequest(profileId, strictness),
+            new RandomizeWeeklyPlanRequest(profileId),
             cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<WeeklyPlanResponse>(cancellationToken: cancellationToken);
@@ -103,12 +102,11 @@ public class ApiClient
         Guid planId,
         DayOfWeek day,
         Guid? profileId,
-        double strictness,
         CancellationToken cancellationToken = default)
     {
         var response = await _http.PostAsJsonAsync(
             $"api/weeklyplans/{planId}/days/{day}/randomize",
-            new RandomizeDayRequest(profileId, strictness),
+            new RandomizeDayRequest(profileId),
             cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<WeeklyPlanResponse>(cancellationToken: cancellationToken);

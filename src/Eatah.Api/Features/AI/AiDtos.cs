@@ -4,8 +4,7 @@ namespace Eatah.Api.Features.AI;
 
 public record GenerateDietProfileRequest(
     string Name,
-    string? Description,
-    double Strictness);
+    string? Description);
 
 public record AiGeneratedRule(
     MealCategory Category,

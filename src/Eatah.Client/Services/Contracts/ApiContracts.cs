@@ -40,9 +40,9 @@ public record CreateMealRequest(string Name, MealCategory Category, List<string>
 
 public record UpdateMealRequest(string Name, MealCategory Category, List<string> Ingredients, int? CookingTimeMinutes);
 
-public record RandomizeWeeklyPlanRequest(Guid? ProfileId, double Strictness);
+public record RandomizeWeeklyPlanRequest(Guid? ProfileId);
 
-public record RandomizeDayRequest(Guid? ProfileId, double Strictness);
+public record RandomizeDayRequest(Guid? ProfileId);
 
 public record GenerateMealRequest(
     MealCategory? Category,
@@ -84,5 +84,4 @@ public record DietEvaluationResponse(
 
 public record GenerateDietProfileRequest(
     string Name,
-    string? Description,
-    double Strictness);
+    string? Description);

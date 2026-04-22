@@ -17,11 +17,6 @@
 				<input class="mt-1 w-full rounded border-slate-300 px-3 py-2 border" @bind="_name"
 					   placeholder="t.ex. LCHF" />
 			</label>
-			<label class="block">
-				<span class="text-sm font-medium text-slate-700">Strictness (@_strictness.ToString("F2"))</span>
-				<input type="range" min="0" max="1" step="0.05" class="mt-2 w-full" @bind="_strictness"
-					   @bind:event="oninput" />
-			</label>
 		</div>
 		<label class="block">
 			<span class="text-sm font-medium text-slate-700">Beskrivning / mål</span>
@@ -62,7 +57,7 @@
 							@foreach (var rule in profile.Rules)
 							{
 								<li>
-									<span class="font-medium">@rule.Category:</span>
+									<span class="font-medium">@CategoryLabel(rule.Category):</span>
 									@rule.MinPerWeek–@rule.MaxPerWeek / vecka
 									<span class="text-slate-500"> – @rule.Description</span>
 								</li>
@@ -79,7 +74,6 @@
 	private List<DietProfileResponse>? _profiles;
 	private string _name = string.Empty;
 	private string _description = string.Empty;
-	private double _strictness = 0.5;
 	private bool _busy;
 	private string? _error;
 
@@ -87,6 +81,16 @@
 	{
 		await LoadProfilesAsync();
 	}
+
+	private static string CategoryLabel(MealCategory c) => c switch
+	{
+		MealCategory.Meat => "Rött kött",
+		MealCategory.Poultry => "Fågel",
+		MealCategory.Fish => "Fisk",
+		MealCategory.Vegetarian => "Vegetariskt",
+		MealCategory.Vegan => "Veganskt",
+		_ => c.ToString()
+	};
 
 	private async Task LoadProfilesAsync()
 	{
@@ -111,7 +115,7 @@
 		_error = null;
 		try
 		{
-			var request = new GenerateDietProfileRequest(_name.Trim(), _description?.Trim(), _strictness);
+			var request = new GenerateDietProfileRequest(_name.Trim(), _description?.Trim());
 			var generated = await Api.GenerateDietProfileAsync(request);
 			if (generated is not null)
 			{

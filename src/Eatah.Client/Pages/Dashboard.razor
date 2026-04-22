@@ -52,8 +52,6 @@
 						</select>
 					</div>
 
-					<StrictnessSlider Value="_strictness" ValueChanged="OnStrictnessChanged" />
-
 					@if (_isEvaluating)
 					{
 						<div class="p-4 rounded-lg border border-slate-200 bg-white text-sm text-slate-500 text-center">
@@ -94,7 +92,6 @@
 	private List<DietProfileResponse>? _profiles;
 	private DietEvaluationResponse? _evaluation;
 	private Guid? _selectedProfileId;
-	private double _strictness = 0.5;
 	private DayPlanResponse? _selectedDay;
 	private bool _selectorOpen;
 	private bool _isLoading = true;
@@ -184,11 +181,6 @@
 		}
 	}
 
-	private void OnStrictnessChanged(double value)
-	{
-		_strictness = value;
-	}
-
 	private void OpenSelector(DayPlanResponse day)
 	{
 		_selectedDay = day;
@@ -260,7 +252,7 @@
 		_error = null;
 		try
 		{
-			var updated = await Api.RandomizeWeekAsync(_plan.Id, _selectedProfileId, _strictness);
+			var updated = await Api.RandomizeWeekAsync(_plan.Id, _selectedProfileId);
 			if (updated is not null)
 			{
 				_plan = updated;
@@ -291,7 +283,7 @@
 		_error = null;
 		try
 		{
-			var updated = await Api.RandomizeDayAsync(_plan.Id, day.DayOfWeek, _selectedProfileId, _strictness);
+			var updated = await Api.RandomizeDayAsync(_plan.Id, day.DayOfWeek, _selectedProfileId);
 			if (updated is not null)
 			{
 				_plan = updated;
