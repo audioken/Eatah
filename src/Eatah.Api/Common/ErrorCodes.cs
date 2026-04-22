@@ -13,6 +13,7 @@ public static class ErrorCodes
 
     // Meals
     public const string MealNotFound = "MEAL_NOT_FOUND";
+    public const string MealsInsufficient = "meals_insufficient";
 
     // WeeklyPlan
     public const string WeeklyPlanNotFound = "WEEKLY_PLAN_NOT_FOUND";

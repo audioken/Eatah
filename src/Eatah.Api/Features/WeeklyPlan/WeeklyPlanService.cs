@@ -132,6 +132,10 @@ public class WeeklyPlanService
         }
 
         var meals = await _mealRepository.GetAllAsync(cancellationToken);
+        if (meals.Count == 0)
+        {
+            return WeeklyPlanErrors.MealsInsufficient();
+        }
 
         DietProfile? profile = null;
         if (request.ProfileId is Guid profileId)
@@ -147,14 +151,15 @@ public class WeeklyPlanService
         for (var i = 0; i < orderedDays.Count; i++)
         {
             var chosen = assignments[i];
+            // Only update the FK. Setting `Meal = null` on a tracked entity triggers EF's
+            // relationship fixup which would also revert `MealId` to null. The response is
+            // built below from the detached `meals` lookup, so the stale navigation is unused.
             orderedDays[i].MealId = chosen?.Id;
-            orderedDays[i].Meal = null;
         }
 
         await _repository.SaveChangesAsync(cancellationToken);
 
-        var refreshed = await _repository.GetByIdAsync(planId, cancellationToken);
-        return ToResponse(refreshed!);
+        return BuildResponseFromMealLookup(plan, meals);
     }
 
     public async Task<Result<WeeklyPlanResponse>> RandomizeDayAsync(
@@ -176,6 +181,10 @@ public class WeeklyPlanService
         }
 
         var meals = await _mealRepository.GetAllAsync(cancellationToken);
+        if (meals.Count == 0)
+        {
+            return WeeklyPlanErrors.MealsInsufficient();
+        }
 
         DietProfile? profile = null;
         if (request.ProfileId is Guid profileId)
@@ -185,13 +194,12 @@ public class WeeklyPlanService
 
         var chosen = _generator.GenerateForDay(meals, plan, dayOfWeek, profile, request.Strictness);
 
+        // Only update the FK (see RandomizeAsync for rationale).
         day.MealId = chosen?.Id;
-        day.Meal = null;
 
         await _repository.SaveChangesAsync(cancellationToken);
 
-        var refreshed = await _repository.GetByIdAsync(planId, cancellationToken);
-        return ToResponse(refreshed!);
+        return BuildResponseFromMealLookup(plan, meals);
     }
 
     private static Eatah.Domain.Entities.WeeklyPlan BuildEmptyPlan(int year, int week)
@@ -242,6 +250,32 @@ public class WeeklyPlanService
 
         return new WeeklyPlanResponse(plan.Id, plan.Year, plan.WeekNumber, plan.CreatedAt, days);
     }
+
+    /// <summary>
+    /// Builds the response without relying on the <see cref="DayPlan.Meal"/> navigation property.
+    /// Used after randomization, where the navigation may be null on tracked entities even though
+    /// <see cref="DayPlan.MealId"/> was just updated. Resolves meal summaries from a detached lookup.
+    /// </summary>
+    private static WeeklyPlanResponse BuildResponseFromMealLookup(
+        Eatah.Domain.Entities.WeeklyPlan plan,
+        IReadOnlyList<Meal> mealLookupSource)
+    {
+        var lookup = mealLookupSource.ToDictionary(m => m.Id);
+        var days = plan.Days
+            .OrderBy(d => DayOrderIndex(d.DayOfWeek))
+            .Select(d =>
+            {
+                MealSummaryResponse? summary = null;
+                if (d.MealId is Guid mealId && lookup.TryGetValue(mealId, out var meal))
+                {
+                    summary = new MealSummaryResponse(meal.Id, meal.Name, meal.Category);
+                }
+                return new DayPlanResponse(d.Id, d.DayOfWeek, d.MealId, summary);
+            })
+            .ToList();
+
+        return new WeeklyPlanResponse(plan.Id, plan.Year, plan.WeekNumber, plan.CreatedAt, days);
+    }
 }
 
 internal static class WeeklyPlanErrors
@@ -254,4 +288,7 @@ internal static class WeeklyPlanErrors
 
     public static Error DayNotFound(Guid planId, DayOfWeek day) =>
         Error.NotFound(ErrorCodes.DayPlanNotFound, $"Day {day} was not found in weekly plan {planId}.");
+
+    public static Error MealsInsufficient() =>
+        Error.BadRequest(ErrorCodes.MealsInsufficient, "Not enough meals available to randomize.");
 }

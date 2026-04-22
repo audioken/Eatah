@@ -22,6 +22,7 @@ public static class ApiErrorCodes
     public const string Unexpected = "unexpected_error";
 
     public const string MealNotFound = "meal_not_found";
+    public const string MealsInsufficient = "meals_insufficient";
 
     public const string WeeklyPlanNotFound = "weekly_plan_not_found";
     public const string WeeklyPlanConflict = "weekly_plan_conflict";
