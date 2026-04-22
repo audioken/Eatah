@@ -13,7 +13,7 @@ public class AiDietRuleGenerator
           "name": "string",
           "rules": [
             {
-              "category": "Meat" | "Fish" | "Vegetarian" | "Vegan",
+              "category": "Meat" | "Poultry" | "Fish" | "Vegetarian" | "Vegan",
               "minPerWeek": 0-7,
               "maxPerWeek": 0-7,
               "description": "kort svensk beskrivning"
@@ -22,7 +22,8 @@ public class AiDietRuleGenerator
         }
         Krav:
         - minPerWeek <= maxPerWeek
-        - En regel per kategori (Meat, Fish, Vegetarian, Vegan)
+        - En regel per kategori (Meat, Poultry, Fish, Vegetarian, Vegan)
+        - Meat = rött och processat kött; Poultry = fågel (kyckling, kalkon m.m.).
         - Beskrivningar ska vara på svenska, högst 500 tecken.
         """;
 

@@ -3,6 +3,7 @@ namespace Eatah.Client.Services.Contracts;
 public enum MealCategory
 {
     Meat,
+    Poultry,
     Fish,
     Vegetarian,
     Vegan

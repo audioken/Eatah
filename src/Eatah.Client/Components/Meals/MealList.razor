@@ -5,14 +5,14 @@
 		<div class="flex-1">
 			<input type="text"
 				   class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"
-				   placeholder="Sök maträtt…"
-				   @bind="_query"
-				   @bind:event="oninput" />
+				   placeholder="Sök maträtt…" @bind="_query" @bind:event="oninput" />
 		</div>
-		<select class="px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"
-				@bind="_filter">
+		<select
+			class="px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"
+			@bind="_filter">
 			<option value="">Alla kategorier</option>
-			<option value="@MealCategory.Meat">Kött</option>
+			<option value="@MealCategory.Meat">Rött kött</option>
+			<option value="@MealCategory.Poultry">Fågel</option>
 			<option value="@MealCategory.Fish">Fisk</option>
 			<option value="@MealCategory.Vegetarian">Vegetariskt</option>
 			<option value="@MealCategory.Vegan">Veganskt</option>

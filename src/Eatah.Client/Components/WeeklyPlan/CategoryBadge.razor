@@ -11,6 +11,7 @@
 	private string CategoryLabel => Meal!.Category switch
 	{
 		MealCategory.Meat => "Rött kött",
+		MealCategory.Poultry => "Fågel",
 		MealCategory.Fish => "Fisk",
 		MealCategory.Vegetarian => "Vegetariskt",
 		MealCategory.Vegan => "Veganskt",
@@ -23,6 +24,7 @@
 	private string BadgeStyle => Meal!.Category switch
 	{
 		MealCategory.Meat => "background:#A13A3A;",
+		MealCategory.Poultry => "background:#D98D00;",
 		MealCategory.Fish => "background:#005ED9;",
 		MealCategory.Vegetarian => "background:#3C8F3A;",
 		MealCategory.Vegan => "background:#AC279D;",
