@@ -14,19 +14,21 @@ public static class DataSeeder
 
         var meals = new List<Meal>
         {
-            // Kött
+            // Rött kött
             CreateMeal("Spaghetti köttfärssås", MealCategory.Meat, "Spaghetti", "Nötfärs", "Krossade tomater", "Lök", "Vitlök"),
-            CreateMeal("Blomkålsris med kyckling", MealCategory.Meat, "Kycklingfilé", "Blomkål", "Curry", "Kokosmjölk", "Lök"),
             CreateMeal("Kålpudding", MealCategory.Meat, "Vitkål", "Nötfärs", "Lök", "Grädde", "Lingonsylt"),
             CreateMeal("Falukorv med potatismos", MealCategory.Meat, "Falukorv", "Potatis", "Mjölk", "Smör", "Senap"),
-            CreateMeal("Kycklingcurry med ris", MealCategory.Meat, "Kycklingfilé", "Ris", "Currypasta", "Kokosmjölk", "Paprika"),
             CreateMeal("Köttbullar med potatismos", MealCategory.Meat, "Nötfärs", "Lök", "Ströbröd", "Potatis", "Gräddsås"),
             CreateMeal("Tacos", MealCategory.Meat, "Nötfärs", "Tortillabröd", "Sallad", "Tomat", "Tacosås"),
             CreateMeal("Pannbiff med lök", MealCategory.Meat, "Nötfärs", "Lök", "Potatis", "Gräddsås", "Lingonsylt"),
             CreateMeal("Fläskfilé med grönpepparsås", MealCategory.Meat, "Fläskfilé", "Grönpeppar", "Grädde", "Potatis", "Sallad"),
-            CreateMeal("Stekt kycklinglårfilé med ugnsrostade grönsaker", MealCategory.Meat, "Kycklinglårfilé", "Paprika", "Zucchini", "Rödlök", "Olivolja"),
             CreateMeal("Korv Stroganoff", MealCategory.Meat, "Falukorv", "Tomatpuré", "Grädde", "Ris", "Lök"),
             CreateMeal("Pulled pork-burgare", MealCategory.Meat, "Fläskkarré", "Hamburgerbröd", "Coleslaw", "BBQ-sås", "Pickles"),
+
+            // Fågel
+            CreateMeal("Blomkålsris med kyckling", MealCategory.Poultry, "Kycklingfilé", "Blomkål", "Curry", "Kokosmjölk", "Lök"),
+            CreateMeal("Kycklingcurry med ris", MealCategory.Poultry, "Kycklingfilé", "Ris", "Currypasta", "Kokosmjölk", "Paprika"),
+            CreateMeal("Stekt kycklinglårfilé med ugnsrostade grönsaker", MealCategory.Poultry, "Kycklinglårfilé", "Paprika", "Zucchini", "Rödlök", "Olivolja"),
 
             // Fisk
             CreateMeal("Laxcarbonara", MealCategory.Fish, "Lax", "Spaghetti", "Ägg", "Parmesan", "Grädde"),
@@ -66,7 +68,8 @@ public static class DataSeeder
                 Rules =
                 [
                     new DietRule { Id = Guid.NewGuid(), Category = MealCategory.Fish, MinPerWeek = 2, MaxPerWeek = 3, Description = "Ät fisk 2–3 gånger per vecka." },
-                    new DietRule { Id = Guid.NewGuid(), Category = MealCategory.Meat, MinPerWeek = 0, MaxPerWeek = 3, Description = "Begränsa rött och processat kött." },
+                    new DietRule { Id = Guid.NewGuid(), Category = MealCategory.Meat, MinPerWeek = 0, MaxPerWeek = 3, Description = "Begränsa rött och processat kött till högst 3 gånger per vecka." },
+                    new DietRule { Id = Guid.NewGuid(), Category = MealCategory.Poultry, MinPerWeek = 1, MaxPerWeek = 3, Description = "Ät fågel med måtta, förslagsvis 1–3 gånger per vecka." },
                     new DietRule { Id = Guid.NewGuid(), Category = MealCategory.Vegetarian, MinPerWeek = 2, MaxPerWeek = 7, Description = "Ät vegetariskt minst 2 gånger per vecka." }
                 ]
             };

@@ -27,8 +27,6 @@ public class RandomizeWeeklyPlanRequestValidator : AbstractValidator<RandomizeWe
 {
     public RandomizeWeeklyPlanRequestValidator()
     {
-        RuleFor(x => x.Strictness)
-            .InclusiveBetween(0.0, 1.0).WithMessage("Strictness must be between 0.0 and 1.0.");
     }
 }
 
@@ -36,7 +34,5 @@ public class RandomizeDayRequestValidator : AbstractValidator<RandomizeDayReques
 {
     public RandomizeDayRequestValidator()
     {
-        RuleFor(x => x.Strictness)
-            .InclusiveBetween(0.0, 1.0).WithMessage("Strictness must be between 0.0 and 1.0.");
     }
 }

@@ -48,7 +48,7 @@ public class WeeklyPlanEndpointsTests : IClassFixture<EatahWebApplicationFactory
 
         var response = await client.PostAsJsonAsync(
             $"api/weeklyplans/{plan!.Id}/randomize",
-            new RandomizeWeeklyPlanRequest(null, 0.0));
+            new RandomizeWeeklyPlanRequest(null));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var updated = await response.Content.ReadFromJsonAsync<WeeklyPlanResponse>();

@@ -17,7 +17,7 @@ public class RandomMealGeneratorTests
     [Fact]
     public void Generate_ShouldReturnEmptySlots_WhenNoMealsAvailable()
     {
-        var result = _sut.Generate(Array.Empty<Meal>(), Week, null, 0.0);
+        var result = _sut.Generate(Array.Empty<Meal>(), Week, null);
 
         result.Should().HaveCount(7);
         result.Should().OnlyContain(m => m == null);
@@ -30,14 +30,14 @@ public class RandomMealGeneratorTests
             .Select(i => new Meal { Id = Guid.NewGuid(), Name = $"M{i}", Category = MealCategory.Vegetarian })
             .ToList();
 
-        var result = _sut.Generate(meals, Week, null, 0.0);
+        var result = _sut.Generate(meals, Week, null);
 
         result.Should().HaveCount(7);
         result.Select(m => m!.Id).Distinct().Should().HaveCount(7);
     }
 
     [Fact]
-    public void Generate_WithHighStrictness_ShouldProducePlanThatSatisfiesProfile()
+    public void Generate_ShouldProducePlanThatSatisfiesProfile()
     {
         var meals = new List<Meal>
         {
@@ -64,7 +64,7 @@ public class RandomMealGeneratorTests
             ]
         };
 
-        var result = _sut.Generate(meals, Week, profile, 1.0);
+        var result = _sut.Generate(meals, Week, profile);
         var evaluator = new DietRuleEvaluator();
 
         var plan = new WeeklyPlan
@@ -79,25 +79,5 @@ public class RandomMealGeneratorTests
         };
 
         evaluator.Evaluate(plan, profile).OverallScore.Should().Be(1.0);
-    }
-
-    [Fact]
-    public void Generate_WithZeroStrictness_ShouldIgnoreProfile()
-    {
-        var meals = new List<Meal>
-        {
-            new() { Id = Guid.NewGuid(), Name = "M", Category = MealCategory.Meat }
-        };
-        var profile = new DietProfile
-        {
-            Id = Guid.NewGuid(),
-            Name = "x",
-            Rules = [new DietRule { Category = MealCategory.Fish, MinPerWeek = 5, MaxPerWeek = 7, Description = "" }]
-        };
-
-        var result = _sut.Generate(meals, Week, profile, 0.0);
-
-        result.Should().HaveCount(7);
-        result.Should().OnlyContain(m => m != null);
     }
 }

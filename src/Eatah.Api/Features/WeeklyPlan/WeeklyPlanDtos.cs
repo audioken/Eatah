@@ -21,6 +21,6 @@ public record CreateWeeklyPlanRequest(int Year, int WeekNumber);
 
 public record AssignMealRequest(Guid MealId);
 
-public record RandomizeWeeklyPlanRequest(Guid? ProfileId, double Strictness);
+public record RandomizeWeeklyPlanRequest(Guid? ProfileId);
 
-public record RandomizeDayRequest(Guid? ProfileId, double Strictness);
+public record RandomizeDayRequest(Guid? ProfileId);

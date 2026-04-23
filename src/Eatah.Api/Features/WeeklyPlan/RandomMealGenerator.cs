@@ -8,15 +8,13 @@ public interface IRandomMealGenerator
     IReadOnlyList<Meal?> Generate(
         IReadOnlyList<Meal> availableMeals,
         IReadOnlyList<DayOfWeek> days,
-        DietProfile? profile,
-        double strictness);
+        DietProfile? profile);
 
     Meal? GenerateForDay(
         IReadOnlyList<Meal> availableMeals,
         Eatah.Domain.Entities.WeeklyPlan currentPlan,
         DayOfWeek targetDay,
-        DietProfile? profile,
-        double strictness);
+        DietProfile? profile);
 }
 
 public class RandomMealGenerator : IRandomMealGenerator
@@ -32,27 +30,22 @@ public class RandomMealGenerator : IRandomMealGenerator
     public IReadOnlyList<Meal?> Generate(
         IReadOnlyList<Meal> availableMeals,
         IReadOnlyList<DayOfWeek> days,
-        DietProfile? profile,
-        double strictness)
+        DietProfile? profile)
     {
         ArgumentNullException.ThrowIfNull(availableMeals);
         ArgumentNullException.ThrowIfNull(days);
-
-        var clampedStrictness = Math.Clamp(strictness, 0.0, 1.0);
 
         if (availableMeals.Count == 0 || days.Count == 0)
         {
             return new Meal?[days.Count];
         }
 
-        // Without a profile or zero strictness -> single random assignment.
-        if (profile is null || clampedStrictness <= 0.0)
+        if (profile is null)
         {
             return PickWithoutRepetition(availableMeals, days.Count, Random.Shared);
         }
 
-        // Number of iterations grows with strictness (min 1, max MaxIterations).
-        var iterations = Math.Max(1, (int)Math.Round(clampedStrictness * MaxIterations));
+        var iterations = MaxIterations;
 
         IReadOnlyList<Meal?>? best = null;
         var bestScore = -1.0;
@@ -80,8 +73,7 @@ public class RandomMealGenerator : IRandomMealGenerator
         IReadOnlyList<Meal> availableMeals,
         Eatah.Domain.Entities.WeeklyPlan currentPlan,
         DayOfWeek targetDay,
-        DietProfile? profile,
-        double strictness)
+        DietProfile? profile)
     {
         ArgumentNullException.ThrowIfNull(availableMeals);
         ArgumentNullException.ThrowIfNull(currentPlan);
@@ -90,8 +82,6 @@ public class RandomMealGenerator : IRandomMealGenerator
         {
             return null;
         }
-
-        var clampedStrictness = Math.Clamp(strictness, 0.0, 1.0);
 
         // Avoid picking meals already assigned to other days when possible.
         var assignedMealIds = currentPlan.Days
@@ -105,12 +95,12 @@ public class RandomMealGenerator : IRandomMealGenerator
             candidatePool = availableMeals.ToList();
         }
 
-        if (profile is null || clampedStrictness <= 0.0)
+        if (profile is null)
         {
             return candidatePool[Random.Shared.Next(candidatePool.Count)];
         }
 
-        var iterations = Math.Max(1, (int)Math.Round(clampedStrictness * MaxIterations));
+        var iterations = MaxIterations;
         Meal? best = null;
         var bestScore = -1.0;
 

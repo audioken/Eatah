@@ -13,7 +13,7 @@ public class AiMealGenerator
         Svara enbart med JSON enligt följande schema:
         {
           "name": "string",
-          "category": "Meat" | "Fish" | "Vegetarian" | "Vegan",
+          "category": "Meat" | "Poultry" | "Fish" | "Vegetarian" | "Vegan",
           "cookingTimeMinutes": number | null,
           "ingredients": ["string", "string", ...]
         }
