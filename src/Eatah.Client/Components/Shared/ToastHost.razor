@@ -1,0 +1,18 @@
+@inject ToastService Toasts
+@implements IDisposable
+
+@if (!string.IsNullOrEmpty(Toasts.CurrentMessage))
+{
+    <div class="eatah-toast">@Toasts.CurrentMessage</div>
+}
+
+@code {
+    protected override void OnInitialized() => Toasts.OnChange += OnChange;
+
+    private async void OnChange()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose() => Toasts.OnChange -= OnChange;
+}

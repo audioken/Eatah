@@ -69,7 +69,9 @@ Eatah.sln
 ## Arkitekturregler
 
 ### Feature Slicing
+
 Kod organiseras per feature, INTE per lager. Varje feature-mapp (t.ex. `Meals/`) innehåller:
+
 - `{Feature}Endpoints.cs` – Slim router (endast `MapGet/MapPost/...`) + DI extension `Add{Feature}Feature()`
 - `{Action}.cs` (t.ex. `GetAllMeals.cs`) – **En fil per endpoint**, `public static class` med `Handle`-metod
 - `{Feature}Service.cs` – Affärslogik; returnerar `Result<T>` / `Result` (ALDRIG kastar domain exceptions)
@@ -80,6 +82,7 @@ Kod organiseras per feature, INTE per lager. Varje feature-mapp (t.ex. `Meals/`)
 **En fil per endpoint är obligatoriskt.** Lägg ALDRIG handler-logik direkt i `{Feature}Endpoints.cs`.
 
 ### Beroenden
+
 ```
 Api → Domain, Infrastructure
 Infrastructure → Domain
@@ -90,7 +93,9 @@ Client → (kommunicerar med Api via HTTP)
 **Domain-projektet får ALDRIG ha beroenden mot andra projekt eller infrastrukturpaket.**
 
 ### Dependency Injection
+
 Alla services och repositories registreras via DI-extension i `{Feature}Endpoints.cs` och anropas från `Program.cs`:
+
 ```csharp
 // I {Feature}Endpoints.cs:
 public static IServiceCollection AddMealFeature(this IServiceCollection services)
@@ -112,6 +117,7 @@ builder.Services.AddWeeklyPlanFeature();
 ## Kodkonventioner
 
 ### Generellt
+
 - **Språk:** All kod, kommentarer och variabelnamn på **engelska**
 - **UI-texter och felmeddelanden:** På **svenska** (användarvisade strängar)
 - **C# version:** Senaste stabila (12+)
@@ -119,6 +125,7 @@ builder.Services.AddWeeklyPlanFeature();
 - **Implicit usings:** Aktiverat
 
 ### Namngivning
+
 - Klasser: `PascalCase`
 - Metoder: `PascalCase`
 - Lokala variabler: `camelCase`
@@ -130,6 +137,7 @@ builder.Services.AddWeeklyPlanFeature();
 ### Minimal API-mönster
 
 **`{Feature}Endpoints.cs`** – endast routing och DI-registrering:
+
 ```csharp
 public static class MealEndpoints
 {
@@ -157,6 +165,7 @@ public static class MealEndpoints
 ```
 
 **`{Action}.cs`** – en fil per endpoint, `public static class` med `Handle`:
+
 ```csharp
 public static class GetAllMeals
 {
@@ -188,11 +197,13 @@ public static class CreateMeal
 ```
 
 ### Async/Await
+
 - Alla I/O-operationer ska vara `async`
 - Använd `CancellationToken` i alla async-metoder
 - Suffixera INTE metoder med `Async` i endpoints (gör det i services/repos)
 
 ### DTOs
+
 - Använd `record` för request/response-objekt
 - Mappa mellan entiteter och DTOs i service-lagret
 - Exponera ALDRIG domänentiteter direkt i API-svar
@@ -207,6 +218,7 @@ public record MealResponse(Guid Id, string Name, List<string> Ingredients, MealC
 ## Databaskonventioner
 
 ### Entity Framework Core
+
 - **Approach:** Code First med migrations
 - **Provider:** Npgsql (PostgreSQL)
 - **Konfiguration:** Fluent API (INTE data annotations på entiteter)
@@ -232,6 +244,7 @@ public class MealConfiguration : IEntityTypeConfiguration<Meal>
 ```
 
 ### Migrations
+
 - Namnge med beskrivande namn: `AddMealCategoryColumn`, `CreateWeeklyPlanTable`
 - Kör ALDRIG `EnsureCreated()` – använd alltid migrations
 - Seed-data läggs i en separat `DataSeeder`-klass
@@ -241,21 +254,62 @@ public class MealConfiguration : IEntityTypeConfiguration<Meal>
 ## Frontend-konventioner (Blazor)
 
 ### Komponentstruktur
+
 - En komponent per fil
 - Komponentnamn: `PascalCase.razor`
 - Parametrar markeras med `[Parameter]`
 - Callbacks: `EventCallback<T>`
 
 ### Styling
-- Tailwind CSS via CDN (initialt)
-- **Ingen inline styling** – använd Tailwind-klasser
-- Mobile-first: designa för mobil först, lägg till breakpoints för desktop
-- Konsekvent färgpalett (definieras i tailwind config)
+
+- **Två lager**:
+  - **Tailwind CDN** = layout & utility (flex, grid, padding, typografi-skala, spacing).
+  - **`wwwroot/css/app.css`** = visuell identitet (färger, gradients, radii, shadows, komponent-form). Definierar **design-tokens** som CSS custom properties under `:root` och **komponentklasser** som `.eatah-card`, `.eatah-navbar`, `.eatah-pill`, `.eatah-category-icon`.
+- **Ingen inline styling**. Använd Tailwind för layout, komponentklasser för identitet. Inline `style=""` tillåts endast för dynamiska värden som inte kan uttryckas i CSS (t.ex. `--icon-url` på `<Icon>` eller en beräknad procent-bredd).
+- Naming på komponentklasser: `eatah-{component}__{element}--{modifier}` (BEM-light).
+- Mobile-first: designa för mobil först, lägg till breakpoints för desktop.
+- Konsekvent färgpalett via tokens i `app.css` (kategori­färger, brand, glas-gradient).
+
+### Layout-shell
+
+Standardstruktur i `Shared/MainLayout.razor`:
+
+```
+<div class="eatah-shell">
+    <AppHeader />        // 3 slots: Left | Center | Right (workspace, titel, notisbell)
+    <main class="eatah-shell__main">@Body</main>
+    <AppNavbar />        // 5 items: Kost, Köplista, Matplan, Chat, Profil
+</div>
+<ModalHost />            // global modal stack
+<ToastHost />            // korta meddelanden
+```
+
+- **Ingen sidobar / hamburgermeny**. All primär navigering går via `AppNavbar`.
+- Sidor som behöver sätta header-innehåll renderar antingen sin egen `<AppHeader>` med `Center`/`Left`/`Right` `RenderFragment`-parametrar, eller använder `MainLayout`-defaulten.
+
+### Modal-mönster
+
+- Modaler är **komponenter, inte routes**. Visa via `ModalService.Show<TComponent>(parameters?)`.
+- `ModalHost` mountas en gång i `MainLayout`. Backdrop-klick stänger top-modalen; ESC-stängning hanteras via JS interop om behov uppstår.
+- Modal-komponenter får tillgång till sin `ModalInstance` via `[CascadingParameter]` om de behöver returnera ett resultat (`ModalService.Close(instance, result)`).
+- En modal kan öppna en annan, men undvik djupa stackar — föredra inline-confirm i raden framför modal-i-modal.
+
+### Ikoner
+
+- En enda komponent: `<Icon Name="dice" Size="24" CssClass="..." />` i `Components/Shared/Icon.razor`.
+- SVG-källfiler ligger i `wwwroot/icons/{name}.svg`. Lägg ALDRIG SVG-paths inline i razor-filer.
+- Renderas som `<span>` med CSS-mask så `currentColor` styr färgen — fungerar tvärs MAUI-WebViews utan JS interop.
+- Semantiska namn (t.ex. `vegan`, `chat`, `bell`) mappas till FontAwesome-filnamn i `IconMap` inuti `Icon.razor`. Lägg till nya namn där.
+
+### Toast & feedback
+
+- Korta, icke-blockerande meddelanden via `ToastService.Show("...")`. Renderas av `ToastHost` i `MainLayout`. Använd för "Kommer snart"-platshållare och bekräftelser av lyckade åtgärder. För kritiska fel: använd modal eller inline-fält.
 
 ### State Management
-- Komponentlokal state för enkel UI-state
-- Services (DI) för delad state mellan komponenter
-- Undvik kaskaderande parametrar – använd DI istället
+
+- Komponentlokal state för enkel UI-state.
+- Singleton-services (DI) för applikationsvid state (`ModalService`, `ToastService`, `LoadingState`, `IngredientCheckState`).
+- Undvik kaskaderande parametrar för logik — använd DI. Kaskad­parametrar är OK för rena UI-kontexter (t.ex. `ModalInstance`).
 
 ### API-kommunikation
 
@@ -280,6 +334,7 @@ public async Task<MealResponse?> CreateMealAsync(CreateMealRequest request, Canc
 Services returnerar `Result<T>` eller `Result` (non-generic) – **ALDRIG** egna domain-exceptions för förväntade felfall.
 
 ### `Result<T>` och `Error`
+
 ```csharp
 // Lyckad:
 return Result<MealResponse>.Success(response); // eller implicit: return response;
@@ -289,6 +344,7 @@ return Result<MealResponse>.Failure(Error.NotFound(ErrorCodes.MealNotFound, "Mea
 ```
 
 Tillgängliga `Error`-fabriker:
+
 - `Error.NotFound(code, message)` → 404
 - `Error.Conflict(code, message)` → 409
 - `Error.Validation(code, message, validationErrors?)` → 400
@@ -297,9 +353,11 @@ Tillgängliga `Error`-fabriker:
 - `Error.Unexpected(code, message)` → 500
 
 ### `ErrorCodes` – string-konstanter
+
 Alla felkoder definieras i `Common/ErrorCodes.cs`. Lägg till nya koder där när en ny feature tillkommer. Koder är snake_case, t.ex. `meal_not_found`, `weekly_plan_conflict`.
 
 ### `ResultExtensions` – konvertera till `IResult`
+
 ```csharp
 // I handler-filen:
 return result.ToHttpResult();                          // Ok / ProblemDetails
@@ -308,7 +366,9 @@ return result.ToNoContentResult();                     // NoContent / ProblemDet
 ```
 
 ### Felresponse-format (RFC 7807 + `errorCode`)
+
 Alla fel returneras på engelska med ett stabilt `errorCode`-fält som klienten switchar på:
+
 ```json
 {
   "type": "https://tools.ietf.org/html/rfc7807",
@@ -318,7 +378,9 @@ Alla fel returneras på engelska med ett stabilt `errorCode`-fält som klienten 
   "errorCode": "meal_not_found"
 }
 ```
+
 Validationsfel använder `HttpValidationProblemDetails` med `errors`-fältet:
+
 ```json
 {
   "status": 400,
@@ -332,11 +394,13 @@ Validationsfel använder `HttpValidationProblemDetails` med `errors`-fältet:
 ## Felhantering
 
 ### API
+
 - `GlobalExceptionHandler` middleware fångar oväntade exceptions och returnerar `ProblemDetails` med `errorCode: unexpected_error`
 - Logga alla unhandled exceptions
 - Returnera ALDRIG stack traces i produktion
 
 ### Klient
+
 - `ApiClient` kastar `ApiException` (definierad i `Services/Contracts/ApiError.cs`) vid alla non-2xx svar
 - `ApiException.ErrorCode` matchar en av konstanterna i `ApiErrorCodes` (client-side spegel av `ErrorCodes`)
 - UI-lagret switchar på `ErrorCode` för att visa användarvänliga felmeddelanden på **svenska**
@@ -385,12 +449,14 @@ public class CreateMealValidator : AbstractValidator<CreateMealRequest>
 ## Testning
 
 ### Verktyg
+
 - **xUnit** – testramverk
 - **FluentAssertions** – assertions
 - **Moq** – mocking
 - **WebApplicationFactory** – integrationstester
 
 ### Konventioner
+
 - Testklassnamn: `{Klass}Tests`
 - Testmetodnamn: `{Metod}_Should{Förväntat}_{Villkor}`
   - Exempel: `Evaluate_ShouldReturnFullScore_WhenAllRulesAreMet`
@@ -402,6 +468,7 @@ public class CreateMealValidator : AbstractValidator<CreateMealRequest>
 ## Kostregler – Teknisk specifikation
 
 ### Utvärderingslogik
+
 Regler är heuristiska och baseras på antal tillfällen per vecka per kategori:
 
 ```
@@ -410,9 +477,11 @@ Totalpoäng = genomsnitt av alla regelpoäng × 100
 ```
 
 ### Strikthet
+
 Slumpmässig generering är alltid maximalt strikt. Om en kostprofil är angiven används alltid max antal iterationer för att hitta bästa möjliga menyplan som uppfyller reglerna.
 
 ### AI-generering av regler
+
 - Prompten ska specificera att output ska vara JSON med fälten: `category`, `minPerWeek`, `maxPerWeek`, `description`
 - Validera att AI-svaret är parsbart och rimligt innan det sparas
 - Fallback till default-profil om AI-generering misslyckas
@@ -421,13 +490,14 @@ Slumpmässig generering är alltid maximalt strikt. Om en kostprofil är angiven
 
 ## Miljöer och konfiguration
 
-| Miljö | Databas | Logging | Swagger |
-|-------|---------|---------|---------|
-| Development | Lokal PostgreSQL | Console + Debug | Aktiverad |
-| Test | In-memory / Test-PostgreSQL | Minimal | Ej aktiverad |
-| Production | Cloud PostgreSQL | Structured JSON | Ej aktiverad |
+| Miljö       | Databas                     | Logging         | Swagger      |
+| ----------- | --------------------------- | --------------- | ------------ |
+| Development | Lokal PostgreSQL            | Console + Debug | Aktiverad    |
+| Test        | In-memory / Test-PostgreSQL | Minimal         | Ej aktiverad |
+| Production  | Cloud PostgreSQL            | Structured JSON | Ej aktiverad |
 
 ### Secrets
+
 - Använd `dotnet user-secrets` för lokala hemligheter
 - AI API-nyckel: `AiSettings:ApiKey`
 - Databas-lösenord: via connection string i secrets
@@ -437,9 +507,11 @@ Slumpmässig generering är alltid maximalt strikt. Om en kostprofil är angiven
 ## Git-konventioner
 
 ### Commit-meddelanden
+
 Format: `type: kort beskrivning`
 
 Typer:
+
 - `feat:` ny funktionalitet
 - `fix:` buggfix
 - `refactor:` omstrukturering utan ny funktionalitet
@@ -448,6 +520,7 @@ Typer:
 - `chore:` övrigt (config, paket, etc.)
 
 ### Branching
+
 - `main` – stabil, deploybar kod
 - `feature/{feature-name}` – ny funktionalitet
 - `fix/{description}` – bugfix

@@ -1,0 +1,64 @@
+@* ============================================================
+   <Icon Name="dice" Size="24" CssClass="..." />
+   Renders a span styled via CSS mask so currentColor controls fill.
+   Add new icons by dropping the SVG into wwwroot/icons/ and
+   mapping a semantic name in IconMap below.
+   ============================================================ *@
+
+<span class="eatah-icon @CssClass" style="@StyleAttr" role="img" aria-label="@(AriaLabel ?? Name)"></span>
+
+@code {
+    [Parameter, EditorRequired] public string Name { get; set; } = string.Empty;
+
+    /// <summary>Pixel size; if null the icon inherits font-size (1em).</summary>
+    [Parameter] public int? Size { get; set; }
+
+    [Parameter] public string? CssClass { get; set; }
+
+    [Parameter] public string? AriaLabel { get; set; }
+
+    private string StyleAttr
+    {
+        get
+        {
+            var file = IconMap.TryGetValue(Name, out var mapped) ? mapped : Name;
+            var url = $"/icons/{file}.svg";
+            var size = Size.HasValue ? $"width:{Size}px;height:{Size}px;" : string.Empty;
+            return $"--icon-url:url('{url}');{size}";
+        }
+    }
+
+    private static readonly IReadOnlyDictionary<string, string> IconMap = new Dictionary<string,
+string>(StringComparer.OrdinalIgnoreCase)
+    {
+        // Categories
+        ["vegan"] = "seedling-solid",
+        ["vegetarian"] = "carrot-solid",
+        ["fish"] = "fish-solid",
+        ["poultry"] = "drumstick-bite-solid",
+        ["meat"] = "bacon-solid",
+
+        // Actions / UI
+        ["dice"] = "dice-solid",
+        ["magic"] = "wand-magic-sparkles-solid",
+        ["bell"] = "bell-solid",
+        ["basket"] = "basket-shopping-solid",
+        ["chat"] = "comments-solid",
+        ["profile"] = "circle-user-solid",
+        ["calendar"] = "calendar-days-solid",
+        ["list"] = "list-solid",
+        ["trash"] = "trash-solid",
+        ["edit"] = "pen-to-square-solid",
+        ["eye"] = "eye-solid",
+        ["eye-off"] = "eye-slash-solid",
+        ["close"] = "xmark-solid",
+        ["plus"] = "plus-solid",
+        ["house"] = "house-solid",
+        ["user"] = "user-solid",
+        ["check"] = "check-solid",
+        ["chevron-down"] = "angle-down-solid",
+        ["chevron-right"] = "angle-right-solid",
+        ["question"] = "question-solid",
+        ["warning"] = "exclamation-solid",
+    };
+}

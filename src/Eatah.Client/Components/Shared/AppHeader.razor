@@ -1,0 +1,59 @@
+@*
+    Three-slot header. Pages set the Center slot via cascading parameter
+    pattern OR by rendering this component themselves. For Phase 0 the
+    Left and Right slots show placeholders; they get real content in
+    later phases (workspace switcher in fas 4, notification bell in fas 5).
+*@
+
+<header class="eatah-header">
+    <div class="eatah-header__left">
+        @if (Left is not null)
+        {
+            @Left
+        }
+        else
+        {
+            <span>@LeftPlaceholder</span>
+        }
+    </div>
+    <div class="eatah-header__center">
+        @if (Center is not null)
+        {
+            @Center
+        }
+        else
+        {
+            <span>@CenterPlaceholder</span>
+        }
+    </div>
+    <div class="eatah-header__right">
+        @if (Right is not null)
+        {
+            @Right
+        }
+        else
+        {
+            <button type="button" class="eatah-header__placeholder-bell"
+                    style="background:transparent;border:none;color:inherit;padding:6px;cursor:pointer;" aria-label="Notiser"
+                    @onclick="OnPlaceholderBellClick">
+                <Icon Name="bell" Size="22" />
+            </button>
+        }
+    </div>
+</header>
+
+@code {
+    [Parameter] public RenderFragment? Left { get; set; }
+    [Parameter] public RenderFragment? Center { get; set; }
+    [Parameter] public RenderFragment? Right { get; set; }
+
+    [Parameter] public string LeftPlaceholder { get; set; } = "Personligt";
+    [Parameter] public string CenterPlaceholder { get; set; } = "Eatah";
+
+    [Inject] private ToastService Toasts { get; set; } = default!;
+
+    private void OnPlaceholderBellClick()
+    {
+        Toasts.Show("Notiser kommer snart");
+    }
+}

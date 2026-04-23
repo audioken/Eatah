@@ -1,0 +1,64 @@
+@inject NavigationManager Nav
+@inject ToastService Toasts
+@implements IDisposable
+
+<nav class="eatah-navbar" aria-label="Huvudnavigering">
+    @foreach (var item in _items)
+    {
+        var isActive = IsActive(item);
+        var classes = "eatah-navbar__item" + (isActive ? " eatah-navbar__item--active" : string.Empty);
+        <button type="button" class="@classes" @onclick="() => HandleClick(item)"
+                aria-current="@(isActive ? "page" : null)">
+            <Icon Name="@item.Icon" CssClass="eatah-navbar__item-icon" />
+            <span class="eatah-navbar__item-label">@item.Label</span>
+        </button>
+    }
+</nav>
+
+@code {
+    private record NavItem(string Label, string Icon, NavAction Action, string? Route = null);
+
+    private enum NavAction { Navigate, ComingSoon }
+
+    private readonly List<NavItem> _items = new()
+    {
+        new("Kost", "vegan", NavAction.ComingSoon), // becomes modal in fas 2
+        new("Köplista", "basket", NavAction.ComingSoon, "/shopping"),// becomes route in fas 7
+        new("Matplan", "calendar", NavAction.Navigate, "/"),
+        new("Chat", "chat", NavAction.ComingSoon), // becomes modal in fas 8
+        new("Profil", "profile", NavAction.ComingSoon), // becomes modal in fas 6
+    };
+
+    protected override void OnInitialized()
+    {
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private bool IsActive(NavItem item)
+    {
+        if (item.Route is null) return false;
+        var current = Nav.ToBaseRelativePath(Nav.Uri).Trim('/');
+        var route = item.Route.Trim('/');
+        return string.Equals(current, route, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void HandleClick(NavItem item)
+    {
+        switch (item.Action)
+        {
+            case NavAction.Navigate when item.Route is not null:
+                Nav.NavigateTo(item.Route);
+                break;
+            case NavAction.ComingSoon:
+                Toasts.Show($"{item.Label} kommer snart");
+                break;
+        }
+    }
+
+    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
+}

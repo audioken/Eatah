@@ -1,0 +1,61 @@
+@using Microsoft.AspNetCore.Components.Rendering
+@inject ModalService Modals
+@implements IDisposable
+@inject IJSRuntime JS
+
+@if (Modals.Stack.Count > 0)
+{
+    <div class="eatah-modal-backdrop" @onclick="OnBackdropClick">
+        @foreach (var instance in Modals.Stack)
+        {
+            <div class="eatah-modal" @onclick:stopPropagation="true">
+                <CascadingValue Value="instance" IsFixed="true">
+                    <DynamicComponent Type="instance.ComponentType" Parameters="instance.Parameters" />
+                </CascadingValue>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private bool _bodyLocked;
+
+    protected override void OnInitialized()
+    {
+        Modals.OnChange += OnModalsChanged;
+    }
+
+    private async void OnModalsChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            var shouldLock = Modals.Stack.Count > 0;
+            if (shouldLock != _bodyLocked)
+            {
+                _bodyLocked = shouldLock;
+                try
+                {
+                    await JS.InvokeVoidAsync("eval",
+                        shouldLock
+                            ? "document.body.classList.add('eatah-modal-open')"
+                            : "document.body.classList.remove('eatah-modal-open')");
+                }
+                catch
+                {
+                    // JS may be unavailable during prerender — safe to ignore.
+                }
+            }
+            StateHasChanged();
+        });
+    }
+
+    private void OnBackdropClick()
+    {
+        Modals.CloseTop();
+    }
+
+    public void Dispose()
+    {
+        Modals.OnChange -= OnModalsChanged;
+    }
+}

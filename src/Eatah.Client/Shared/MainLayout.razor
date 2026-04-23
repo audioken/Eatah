@@ -4,15 +4,18 @@
 
 <GlobalLoadingIndicator />
 
-<div class="min-h-screen flex flex-col md:flex-row">
-	<aside class="md:w-64 bg-slate-900 text-white md:min-h-screen safe-area-top">
-		<NavMenu />
-	</aside>
+<div class="eatah-shell">
+	<AppHeader />
 
-	<main class="flex-1 p-4 md:p-8 safe-area-bottom">
+	<main class="eatah-shell__main">
 		@Body
 	</main>
+
+	<AppNavbar />
 </div>
+
+<ModalHost />
+<ToastHost />
 
 @code {
 	protected override async Task OnAfterRenderAsync(bool firstRender)
