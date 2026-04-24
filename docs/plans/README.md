@@ -7,7 +7,7 @@ Detta är planen för en stor uppdatering av Eatah-applikationen, indelad i 9 fa
 | #   | Fas                                                                     | Status         |
 | --- | ----------------------------------------------------------------------- | -------------- |
 | 0   | [Foundation](./phase-0-foundation.md)                                   | ✅ Klar        |
-| 1   | [Matplan-redesign](./phase-1-matplan-redesign.md)                       | ⏳ Ej påbörjad |
+| 1   | [Matplan-redesign](./phase-1-matplan-redesign.md)                       | ✅ Klar        |
 | 2   | [Diet Profile som modal](./phase-2-diet-profile-modal.md)               | ⏳ Ej påbörjad |
 | 3   | [Authentication](./phase-3-auth.md)                                     | ⏳ Ej påbörjad |
 | 4   | [Workspaces](./phase-4-workspaces.md)                                   | ⏳ Ej påbörjad |

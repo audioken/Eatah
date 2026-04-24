@@ -10,7 +10,7 @@
 
 	private string CategoryLabel => Meal!.Category switch
 	{
-		MealCategory.Meat => "Rött kött",
+		MealCategory.Meat => "Rött",
 		MealCategory.Poultry => "Fågel",
 		MealCategory.Fish => "Fisk",
 		MealCategory.Vegetarian => "Vegetariskt",
@@ -23,11 +23,11 @@
 
 	private string BadgeStyle => Meal!.Category switch
 	{
-		MealCategory.Meat => "background:#A13A3A;",
-		MealCategory.Poultry => "background:#D98D00;",
-		MealCategory.Fish => "background:#005ED9;",
-		MealCategory.Vegetarian => "background:#3C8F3A;",
-		MealCategory.Vegan => "background:#AC279D;",
+		MealCategory.Meat => "background:var(--color-meat);",
+		MealCategory.Poultry => "background:var(--color-poultry);",
+		MealCategory.Fish => "background:var(--color-fish);",
+		MealCategory.Vegetarian => "background:var(--color-veg);",
+		MealCategory.Vegan => "background:var(--color-vegan);",
 		_ => "background:#64748b;"
 	};
 }

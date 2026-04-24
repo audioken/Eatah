@@ -285,7 +285,7 @@ Standardstruktur i `Shared/MainLayout.razor`:
 ```
 
 - **Ingen sidobar / hamburgermeny**. All primär navigering går via `AppNavbar`.
-- Sidor som behöver sätta header-innehåll renderar antingen sin egen `<AppHeader>` med `Center`/`Left`/`Right` `RenderFragment`-parametrar, eller använder `MainLayout`-defaulten.
+- Sidor som behöver sätta header-innehåll använder `HeaderState` (singleton DI). Anropa `HeaderState.Set(center, left, right)` i `OnInitialized` och `HeaderState.Clear()` i `Dispose`. `AppHeader` (rendrad en gång av `MainLayout`) prenumererar och fallback-render­ar default-platshållare när inget är satt. Inline-render av `<AppHeader>` med `Center`/`Left`/`Right` `RenderFragment`-parametrar är fortfarande tillåtet om en specifik sida vill bypassa state-mekanismen.
 
 ### Modal-mönster
 

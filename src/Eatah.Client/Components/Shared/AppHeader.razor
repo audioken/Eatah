@@ -1,15 +1,17 @@
 @*
-    Three-slot header. Pages set the Center slot via cascading parameter
-    pattern OR by rendering this component themselves. For Phase 0 the
-    Left and Right slots show placeholders; they get real content in
-    later phases (workspace switcher in fas 4, notification bell in fas 5).
+    Three-slot header rendered once by MainLayout. Pages set the slots
+    through HeaderState (DI singleton) in OnInitialized and clear them
+    on dispose. Falling back to Parameter-bound RenderFragments lets
+    consumers also render their own AppHeader inline if preferred.
 *@
+@implements IDisposable
+@inject HeaderState State
 
 <header class="eatah-header">
     <div class="eatah-header__left">
-        @if (Left is not null)
+        @if (LeftFragment is not null)
         {
-            @Left
+            @LeftFragment
         }
         else
         {
@@ -17,9 +19,9 @@
         }
     </div>
     <div class="eatah-header__center">
-        @if (Center is not null)
+        @if (CenterFragment is not null)
         {
-            @Center
+            @CenterFragment
         }
         else
         {
@@ -27,9 +29,9 @@
         }
     </div>
     <div class="eatah-header__right">
-        @if (Right is not null)
+        @if (RightFragment is not null)
         {
-            @Right
+            @RightFragment
         }
         else
         {
@@ -51,6 +53,20 @@
     [Parameter] public string CenterPlaceholder { get; set; } = "Eatah";
 
     [Inject] private ToastService Toasts { get; set; } = default!;
+
+    private RenderFragment? LeftFragment => Left ?? State.Left;
+    private RenderFragment? CenterFragment => Center ?? State.Center;
+    private RenderFragment? RightFragment => Right ?? State.Right;
+
+    protected override void OnInitialized()
+    {
+        State.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= StateHasChanged;
+    }
 
     private void OnPlaceholderBellClick()
     {

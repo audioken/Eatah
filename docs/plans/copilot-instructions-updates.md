@@ -10,6 +10,12 @@ Dessa avsnitt läggs in i `.github/copilot-instructions.md` löpande, **i samban
 
 ---
 
+## ✅ Fas 1 (Matplan-redesign) — TILLAGT
+
+> Layout-shell-sektionen i `.github/copilot-instructions.md` uppdaterad: pages sätter header-innehåll via `HeaderState` (singleton DI) i `OnInitialized` och rensar i `Dispose`. `AppHeader` prenumererar på state och faller tillbaka till default-platshållare. Inline `<AppHeader>` med RenderFragment-parametrar är fortfarande stödd som opt-in.
+
+---
+
 ## Att läggas till efter Fas 3 (Auth)
 
 ### Authentication

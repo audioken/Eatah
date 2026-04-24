@@ -274,6 +274,157 @@ h1:focus { outline: none; }
 .eatah-pill--muted { background: rgba(255, 255, 255, 0.25); }
 
 /* ============================================================
+   Diet profile selector card
+   ============================================================ */
+.eatah-diet-card {
+    width: 100%;
+    max-width: 354px;
+    height: 70px;
+    margin: 0 auto;
+    padding: 8px 12px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 12px;
+    align-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.eatah-diet-card__left {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.eatah-diet-card__title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.eatah-diet-card__title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--color-text-on-card);
+    line-height: 1.1;
+}
+
+.eatah-diet-card__score-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 8px;
+    min-width: 42px;
+    height: 18px;
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    color: #FFFFFF;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.eatah-diet-card__select-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    color: var(--color-text-muted);
+    font-size: 13px;
+}
+
+.eatah-diet-card__select {
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    border: none;
+    color: var(--color-text-on-card);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 0 16px 0 0;
+    margin: 0;
+    cursor: pointer;
+    max-width: 100%;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.eatah-diet-card__select:focus {
+    outline: none;
+}
+
+.eatah-diet-card__select option {
+    color: var(--color-text-dark);
+}
+
+.eatah-diet-card__chevron {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: var(--color-text-on-card);
+    display: inline-flex;
+}
+
+.eatah-diet-card__select-empty {
+    font-size: 12px;
+    color: var(--color-text-muted);
+}
+
+.eatah-diet-card__icons {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.eatah-diet-card__icon-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    width: 30px;
+}
+
+.eatah-diet-card__rule-pill {
+    font-size: 9px;
+    padding: 1px 4px;
+    min-height: 12px;
+    border-radius: 8px;
+}
+
+.eatah-diet-card__actions {
+    display: flex;
+    align-items: center;
+}
+
+.eatah-diet-card__dice {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #4ED4F2;
+    color: #FFFFFF;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+    transition: filter 0.15s ease;
+}
+
+.eatah-diet-card__dice:hover:not(:disabled) {
+    filter: brightness(1.1);
+}
+
+.eatah-diet-card__dice:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ============================================================
    Icon component – CSS-mask so currentColor controls fill
    ============================================================ */
 .eatah-icon {

@@ -1,21 +1,9 @@
 ﻿@page "/"
 @inject ApiClient Api
+@inject HeaderState Header
+@implements IDisposable
 
 <div class="max-w-6xl mx-auto">
-	<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-		<div>
-			<h1 class="text-2xl md:text-3xl font-bold">Veckoplan</h1>
-			@if (_plan is not null)
-			{
-				<p class="text-slate-500 text-sm">Vecka @_plan.WeekNumber, @_plan.Year</p>
-			}
-		</div>
-		@if (_plan is not null)
-		{
-			<RandomizeButton IsBusy="_isRandomizing" OnClick="RandomizeAsync" />
-		}
-	</div>
-
 	@if (_error is not null)
 	{
 		<div class="mb-4 p-3 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm">
@@ -33,45 +21,12 @@
 	}
 	else
 	{
-		<div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6">
-			<WeekView Days="_plan.Days" OnDaySelected="OpenSelector" OnDayCleared="ClearDayAsync"
-					  OnDayRandomDb="RandomizeDayDbAsync" OnDayRandomAi="StartAiForDayAsync" />
-
-			<aside class="space-y-4">
-				@if (_profiles is { Count: > 0 })
-				{
-					<div class="p-4 rounded-lg border border-slate-200 bg-white">
-						<label for="profile" class="block text-sm font-semibold text-slate-700 mb-2">Kostprofil</label>
-						<select id="profile"
-								class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"
-								@onchange="OnProfileChanged">
-							@foreach (var profile in _profiles)
-							{
-								<option value="@profile.Id" selected="@(profile.Id == _selectedProfileId)">@profile.Name</option>
-							}
-						</select>
-					</div>
-
-					@if (_isEvaluating)
-					{
-						<div class="p-4 rounded-lg border border-slate-200 bg-white text-sm text-slate-500 text-center">
-							Utvärderar plan...
-						</div>
-					}
-					else if (_evaluation is not null)
-					{
-						<DietScoreGauge Score="_evaluation.OverallScore" />
-
-						<div class="space-y-2">
-							@foreach (var rule in _evaluation.RuleResults)
-							{
-								<RuleResultCard Result="rule" />
-							}
-						</div>
-					}
-				}
-			</aside>
+		<div class="mb-4">
+			<DietProfileSelectorCard Plan="_plan" OnRandomize="RandomizeAsync" />
 		</div>
+
+		<WeekView Days="_plan.Days" OnDaySelected="OpenSelector" OnDayCleared="ClearDayAsync"
+				  OnDayRandomDb="RandomizeDayDbAsync" OnDayRandomAi="StartAiForDayAsync" />
 	}
 </div>
 
@@ -89,14 +44,9 @@
 @code {
 	private WeeklyPlanResponse? _plan;
 	private List<MealResponse>? _meals;
-	private List<DietProfileResponse>? _profiles;
-	private DietEvaluationResponse? _evaluation;
-	private Guid? _selectedProfileId;
 	private DayPlanResponse? _selectedDay;
 	private bool _selectorOpen;
 	private bool _isLoading = true;
-	private bool _isRandomizing;
-	private bool _isEvaluating;
 	private string? _error;
 
 	private DayPlanResponse? _aiTargetDay;
@@ -123,6 +73,19 @@
 		await LoadAsync();
 	}
 
+	public void Dispose()
+	{
+		Header.Clear();
+	}
+
+	private void UpdateHeader()
+	{
+		var weekText = _plan is null ? "Veckoplan" : $"Vecka {_plan.WeekNumber}";
+		Header.Set(
+			center: builder => builder.AddContent(0, weekText),
+			left: builder => builder.AddContent(0, "Personligt"));
+	}
+
 	private async Task LoadAsync()
 	{
 		_isLoading = true;
@@ -131,13 +94,9 @@
 		{
 			var planTask = Api.GetCurrentWeeklyPlanAsync();
 			var mealsTask = Api.GetMealsAsync();
-			var profilesTask = Api.GetDietProfilesAsync();
-			await Task.WhenAll(planTask, mealsTask, profilesTask);
+			await Task.WhenAll(planTask, mealsTask);
 			_plan = await planTask;
 			_meals = await mealsTask;
-			_profiles = await profilesTask;
-			_selectedProfileId = _profiles.FirstOrDefault()?.Id;
-			await EvaluateAsync();
 		}
 		catch (Exception ex)
 		{
@@ -146,38 +105,7 @@
 		finally
 		{
 			_isLoading = false;
-		}
-	}
-
-	private async Task EvaluateAsync()
-	{
-		if (_plan is null || _selectedProfileId is null)
-		{
-			_evaluation = null;
-			return;
-		}
-
-		_isEvaluating = true;
-		try
-		{
-			_evaluation = await Api.EvaluateWeeklyPlanAsync(_plan.Id, _selectedProfileId.Value);
-		}
-		catch (Exception ex)
-		{
-			_error = $"Kunde inte utvärdera planen: {ex.Message}";
-		}
-		finally
-		{
-			_isEvaluating = false;
-		}
-	}
-
-	private async Task OnProfileChanged(ChangeEventArgs e)
-	{
-		if (Guid.TryParse(e.Value?.ToString(), out var id))
-		{
-			_selectedProfileId = id;
-			await EvaluateAsync();
+			UpdateHeader();
 		}
 	}
 
@@ -206,7 +134,6 @@
 			if (updated is not null)
 			{
 				_plan = updated;
-				await EvaluateAsync();
 			}
 		}
 		catch (Exception ex)
@@ -232,7 +159,6 @@
 			if (updated is not null)
 			{
 				_plan = updated;
-				await EvaluateAsync();
 			}
 		}
 		catch (Exception ex)
@@ -241,22 +167,20 @@
 		}
 	}
 
-	private async Task RandomizeAsync()
+	private async Task RandomizeAsync(Guid? profileId)
 	{
 		if (_plan is null)
 		{
 			return;
 		}
 
-		_isRandomizing = true;
 		_error = null;
 		try
 		{
-			var updated = await Api.RandomizeWeekAsync(_plan.Id, _selectedProfileId);
+			var updated = await Api.RandomizeWeekAsync(_plan.Id, profileId);
 			if (updated is not null)
 			{
 				_plan = updated;
-				await EvaluateAsync();
 			}
 		}
 		catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.MealsInsufficient)
@@ -266,10 +190,6 @@
 		catch (Exception ex)
 		{
 			_error = $"Kunde inte slumpa veckan: {ex.Message}";
-		}
-		finally
-		{
-			_isRandomizing = false;
 		}
 	}
 
@@ -283,11 +203,10 @@
 		_error = null;
 		try
 		{
-			var updated = await Api.RandomizeDayAsync(_plan.Id, day.DayOfWeek, _selectedProfileId);
+			var updated = await Api.RandomizeDayAsync(_plan.Id, day.DayOfWeek, profileId: null);
 			if (updated is not null)
 			{
 				_plan = updated;
-				await EvaluateAsync();
 			}
 		}
 		catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.MealsInsufficient)
@@ -316,7 +235,7 @@
 		{
 			var request = new GenerateMealRequest(
 				Category: null,
-				DietProfileId: _selectedProfileId,
+				DietProfileId: null,
 				WeeklyPlanId: _plan.Id,
 				TargetDay: day.DayOfWeek);
 			_aiMeal = await Api.GenerateAiMealAsync(request);
@@ -374,7 +293,6 @@
 					if (updated is not null)
 					{
 						_plan = updated;
-						await EvaluateAsync();
 					}
 				}
 			}
@@ -409,7 +327,6 @@
 				if (updated is not null)
 				{
 					_plan = updated;
-					await EvaluateAsync();
 				}
 			}
 		}

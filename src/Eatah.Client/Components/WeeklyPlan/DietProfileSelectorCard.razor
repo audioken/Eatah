@@ -1,0 +1,244 @@
+@namespace Eatah.Client.Components.WeeklyPlan
+@using System.Globalization
+@using Eatah.Client.Services
+@using Microsoft.Maui.Storage
+@implements IDisposable
+@inject ApiClient Api
+@inject ToastService Toasts
+
+<div class="eatah-card eatah-diet-card">
+    <div class="eatah-diet-card__left">
+        <div class="eatah-diet-card__title-row">
+            <span class="eatah-diet-card__title">Kostprofil</span>
+            @if (HasProfile && _evaluation is not null)
+            {
+                <span class="eatah-diet-card__score-pill" style="background: @ScoreBackground;"
+                      title="@($"{Math.Round(_evaluation.OverallScore)}% av regler uppfyllda")">
+                    @($"{Math.Round(_evaluation.OverallScore):0}%")
+                </span>
+            }
+        </div>
+        @if (_profiles is { Count: > 0 })
+        {
+            <div class="eatah-diet-card__select-wrap">
+                <select class="eatah-diet-card__select" @onchange="OnProfileChanged" aria-label="Välj kostprofil">
+                    @foreach (var profile in _profiles)
+                    {
+                        <option value="@profile.Id" selected="@(profile.Id == _selectedProfileId)">@profile.Name</option>
+                    }
+                </select>
+                <span class="eatah-diet-card__chevron">
+                    <Icon Name="chevron-down" Size="12" />
+                </span>
+            </div>
+        }
+        else
+        {
+            <span class="eatah-diet-card__select-empty">Ingen profil vald</span>
+        }
+    </div>
+
+    <div class="eatah-diet-card__icons">
+        @foreach (var category in CategoriesInOrder)
+        {
+            var rule = FindRule(category);
+            var actual = FindActual(category);
+            <div class="eatah-diet-card__icon-cell">
+                <span class="eatah-category-icon @CategoryClass(category)">
+                    <Icon Name="@CategoryIconName(category)" />
+                </span>
+                @if (rule is not null)
+                {
+                    var ok = actual >= rule.MinPerWeek && actual <= rule.MaxPerWeek;
+                    <span class="eatah-pill @(ok ? "eatah-pill--ok" : "eatah-pill--bad") eatah-diet-card__rule-pill">
+                        @($"{rule.MinPerWeek}-{rule.MaxPerWeek}")
+                    </span>
+                }
+                else
+                {
+                    <span class="eatah-pill eatah-pill--muted eatah-diet-card__rule-pill">–</span>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="eatah-diet-card__actions">
+        <button type="button" class="eatah-diet-card__dice" disabled="@_isRandomizing" title="Slumpa veckan"
+                @onclick="HandleRandomize">
+            <Icon Name="dice" Size="18" />
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public WeeklyPlanResponse Plan { get; set; } = default!;
+    [Parameter] public EventCallback<Guid?> OnRandomize { get; set; }
+
+    private const string PreferenceKey = "eatah.selected_diet_profile_id";
+
+    private static readonly MealCategory[] CategoriesInOrder =
+    [
+        MealCategory.Vegan,
+        MealCategory.Vegetarian,
+        MealCategory.Fish,
+        MealCategory.Poultry,
+        MealCategory.Meat
+    ];
+
+    private List<DietProfileResponse>? _profiles;
+    private Guid? _selectedProfileId;
+    private DietEvaluationResponse? _evaluation;
+    private bool _isRandomizing;
+    private string? _planSignature;
+
+    private bool HasProfile => _selectedProfileId is not null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProfilesAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var signature = ComputeSignature(Plan);
+        if (signature != _planSignature)
+        {
+            _planSignature = signature;
+            await EvaluateAsync();
+        }
+    }
+
+    public void Dispose() { }
+
+    private async Task LoadProfilesAsync()
+    {
+        try
+        {
+            _profiles = await Api.GetDietProfilesAsync();
+            var savedId = LoadSavedProfileId();
+            _selectedProfileId =
+                (savedId is { } id && _profiles.Any(p => p.Id == id)) ? id : _profiles.FirstOrDefault()?.Id;
+            await EvaluateAsync();
+        }
+        catch
+        {
+            _profiles = [];
+        }
+    }
+
+    private async Task EvaluateAsync()
+    {
+        if (Plan is null || _selectedProfileId is null)
+        {
+            _evaluation = null;
+            return;
+        }
+        try
+        {
+            _evaluation = await Api.EvaluateWeeklyPlanAsync(Plan.Id, _selectedProfileId.Value);
+        }
+        catch
+        {
+            _evaluation = null;
+        }
+    }
+
+    private async Task OnProfileChanged(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var id))
+        {
+            _selectedProfileId = id;
+            SaveSelectedProfileId(id);
+            await EvaluateAsync();
+        }
+    }
+
+    private async Task HandleRandomize()
+    {
+        if (_isRandomizing) return;
+        _isRandomizing = true;
+        try
+        {
+            await OnRandomize.InvokeAsync(_selectedProfileId);
+        }
+        finally
+        {
+            _isRandomizing = false;
+        }
+    }
+
+    private DietRuleResponse? FindRule(MealCategory category)
+    {
+        var profile = _profiles?.FirstOrDefault(p => p.Id == _selectedProfileId);
+        return profile?.Rules.FirstOrDefault(r => r.Category == category);
+    }
+
+    private int FindActual(MealCategory category)
+    {
+        if (_evaluation is null) return 0;
+        var match = _evaluation.RuleResults.FirstOrDefault(r => r.Category == category);
+        return match?.Actual ?? 0;
+    }
+
+    private string ScoreBackground
+    {
+        get
+        {
+            var score = _evaluation?.OverallScore ?? 0;
+            var clamped = Math.Clamp(score, 0, 100).ToString("0.##", CultureInfo.InvariantCulture);
+            // Smooth red → yellow → green via two color-mix steps.
+            return $"color-mix(in srgb, var(--color-pill-good) {clamped}%, var(--color-pill-bad))";
+        }
+    }
+
+    private static string CategoryClass(MealCategory category) => category switch
+    {
+        MealCategory.Vegan => "eatah-category-icon--vegan",
+        MealCategory.Vegetarian => "eatah-category-icon--veg",
+        MealCategory.Fish => "eatah-category-icon--fish",
+        MealCategory.Poultry => "eatah-category-icon--poultry",
+        MealCategory.Meat => "eatah-category-icon--meat",
+        _ => string.Empty
+    };
+
+    private static string CategoryIconName(MealCategory category) => category switch
+    {
+        MealCategory.Vegan => "vegan",
+        MealCategory.Vegetarian => "vegetarian",
+        MealCategory.Fish => "fish",
+        MealCategory.Poultry => "poultry",
+        MealCategory.Meat => "meat",
+        _ => "question"
+    };
+
+    private static string ComputeSignature(WeeklyPlanResponse plan)
+    {
+        if (plan?.Days is null) return string.Empty;
+        return string.Join("|", plan.Days.OrderBy(d => d.DayOfWeek).Select(d => d.MealId?.ToString() ?? "-"));
+    }
+
+    private static Guid? LoadSavedProfileId()
+    {
+        try
+        {
+            var raw = Preferences.Default.Get(PreferenceKey, string.Empty);
+            return Guid.TryParse(raw, out var id) ? id : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static void SaveSelectedProfileId(Guid id)
+    {
+        try
+        {
+            Preferences.Default.Set(PreferenceKey, id.ToString());
+        }
+        catch
+        {
+            // Preferences not available in this host – best-effort persistence.
+        }
+    }
+}
