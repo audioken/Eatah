@@ -13,8 +13,8 @@
             @if (HasProfile && _evaluation is not null)
             {
                 <span class="eatah-diet-card__score-pill" style="background: @ScoreBackground;"
-                      title="@($"{Math.Round(_evaluation.OverallScore)}% av regler uppfyllda")">
-                    @($"{Math.Round(_evaluation.OverallScore):0}%")
+                      title="@($"{ScorePercent}% av regler uppfyllda")">
+                    @($"{ScorePercent}%")
                 </span>
             }
         </div>
@@ -180,13 +180,15 @@
         return match?.Actual ?? 0;
     }
 
+    private int ScorePercent =>
+        (int)Math.Round(Math.Clamp((_evaluation?.OverallScore ?? 0) * 100, 0, 100));
+
     private string ScoreBackground
     {
         get
         {
-            var score = _evaluation?.OverallScore ?? 0;
-            var clamped = Math.Clamp(score, 0, 100).ToString("0.##", CultureInfo.InvariantCulture);
-            // Smooth red → yellow → green via two color-mix steps.
+            var clamped = ScorePercent.ToString(CultureInfo.InvariantCulture);
+            // Smooth red → green via color-mix in sRGB.
             return $"color-mix(in srgb, var(--color-pill-good) {clamped}%, var(--color-pill-bad))";
         }
     }

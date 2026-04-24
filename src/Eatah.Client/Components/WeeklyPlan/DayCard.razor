@@ -4,18 +4,18 @@
 @inject ApiClient Api
 @inject IngredientCheckState CheckState
 
-<div class="relative w-full max-w-[354px] h-[80px] select-none">
+<div class="relative w-full max-w-[420px] h-[80px] select-none">
 
 	@* Action layer behind the card *@
 	<div class="absolute inset-0 flex items-center justify-between px-1 pointer-events-none">
 
 		@* Left action: trash (revealed when sliding right) *@
-		<div class="pointer-events-auto transition-opacity duration-150"
-			 style="opacity: @LeftOpacity;">
+		<div class="pointer-events-auto transition-opacity duration-150" style="opacity: @LeftOpacity;">
 			<button type="button"
 					class="inline-flex items-center justify-center h-[45px] rounded-full bg-[#F24E4E] text-white hover:brightness-95 disabled:opacity-40"
-					style="filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.25)); width: @TrashButtonWidth;" title="Ta bort maträtt"
-					disabled="@(Day.Meal is null)" @onclick:stopPropagation="true" @onclick="HandleClear">
+					style="filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.25)); width: @TrashButtonWidth;"
+					title="Ta bort maträtt" disabled="@(Day.Meal is null)" @onclick:stopPropagation="true"
+					@onclick="HandleClear">
 				<svg xmlns="http://www.w3.org/2000/svg" viewBox="@IconPaths.TrashCanViewBox" fill="currentColor"
 					 class="w-5 h-5 flex-shrink-0">
 					<path d="@IconPaths.TrashCanPath" />
@@ -28,8 +28,7 @@
 			 style="opacity: @RightOpacity;">
 			<button type="button"
 					class="inline-flex items-center justify-center w-[45px] h-[45px] rounded-full bg-[#A014B9] text-white hover:brightness-110"
-					style="filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.25));"
-					title="Generera maträtt med AI"
+					style="filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.25));" title="Generera maträtt med AI"
 					@onclick:stopPropagation="true" @onclick="HandleRandomAi">
 				<svg xmlns="http://www.w3.org/2000/svg" viewBox="@IconPaths.WandSparklesViewBox" fill="currentColor"
 					 class="w-[22px] h-[22px] flex-shrink-0">
@@ -126,7 +125,7 @@
 	private const double DragThresholdPx = 8;
 	private const double SnapThresholdPx = 30;
 	private const double NormalButtonPx = 45;
-	private const double MaxButtonPx = 118;  // pill width at full overshoot
+	private const double MaxButtonPx = 118; // pill width at full overshoot
 
 	private static readonly System.Globalization.CultureInfo Inv = System.Globalization.CultureInfo.InvariantCulture;
 
