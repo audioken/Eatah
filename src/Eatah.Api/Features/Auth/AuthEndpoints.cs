@@ -65,6 +65,8 @@ public static class AuthServiceExtensions
         .AddEntityFrameworkStores<Eatah.Infrastructure.Persistence.EatahDbContext>()
         .AddDefaultTokenProviders();
 
+        services.AddAuthorization();
+
         services.ConfigureApplicationCookie(opts =>
         {
             opts.Cookie.Name = "eatah.auth";
