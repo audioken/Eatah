@@ -62,6 +62,16 @@
             document.documentElement.style.setProperty('--safe-area-inset-top', top + 'px');
             document.documentElement.style.setProperty('--safe-area-inset-bottom', bottom + 'px');
         };
+
+        // GitHub Pages SPA-routing: 404.html encodes the original path as ?p=...
+        // Restore it so Blazor NavigationManager gets the correct URL on load.
+        (function () {
+            var redirect = sessionStorage.getItem('spa-redirect');
+            if (redirect) {
+                sessionStorage.removeItem('spa-redirect');
+                window.history.replaceState(null, null, redirect);
+            }
+        })();
     </script>
 
     <script src="_framework/blazor.webassembly.js"></script>
