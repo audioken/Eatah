@@ -1,11 +1,10 @@
 @* ============================================================
    <Icon Name="dice" Size="24" CssClass="..." />
-   Renders a span styled via CSS mask so currentColor controls fill.
-   Add new icons by dropping the SVG into wwwroot/icons/ and
-   mapping a semantic name in IconMap below.
+   Renders a Font Awesome solid icon. currentColor controls the colour.
+   Add new icons by mapping a semantic name to an FA icon name in IconMap below.
    ============================================================ *@
 
-<span class="eatah-icon @CssClass" style="@StyleAttr" role="img" aria-label="@(AriaLabel ?? Name)"></span>
+<i class="fa-solid fa-@FaName eatah-icon @CssClass" style="@SizeStyle" role="img" aria-label="@(AriaLabel ?? Name)"></i>
 
 @code {
     [Parameter, EditorRequired] public string Name { get; set; } = string.Empty;
@@ -17,16 +16,17 @@
 
     [Parameter] public string? AriaLabel { get; set; }
 
-    private string StyleAttr
+    private string FaName
     {
         get
         {
-            var file = IconMap.TryGetValue(Name, out var mapped) ? mapped : Name;
-            var url = $"/icons/{file}.svg";
-            var size = Size.HasValue ? $"width:{Size}px;height:{Size}px;" : string.Empty;
-            return $"--icon-url:url('{url}');{size}";
+            var mapped = IconMap.TryGetValue(Name, out var m) ? m : Name;
+            // FA class is fa-{name}; strip the trailing -solid suffix used in the old file names.
+            return mapped.EndsWith("-solid") ? mapped[..^"-solid".Length] : mapped;
         }
     }
+
+    private string SizeStyle => Size.HasValue ? $"font-size:{Size}px;" : string.Empty;
 
     private static readonly IReadOnlyDictionary<string, string> IconMap = new Dictionary<string,
 string>(StringComparer.OrdinalIgnoreCase)
