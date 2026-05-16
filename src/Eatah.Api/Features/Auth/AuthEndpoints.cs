@@ -44,6 +44,7 @@ public static class AuthServiceExtensions
     public static IServiceCollection AddAuthFeature(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<SmtpSettings>(configuration.GetSection(SmtpSettings.SectionName));
+        services.Configure<BrevoSettings>(configuration.GetSection(BrevoSettings.SectionName));
         services.Configure<AuthSettings>(configuration.GetSection(AuthSettings.SectionName));
 
         // Identity options
@@ -88,11 +89,23 @@ public static class AuthServiceExtensions
             };
         });
 
-        // Email sender — real SMTP if configured, else dev console.
+        // Email sender — Brevo HTTP API if configured (bypasses SMTP port blocking on cloud
+        // platforms), else real SMTP if host is set, else dev console fallback.
+        services.AddHttpClient();
         services.AddSingleton<IEmailSender>(sp =>
         {
-            var settings = sp.GetRequiredService<IOptions<SmtpSettings>>().Value;
-            if (settings.IsConfigured)
+            var brevo = sp.GetRequiredService<IOptions<BrevoSettings>>().Value;
+            if (brevo.IsConfigured)
+            {
+                return new BrevoHttpEmailSender(
+                    sp.GetRequiredService<IOptions<BrevoSettings>>(),
+                    sp.GetRequiredService<IOptions<SmtpSettings>>(),
+                    sp.GetRequiredService<IHttpClientFactory>(),
+                    sp.GetRequiredService<ILogger<BrevoHttpEmailSender>>());
+            }
+
+            var smtp = sp.GetRequiredService<IOptions<SmtpSettings>>().Value;
+            if (smtp.IsConfigured)
             {
                 return new SmtpEmailSender(sp.GetRequiredService<IOptions<SmtpSettings>>(),
                     sp.GetRequiredService<ILogger<SmtpEmailSender>>());

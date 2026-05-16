@@ -45,7 +45,7 @@ public static class RegisterEmail
             UserName = email, // temporary; replaced with DisplayName at confirm step
             Email = email,
             EmailConfirmed = false,
-            DisplayName = string.Empty
+            DisplayName = $"_pending_{Guid.NewGuid():N}" // unique placeholder; overwritten at confirm step
         };
 
         var create = await userManager.CreateAsync(user);
