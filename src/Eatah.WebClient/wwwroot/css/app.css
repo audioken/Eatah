@@ -536,3 +536,243 @@ body.eatah-modal-open {
 .blazor-error-boundary::after {
     content: "An error has occurred."
 }
+
+/* ============================================================
+   AUTH (Phase 3)
+   ============================================================ */
+.eatah-auth-layout {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+}
+
+.eatah-auth-page {
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 32px 16px;
+}
+
+.eatah-auth-page--embedded {
+    padding-top: 16px;
+}
+
+.eatah-auth-card {
+    background: var(--eatah-card-bg, rgba(255, 255, 255, 0.96));
+    color: #1f2330;
+    border-radius: 20px;
+    padding: 28px 24px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(12px);
+}
+
+.eatah-auth-card__title {
+    font-size: 26px;
+    font-weight: 700;
+    margin: 0 0 6px;
+}
+
+.eatah-auth-card__subtitle {
+    font-size: 14px;
+    opacity: 0.7;
+    margin: 0 0 20px;
+}
+
+.eatah-auth-card__links {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 16px;
+    font-size: 14px;
+}
+
+.eatah-auth-card__links a {
+    color: #3b4458;
+    text-decoration: none;
+    border-bottom: 1px dashed rgba(0, 0, 0, 0.25);
+}
+
+.eatah-auth-card__links a:hover { color: #1f2330; }
+
+.eatah-auth-field {
+    display: block;
+    margin-bottom: 14px;
+}
+
+.eatah-auth-field__label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    opacity: 0.85;
+}
+
+.eatah-auth-field__input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 12px;
+    font-size: 15px;
+    background: #fff;
+    color: #1f2330;
+    box-sizing: border-box;
+}
+
+.eatah-auth-field__input:focus {
+    outline: none;
+    border-color: #3b4458;
+    box-shadow: 0 0 0 3px rgba(59, 68, 88, 0.18);
+}
+
+.eatah-auth-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    margin: 6px 0 14px;
+    user-select: none;
+}
+
+.eatah-auth-error {
+    background: rgba(220, 53, 69, 0.1);
+    color: #a52234;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 14px;
+    margin: 8px 0 14px;
+}
+
+.eatah-auth-success {
+    background: rgba(40, 167, 69, 0.08);
+    color: #1f5132;
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 14px;
+    margin: 8px 0 14px;
+}
+
+.eatah-auth-button {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #1f2330 0%, #3b4458 100%);
+    color: #fff;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    transition: transform 0.1s ease, opacity 0.1s ease;
+}
+
+.eatah-auth-button:hover:not(:disabled) { transform: translateY(-1px); }
+.eatah-auth-button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.eatah-auth-button--secondary {
+    display: block;
+    margin-top: 14px;
+    background: transparent;
+    color: #3b4458;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    text-align: center;
+    text-decoration: none;
+}
+
+.eatah-auth-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    opacity: 0.7;
+}
+
+/* PasswordInput */
+.eatah-password-input {
+    position: relative;
+}
+
+.eatah-password-input__field {
+    width: 100%;
+    padding: 12px 44px 12px 14px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 12px;
+    font-size: 15px;
+    background: #fff;
+    color: #1f2330;
+    box-sizing: border-box;
+}
+
+.eatah-password-input__field:focus {
+    outline: none;
+    border-color: #3b4458;
+    box-shadow: 0 0 0 3px rgba(59, 68, 88, 0.18);
+}
+
+.eatah-password-input__toggle {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    padding: 6px 8px;
+    cursor: pointer;
+    color: #3b4458;
+}
+
+/* Strength meter */
+.eatah-strength-meter {
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 12px;
+    font-size: 12px;
+    opacity: 0.75;
+}
+
+.eatah-strength-meter__item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: rgba(0, 0, 0, 0.55);
+}
+
+.eatah-strength-meter__item.is-met {
+    color: #1f5132;
+    opacity: 1;
+}
+
+/* UsernameInput */
+.eatah-username-input {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.eatah-username-input__field {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 12px;
+    font-size: 15px;
+    background: #fff;
+    color: #1f2330;
+    box-sizing: border-box;
+}
+
+.eatah-username-input__field:focus {
+    outline: none;
+    border-color: #3b4458;
+    box-shadow: 0 0 0 3px rgba(59, 68, 88, 0.18);
+}
+
+.eatah-username-input__hint {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+.eatah-username-input__hint.is-ok { color: #1f5132; opacity: 1; }
+.eatah-username-input__hint.is-err { color: #a52234; opacity: 1; }

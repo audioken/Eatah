@@ -38,8 +38,8 @@
         </form>
 
         <div class="eatah-auth-card__links">
-            <a href="/auth/register">Skapa konto</a>
-            <a href="/auth/forgot-password">Glömt lösenord?</a>
+            <a href="auth/register">Skapa konto</a>
+            <a href="auth/forgot-password">Glömt lösenord?</a>
         </div>
     </div>
 </div>
@@ -67,7 +67,7 @@
         {
             await AuthState.LoginAsync(new LoginRequest(_identifier.Trim(), _password, _remember));
             Toast.Show($"Välkommen, {AuthState.CurrentUser?.DisplayName}!");
-            Nav.NavigateTo("/", forceLoad: false);
+            Nav.NavigateTo(Nav.BaseUri);
         }
         catch (ApiException ex)
         {

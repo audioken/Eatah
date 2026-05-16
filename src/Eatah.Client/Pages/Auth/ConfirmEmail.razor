@@ -12,7 +12,7 @@
         @if (_invalidLink)
         {
             <div class="eatah-auth-error">Länken är ogiltig eller har gått ut.</div>
-            <a class="eatah-auth-button eatah-auth-button--secondary" href="/auth/register">Begär ny länk</a>
+            <a class="eatah-auth-button eatah-auth-button--secondary" href="auth/register">Begär ny länk</a>
         }
         else
         {
@@ -114,7 +114,7 @@
         {
             await AuthState.ConfirmAndSignInAsync(new ConfirmEmailRequest(_userId, _token, _displayName.Trim(), _password));
             Toast.Show($"Välkommen till Eatah, {AuthState.CurrentUser?.DisplayName}!");
-            Nav.NavigateTo("/", forceLoad: false);
+            Nav.NavigateTo(Nav.BaseUri);
         }
         catch (ApiException ex)
         {

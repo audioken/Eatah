@@ -22,7 +22,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: "10.0.x"
 
       - name: Publish WebClient
         run: dotnet publish src/Eatah.WebClient/Eatah.WebClient.csproj -c Release -o publish
