@@ -7,7 +7,8 @@ public static class MealEndpoints
     public static IEndpointRouteBuilder MapMealEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/meals")
-            .WithTags("Meals");
+            .WithTags("Meals")
+            .RequireAuthorization();
 
         group.MapGet("/", GetAllMeals.Handle).WithName(nameof(GetAllMeals));
         group.MapGet("/{id:guid}", GetMealById.Handle).WithName(nameof(GetMealById));

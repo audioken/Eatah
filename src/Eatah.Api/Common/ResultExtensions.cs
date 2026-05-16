@@ -30,6 +30,9 @@ public static class ResultExtensions
             ? Results.NoContent()
             : ToProblem(result.Error!);
 
+    /// <summary>Converts a standalone <see cref="Error"/> to a ProblemDetails response.</summary>
+    public static IResult ToHttpResult(this Error error) => ToProblem(error);
+
     private static IResult ToProblem(Error error)
     {
         if (error.ValidationErrors is { Count: > 0 })

@@ -1,0 +1,138 @@
+@page "/auth/confirm"
+@layout EmptyAuthLayout
+@inject AuthState AuthState
+@inject NavigationManager Nav
+@inject ToastService Toast
+
+<div class="eatah-auth-page">
+    <div class="eatah-auth-card">
+        <h1 class="eatah-auth-card__title">Slutför ditt konto</h1>
+        <p class="eatah-auth-card__subtitle">Välj ett användarnamn och ett lösenord.</p>
+
+        @if (_invalidLink)
+        {
+            <div class="eatah-auth-error">Länken är ogiltig eller har gått ut.</div>
+            <a class="eatah-auth-button eatah-auth-button--secondary" href="/auth/register">Begär ny länk</a>
+        }
+        else
+        {
+            <form @onsubmit="HandleSubmit" @onsubmit:preventDefault>
+                <label class="eatah-auth-field">
+                    <span class="eatah-auth-field__label">Användarnamn</span>
+                    <UsernameInput Value="@_displayName" ValueChanged="v => _displayName = v"
+                                   AvailabilityChanged="v => _nameAvailable = v" />
+                </label>
+
+                <label class="eatah-auth-field">
+                    <span class="eatah-auth-field__label">Lösenord</span>
+                    <PasswordInput Value="@_password" ValueChanged="v => _password = v" Autocomplete="new-password"
+                                   ShowStrength="true" />
+                </label>
+
+                <label class="eatah-auth-field">
+                    <span class="eatah-auth-field__label">Bekräfta lösenord</span>
+                    <PasswordInput Value="@_passwordConfirm" ValueChanged="v => _passwordConfirm = v"
+                                   Autocomplete="new-password" />
+                </label>
+
+                @if (!string.IsNullOrEmpty(_error))
+                {
+                    <div class="eatah-auth-error">@_error</div>
+                }
+
+                <button type="submit" class="eatah-auth-button" disabled="@_busy">
+                    @(_busy ? "Skapar…" : "Skapa konto")
+                </button>
+            </form>
+        }
+    </div>
+</div>
+
+@code {
+    private Guid _userId;
+    private string _token = string.Empty;
+    private bool _invalidLink;
+
+    private string _displayName = string.Empty;
+    private bool _nameAvailable;
+    private string _password = string.Empty;
+    private string _passwordConfirm = string.Empty;
+    private bool _busy;
+    private string? _error;
+
+    protected override void OnInitialized()
+    {
+        var query = ParseQuery(new Uri(Nav.Uri).Query);
+        if (!query.TryGetValue("userId", out var idStr) || !Guid.TryParse(idStr, out _userId)
+            || !query.TryGetValue("token", out var tk) || string.IsNullOrWhiteSpace(tk))
+        {
+            _invalidLink = true;
+            return;
+        }
+        _token = tk;
+    }
+
+    private static Dictionary<string, string> ParseQuery(string query)
+    {
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (string.IsNullOrEmpty(query)) return result;
+        var trimmed = query.StartsWith('?') ? query[1..] : query;
+        foreach (var part in trimmed.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var eq = part.IndexOf('=');
+            if (eq <= 0) continue;
+            var key = Uri.UnescapeDataString(part[..eq]);
+            var value = Uri.UnescapeDataString(part[(eq + 1)..]);
+            result[key] = value;
+        }
+        return result;
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (_busy) return;
+        _error = null;
+
+        if (!_nameAvailable)
+        {
+            _error = "Välj ett giltigt och ledigt användarnamn.";
+            return;
+        }
+        if (_password.Length < 8)
+        {
+            _error = "Lösenordet måste vara minst 8 tecken.";
+            return;
+        }
+        if (_password != _passwordConfirm)
+        {
+            _error = "Lösenorden matchar inte.";
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await AuthState.ConfirmAndSignInAsync(new ConfirmEmailRequest(_userId, _token, _displayName.Trim(), _password));
+            Toast.Show($"Välkommen till Eatah, {AuthState.CurrentUser?.DisplayName}!");
+            Nav.NavigateTo("/", forceLoad: false);
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.ErrorCode switch
+            {
+                ApiErrorCodes.AuthInvalidToken => "Länken har gått ut. Begär en ny.",
+                ApiErrorCodes.AuthDisplayNameTaken => "Användarnamnet är upptaget.",
+                ApiErrorCodes.AuthPasswordInvalid => "Lösenordet uppfyller inte kraven.",
+                _ => "Något gick fel. Försök igen."
+            };
+        }
+        catch
+        {
+            _error = "Kunde inte ansluta till servern.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

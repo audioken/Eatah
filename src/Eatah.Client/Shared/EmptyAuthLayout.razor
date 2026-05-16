@@ -1,0 +1,8 @@
+@inherits LayoutComponentBase
+@* Bare layout used by auth pages so the navbar/header don't render before the user is signed in. *@
+
+<div class="eatah-bg" aria-hidden="true"></div>
+<main class="eatah-auth-layout">
+    @Body
+</main>
+<ToastHost />

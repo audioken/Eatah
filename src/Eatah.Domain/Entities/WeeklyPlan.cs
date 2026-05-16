@@ -7,4 +7,5 @@ public class WeeklyPlan
     public int WeekNumber { get; set; }
     public List<DayPlan> Days { get; set; } = [];
     public DateTime CreatedAt { get; set; }
+    public Guid WorkspaceId { get; set; }
 }

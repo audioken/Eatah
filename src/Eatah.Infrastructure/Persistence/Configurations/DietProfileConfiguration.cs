@@ -20,12 +20,15 @@ public class DietProfileConfiguration : IEntityTypeConfiguration<DietProfile>
             .IsRequired()
             .HasMaxLength(200);
 
+        builder.Property(p => p.WorkspaceId)
+            .HasColumnName("workspace_id");
+
         builder.HasMany(p => p.Rules)
             .WithOne()
             .HasForeignKey("diet_profile_id")
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasIndex(p => p.Name).IsUnique();
+        builder.HasIndex(p => new { p.WorkspaceId, p.Name }).IsUnique();
     }
 }
 

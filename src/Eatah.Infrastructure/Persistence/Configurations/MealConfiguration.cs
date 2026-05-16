@@ -33,12 +33,16 @@ public class MealConfiguration : IEntityTypeConfiguration<Meal>
             .HasColumnName("created_at")
             .HasDefaultValueSql("NOW()");
 
+        builder.Property(m => m.WorkspaceId)
+            .HasColumnName("workspace_id");
+
         builder.HasMany(m => m.Ingredients)
             .WithOne()
             .HasForeignKey("meal_id")
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(m => m.Name);
+        builder.HasIndex(m => m.WorkspaceId);
     }
 }
 

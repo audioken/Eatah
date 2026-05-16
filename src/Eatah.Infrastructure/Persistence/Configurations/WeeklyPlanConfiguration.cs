@@ -27,12 +27,16 @@ public class WeeklyPlanConfiguration : IEntityTypeConfiguration<WeeklyPlan>
             .HasColumnName("created_at")
             .HasDefaultValueSql("NOW()");
 
+        builder.Property(w => w.WorkspaceId)
+            .HasColumnName("workspace_id")
+            .IsRequired();
+
         builder.HasMany(w => w.Days)
             .WithOne()
             .HasForeignKey("weekly_plan_id")
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasIndex(w => new { w.Year, w.WeekNumber }).IsUnique();
+        builder.HasIndex(w => new { w.WorkspaceId, w.Year, w.WeekNumber }).IsUnique();
     }
 }
 

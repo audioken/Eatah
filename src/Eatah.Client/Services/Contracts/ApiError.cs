@@ -33,6 +33,17 @@ public static class ApiErrorCodes
     public const string AiServiceFailure = "ai_service_failure";
     public const string AiServiceNotConfigured = "ai_service_not_configured";
     public const string AiInvalidResponse = "ai_invalid_response";
+
+    // Auth
+    public const string AuthEmailTaken = "auth_email_taken";
+    public const string AuthDisplayNameTaken = "auth_display_name_taken";
+    public const string AuthEmailNotConfirmed = "auth_email_not_confirmed";
+    public const string AuthInvalidCredentials = "auth_invalid_credentials";
+    public const string AuthInvalidToken = "auth_invalid_token";
+    public const string AuthUserNotFound = "auth_user_not_found";
+    public const string AuthPasswordInvalid = "auth_password_invalid";
+    public const string AuthNotAuthenticated = "auth_not_authenticated";
+    public const string AuthEmailSendFailed = "auth_email_send_failed";
 }
 
 /// <summary>

@@ -35,11 +35,20 @@
         }
         else
         {
-            <button type="button" class="eatah-header__placeholder-bell"
-                    style="background:transparent;border:none;color:inherit;padding:6px;cursor:pointer;" aria-label="Notiser"
-                    @onclick="OnPlaceholderBellClick">
-                <Icon Name="bell" Size="22" />
-            </button>
+            <div style="display:flex;gap:4px;align-items:center;">
+                <button type="button" style="background:transparent;border:none;color:inherit;padding:6px;cursor:pointer;"
+                        aria-label="Notiser" @onclick="OnPlaceholderBellClick">
+                    <Icon Name="bell" Size="22" />
+                </button>
+                @if (Auth.IsAuthenticated)
+                {
+                    <button type="button" style="background:transparent;border:none;color:inherit;padding:6px;cursor:pointer;"
+                            aria-label="@($"Logga ut {Auth.CurrentUser?.DisplayName}")"
+                            title="@($"Logga ut {Auth.CurrentUser?.DisplayName}")" @onclick="OnLogoutClick">
+                        <Icon Name="profile" Size="22" />
+                    </button>
+                }
+            </div>
         }
     </div>
 </header>
@@ -53,6 +62,8 @@
     [Parameter] public string CenterPlaceholder { get; set; } = "Eatah";
 
     [Inject] private ToastService Toasts { get; set; } = default!;
+    [Inject] private AuthState Auth { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; set; } = default!;
 
     private RenderFragment? LeftFragment => Left ?? State.Left;
     private RenderFragment? CenterFragment => Center ?? State.Center;
@@ -71,5 +82,12 @@
     private void OnPlaceholderBellClick()
     {
         Toasts.Show("Notiser kommer snart");
+    }
+
+    private async Task OnLogoutClick()
+    {
+        await Auth.LogoutAsync();
+        Toasts.Show("Du är utloggad.");
+        Nav.NavigateTo("/", forceLoad: false);
     }
 }

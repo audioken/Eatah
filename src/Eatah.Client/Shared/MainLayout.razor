@@ -10,7 +10,9 @@
 	<AppHeader />
 
 	<main class="eatah-shell__main">
-		@Body
+		<AuthGuard>
+			@Body
+		</AuthGuard>
 	</main>
 
 	<AppNavbar />

@@ -1,0 +1,84 @@
+@inject ApiClient Api
+@implements IDisposable
+
+<div class="eatah-username-input @CssClass">
+    <input class="eatah-username-input__field" type="text" value="@Value" @oninput="OnInput" placeholder="@Placeholder"
+           autocomplete="username" minlength="3" maxlength="50" />
+    @if (_status == Status.Checking)
+    {
+        <span class="eatah-username-input__hint">Kontrollerar…</span>
+    }
+    else if (_status == Status.Available)
+    {
+        <span class="eatah-username-input__hint is-ok">@($"\"{Value}\" är ledigt")</span>
+    }
+    else if (_status == Status.Taken)
+    {
+        <span class="eatah-username-input__hint is-err">@($"\"{Value}\" är upptaget")</span>
+    }
+    else if (_status == Status.Invalid)
+    {
+        <span class="eatah-username-input__hint is-err">Använd 3–50 tecken (a–z, 0–9, _, -)</span>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public EventCallback<bool> AvailabilityChanged { get; set; }
+    [Parameter] public string? Placeholder { get; set; } = "Användarnamn";
+    [Parameter] public string? CssClass { get; set; }
+
+    private enum Status { Idle, Checking, Available, Taken, Invalid }
+    private Status _status = Status.Idle;
+    private CancellationTokenSource? _cts;
+    private string _lastChecked = string.Empty;
+
+    private static readonly System.Text.RegularExpressions.Regex NameRegex = new("^[a-zA-Z0-9_\\-]+$");
+
+    private async Task OnInput(ChangeEventArgs e)
+    {
+        var v = e.Value?.ToString() ?? string.Empty;
+        await ValueChanged.InvokeAsync(v);
+
+        if (string.IsNullOrWhiteSpace(v))
+        {
+            _status = Status.Idle;
+            await AvailabilityChanged.InvokeAsync(false);
+            return;
+        }
+        if (v.Length < 3 || v.Length > 50 || !NameRegex.IsMatch(v))
+        {
+            _status = Status.Invalid;
+            await AvailabilityChanged.InvokeAsync(false);
+            return;
+        }
+
+        _cts?.Cancel();
+        _cts = new CancellationTokenSource();
+        var token = _cts.Token;
+        _status = Status.Checking;
+        StateHasChanged();
+
+        try
+        {
+            // Light debounce: wait 300ms before issuing the request.
+            await Task.Delay(300, token);
+            var result = await Api.CheckDisplayNameAsync(v, token);
+            if (token.IsCancellationRequested) return;
+            _lastChecked = v;
+            _status = result?.Available == true ? Status.Available : Status.Taken;
+            await AvailabilityChanged.InvokeAsync(_status == Status.Available);
+        }
+        catch (TaskCanceledException)
+        {
+            // Newer keystroke cancelled us.
+        }
+        catch
+        {
+            _status = Status.Idle;
+        }
+    }
+
+    public void Dispose() => _cts?.Cancel();
+}

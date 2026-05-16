@@ -1,0 +1,86 @@
+@page "/auth/register"
+@layout EmptyAuthLayout
+@inject ApiClient Api
+@inject NavigationManager Nav
+
+<div class="eatah-auth-page">
+    <div class="eatah-auth-card">
+        <h1 class="eatah-auth-card__title">Skapa konto</h1>
+        <p class="eatah-auth-card__subtitle">Ange din e-post så skickar vi en länk för att slutföra registreringen.</p>
+
+        @if (_sent)
+        {
+            <div class="eatah-auth-success">
+                <p>En bekräftelselänk har skickats till <strong>@_email</strong>.</p>
+                <p>Öppna mejlet och klicka på länken för att välja lösenord och användarnamn.</p>
+            </div>
+            <a class="eatah-auth-button eatah-auth-button--secondary" href="/auth/login">Tillbaka till inloggning</a>
+        }
+        else
+        {
+            <form @onsubmit="HandleSubmit" @onsubmit:preventDefault>
+                <label class="eatah-auth-field">
+                    <span class="eatah-auth-field__label">E-post</span>
+                    <input type="email" class="eatah-auth-field__input" value="@_email"
+                           @oninput="e => _email = e.Value?.ToString() ?? string.Empty" autocomplete="email" required />
+                </label>
+
+                @if (!string.IsNullOrEmpty(_error))
+                {
+                    <div class="eatah-auth-error">@_error</div>
+                }
+
+                <button type="submit" class="eatah-auth-button" disabled="@_busy">
+                    @(_busy ? "Skickar…" : "Skicka länk")
+                </button>
+            </form>
+
+            <div class="eatah-auth-card__links">
+                <a href="/auth/login">Har du redan konto? Logga in</a>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private string _email = string.Empty;
+    private bool _busy;
+    private bool _sent;
+    private string? _error;
+
+    private async Task HandleSubmit()
+    {
+        if (_busy) return;
+        _error = null;
+
+        if (string.IsNullOrWhiteSpace(_email) || !_email.Contains('@'))
+        {
+            _error = "Ange en giltig e-postadress.";
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await Api.RegisterAsync(new RegisterEmailRequest(_email.Trim()));
+            _sent = true;
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.ErrorCode switch
+            {
+                ApiErrorCodes.AuthEmailTaken => "Ett konto med den e-posten finns redan. Logga in eller använd glömt lösenord.",
+                ApiErrorCodes.ValidationError => "E-postadressen är ogiltig.",
+                _ => "Kunde inte skicka bekräftelse. Försök igen."
+            };
+        }
+        catch
+        {
+            _error = "Kunde inte ansluta till servern.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

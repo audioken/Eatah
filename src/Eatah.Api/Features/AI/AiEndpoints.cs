@@ -9,10 +9,12 @@ public static class AiEndpoints
     {
         app.MapPost("/api/dietprofiles/generate", GenerateDietProfile.Handle)
             .WithTags("DietProfiles")
+            .RequireAuthorization()
             .WithName(nameof(GenerateDietProfile));
 
         app.MapPost("/api/ai/meals/generate", GenerateAiMeal.Handle)
             .WithTags("AI")
+            .RequireAuthorization()
             .WithName(nameof(GenerateAiMeal));
 
         return app;

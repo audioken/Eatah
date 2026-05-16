@@ -21,12 +21,14 @@ Eatah är en veckoplaneringsapp för måltider. Användaren tilldelar maträtter
 Eatah.sln
 ├── src/
 │   ├── Eatah.Api/              # ASP.NET Core Minimal API
-│   │   ├── Common/             # Delad infrastruktur (Result, Error, ErrorCodes, extensions)
+│   │   ├── Common/             # Delad infrastruktur (Result, Error, ErrorCodes, extensions, ICurrentUser, IWorkspaceContext)
+│   │   │   ├── CurrentUser.cs
 │   │   │   ├── Error.cs
 │   │   │   ├── ErrorCodes.cs
 │   │   │   ├── Result.cs
 │   │   │   ├── ResultExtensions.cs
-│   │   │   └── ValidationExtensions.cs
+│   │   │   ├── ValidationExtensions.cs
+│   │   │   └── WorkspaceContext.cs
 │   │   ├── Features/
 │   │   │   ├── Meals/          # Endpoints, handlers, service, repo, DTOs, validator
 │   │   │   │   ├── MealEndpoints.cs      # Slim router + DI extension
@@ -42,8 +44,14 @@ Eatah.sln
 │   │   │   │   └── MealValidator.cs
 │   │   │   ├── WeeklyPlan/     # Samma struktur
 │   │   │   ├── DietRules/
-│   │   │   └── AI/
-│   │   ├── Middleware/         # Global error handling, logging
+│   │   │   ├── AI/
+│   │   │   ├── Auth/           # ASP.NET Identity-baserade endpoints (cookie eatah.auth)
+│   │   │   ├── Workspaces/     # Personal/Household workspaces + membership
+│   │   │   ├── Friends/        # Friend requests + foodbuddies via shared households
+│   │   │   ├── Notifications/  # Per-user notifikationer (jsonb payload)
+│   │   │   ├── Pantry/         # IngredientMaster + PantryItem + ShoppingItem
+│   │   │   └── Chat/           # Group-trådar per workspace (REST, ingen SignalR ännu)
+│   │   ├── Middleware/         # GlobalExceptionHandler + WorkspaceResolutionMiddleware
 │   │   └── Program.cs
 │   ├── Eatah.Domain/           # Entiteter, enums, value objects (INGA beroenden)
 │   │   └── Entities/
@@ -390,6 +398,54 @@ Validationsfel använder `HttpValidationProblemDetails` med `errors`-fältet:
 ```
 
 **Aldrig:** kasta exceptions för förväntade fel (not found, conflict). Reservera exceptions för genuint oväntade tillstånd som fångas av `GlobalExceptionHandler`.
+
+### Tillgängliga `Error`-fabriker
+
+- `Error.NotFound` → 404
+- `Error.Conflict` → 409
+- `Error.Validation` → 400 (med `validationErrors`-dict)
+- `Error.BadRequest` → 400
+- `Error.Forbidden` → 403
+- `Error.Unauthorized` → 401
+- `Error.Upstream` → 502
+- `Error.Unexpected` → 500
+
+`Error` har även en egen `ToHttpResult()`-extension så endpoints kan returnera ett standalone `Error` direkt utan att packa in det i `Result<T>` (t.ex. när userId saknas: `Error.Unauthorized(...).ToHttpResult()`).
+
+---
+
+## Multi-tenancy & workspace-scoping
+
+All användardata är scopad till en **workspace** (Personal eller Household). Klienten skickar headern `X-Eatah-Workspace: {guid}` på varje request. `WorkspaceResolutionMiddleware` (efter `UseAuthorization`):
+
+1. Läser headern, validerar att inloggad användare är medlem.
+2. Om headern saknas → fallback till användarens Personal workspace.
+3. Om headern är ogiltig eller användaren inte är medlem → 403 `workspace_access_denied`.
+4. Sätter `IWorkspaceContext.CurrentWorkspaceId`.
+
+### Repository- och service-mönster
+
+**Inga EF global query filters.** Filtrera ALLTID explicit i repos/services:
+
+```csharp
+// Läsning (system + workspace-ägt synligt):
+var wsId = _workspace.CurrentWorkspaceId;
+return await _db.Meals.Where(m => m.WorkspaceId == null || m.WorkspaceId == wsId).ToListAsync(ct);
+
+// Skrivning (kräver aktiv workspace):
+meal.WorkspaceId ??= _workspace.RequireCurrent();
+```
+
+System-ägda entiteter (`WorkspaceId == null`) är seedade default-data som alla workspaces kan läsa men inte mutera. Workspace-ägda entiteter är fullt isolerade — inga cross-workspace queries.
+
+### Workspace-typer
+
+- **Personal** — skapas automatiskt vid `ConfirmEmailAndSetCredentials` via `WorkspaceService.EnsurePersonalAsync`.
+- **Household** — skapas på begäran (`POST /api/workspaces/households`) eller automatiskt vid första skickade vänförfrågan.
+
+### Testning
+
+Integrationstest-factoryn anropar `DataSeeder.EnsurePersonalWorkspaceAsync` så testanvändaren alltid har en aktiv workspace. `TestAuthHandler.TestUserId` är fix.
 
 ## Felhantering
 

@@ -7,7 +7,8 @@ public static class WeeklyPlanEndpoints
     public static IEndpointRouteBuilder MapWeeklyPlanEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/weeklyplans")
-            .WithTags("WeeklyPlans");
+            .WithTags("WeeklyPlans")
+            .RequireAuthorization();
 
         group.MapGet("/current", GetCurrentWeeklyPlan.Handle).WithName(nameof(GetCurrentWeeklyPlan));
         group.MapPost("/", CreateWeeklyPlan.Handle).WithName(nameof(CreateWeeklyPlan));

@@ -4,7 +4,7 @@ using Eatah.Client.Services.Contracts;
 
 namespace Eatah.Client.Services;
 
-public class ApiClient
+public partial class ApiClient
 {
     private static readonly JsonSerializerOptions ErrorJsonOptions = new(JsonSerializerDefaults.Web);
 

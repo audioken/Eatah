@@ -1,9 +1,15 @@
 using System.Reflection;
 using System.Threading.RateLimiting;
 using Eatah.Api.Features.AI;
+using Eatah.Api.Features.Auth;
+using Eatah.Api.Features.Chat;
 using Eatah.Api.Features.DietRules;
+using Eatah.Api.Features.Friends;
 using Eatah.Api.Features.Meals;
+using Eatah.Api.Features.Notifications;
+using Eatah.Api.Features.Pantry;
 using Eatah.Api.Features.WeeklyPlan;
+using Eatah.Api.Features.Workspaces;
 using Eatah.Api.Middleware;
 using Eatah.Infrastructure;
 using Eatah.Infrastructure.Persistence;
@@ -44,10 +50,17 @@ if (!builder.Environment.IsEnvironment("Testing"))
     builder.Services.AddInfrastructure(builder.Configuration);
 }
 
+builder.Services.AddAuthFeature(builder.Configuration);
+
+builder.Services.AddWorkspaceFeature();
 builder.Services.AddMealFeature();
 builder.Services.AddWeeklyPlanFeature();
 builder.Services.AddDietRuleFeature();
 builder.Services.AddAiFeature(builder.Configuration);
+builder.Services.AddNotificationFeature();
+builder.Services.AddFriendFeature();
+builder.Services.AddPantryFeature();
+builder.Services.AddChatFeature();
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
@@ -110,6 +123,9 @@ app.UseSerilogRequestLogging();
 app.UseExceptionHandler();
 app.UseCors(CorsPolicyName);
 app.UseRateLimiter();
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseWorkspaceResolution();
 
 if (app.Environment.IsDevelopment())
 {
@@ -123,16 +139,26 @@ if (!app.Environment.IsEnvironment("Testing"))
     var dbContext = scope.ServiceProvider.GetRequiredService<EatahDbContext>();
     await dbContext.Database.MigrateAsync();
     await DataSeeder.SeedAsync(dbContext);
+    if (app.Environment.IsDevelopment())
+    {
+        await DataSeeder.SeedDevUserAsync(scope.ServiceProvider);
+    }
 }
 
 app.UseHttpsRedirection();
 
+app.MapAuthEndpoints();
 app.MapHealthChecks("/health");
 
+app.MapWorkspaceEndpoints();
 app.MapMealEndpoints();
 app.MapWeeklyPlanEndpoints();
 app.MapDietRuleEndpoints();
 app.MapAiEndpoints();
+app.MapNotificationEndpoints();
+app.MapFriendEndpoints();
+app.MapPantryEndpoints();
+app.MapChatEndpoints();
 
 app.Run();
 

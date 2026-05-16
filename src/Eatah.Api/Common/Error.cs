@@ -17,6 +17,12 @@ public sealed record Error(
     public static Error Conflict(string code, string message) =>
         new(code, message, StatusCodes.Status409Conflict);
 
+    public static Error Forbidden(string code, string message) =>
+        new(code, message, StatusCodes.Status403Forbidden);
+
+    public static Error Unauthorized(string code, string message) =>
+        new(code, message, StatusCodes.Status401Unauthorized);
+
     public static Error Validation(IReadOnlyDictionary<string, string[]> errors) =>
         new(ErrorCodes.ValidationError, "One or more validation errors occurred.",
             StatusCodes.Status400BadRequest, errors);

@@ -1,4 +1,6 @@
 using Eatah.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -20,6 +22,18 @@ public class EatahWebApplicationFactory : WebApplicationFactory<Program>
         {
             services.AddDbContext<EatahDbContext>(options =>
                 options.UseInMemoryDatabase(_databaseName));
+
+            // Replace the default authentication scheme with a test handler so
+            // [Authorize]/RequireAuthorization endpoints succeed without a real cookie.
+            services.AddAuthentication(TestAuthHandler.SchemeName)
+                .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });
+
+            services.AddAuthorization(options =>
+            {
+                options.DefaultPolicy = new AuthorizationPolicyBuilder(TestAuthHandler.SchemeName)
+                    .RequireAuthenticatedUser()
+                    .Build();
+            });
         });
     }
 
@@ -30,6 +44,7 @@ public class EatahWebApplicationFactory : WebApplicationFactory<Program>
         var db = scope.ServiceProvider.GetRequiredService<EatahDbContext>();
         db.Database.EnsureCreated();
         DataSeeder.SeedAsync(db).GetAwaiter().GetResult();
+        DataSeeder.EnsurePersonalWorkspaceAsync(db, TestAuthHandler.TestUserId, TestAuthHandler.TestUserDisplayName).GetAwaiter().GetResult();
         return host;
     }
 

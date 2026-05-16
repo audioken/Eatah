@@ -1,0 +1,90 @@
+@page "/auth/login"
+@layout EmptyAuthLayout
+@inject AuthState AuthState
+@inject NavigationManager Nav
+@inject ToastService Toast
+
+<div class="eatah-auth-page">
+    <div class="eatah-auth-card">
+        <h1 class="eatah-auth-card__title">Logga in</h1>
+        <p class="eatah-auth-card__subtitle">Välkommen tillbaka till Eatah.</p>
+
+        <form @onsubmit="HandleSubmit" @onsubmit:preventDefault>
+            <label class="eatah-auth-field">
+                <span class="eatah-auth-field__label">E-post eller användarnamn</span>
+                <input type="text" class="eatah-auth-field__input" value="@_identifier"
+                       @oninput="e => _identifier = e.Value?.ToString() ?? string.Empty" autocomplete="username"
+                       required />
+            </label>
+
+            <label class="eatah-auth-field">
+                <span class="eatah-auth-field__label">Lösenord</span>
+                <PasswordInput Value="@_password" ValueChanged="v => _password = v" Autocomplete="current-password" />
+            </label>
+
+            <label class="eatah-auth-checkbox">
+                <input type="checkbox" checked="@_remember" @onchange="e => _remember = (bool)(e.Value ?? false)" />
+                <span>Kom ihåg mig</span>
+            </label>
+
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <div class="eatah-auth-error">@_error</div>
+            }
+
+            <button type="submit" class="eatah-auth-button" disabled="@_busy">
+                @(_busy ? "Loggar in…" : "Logga in")
+            </button>
+        </form>
+
+        <div class="eatah-auth-card__links">
+            <a href="/auth/register">Skapa konto</a>
+            <a href="/auth/forgot-password">Glömt lösenord?</a>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _identifier = string.Empty;
+    private string _password = string.Empty;
+    private bool _remember = true;
+    private bool _busy;
+    private string? _error;
+
+    private async Task HandleSubmit()
+    {
+        if (_busy) return;
+        _error = null;
+
+        if (string.IsNullOrWhiteSpace(_identifier) || string.IsNullOrWhiteSpace(_password))
+        {
+            _error = "Fyll i båda fälten.";
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await AuthState.LoginAsync(new LoginRequest(_identifier.Trim(), _password, _remember));
+            Toast.Show($"Välkommen, {AuthState.CurrentUser?.DisplayName}!");
+            Nav.NavigateTo("/", forceLoad: false);
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.ErrorCode switch
+            {
+                ApiErrorCodes.AuthEmailNotConfirmed => "E-postadressen är inte bekräftad ännu. Kontrollera din inbox.",
+                ApiErrorCodes.AuthInvalidCredentials => "Fel e-post/användarnamn eller lösenord.",
+                _ => "Inloggningen misslyckades. Försök igen."
+            };
+        }
+        catch
+        {
+            _error = "Kunde inte ansluta till servern.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

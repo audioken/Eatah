@@ -28,6 +28,9 @@ public static class MauiProgram
 		builder.Services.AddSingleton<IUserPreferences, MauiUserPreferences>();
 		builder.Services.AddTransient<LoadingHttpMessageHandler>();
 
+		// Shared cookie jar so the auth cookie survives across requests within the app session.
+		builder.Services.AddSingleton(new System.Net.CookieContainer());
+
 #if ANDROID
 		builder.Services.AddSingleton<ISafeAreaInsetsProvider, Eatah.Client.Platforms.Android.AndroidSafeAreaInsetsProvider>();
 #else
@@ -38,7 +41,15 @@ public static class MauiProgram
 		{
 			client.BaseAddress = ApiClientOptions.GetBaseAddress();
 		})
+		.ConfigurePrimaryHttpMessageHandler(sp => new HttpClientHandler
+		{
+			CookieContainer = sp.GetRequiredService<System.Net.CookieContainer>(),
+			UseCookies = true,
+			AllowAutoRedirect = false
+		})
 		.AddHttpMessageHandler<LoadingHttpMessageHandler>();
+
+		builder.Services.AddSingleton<AuthState>();
 
 		return builder.Build();
 	}

@@ -1,0 +1,32 @@
+@inject AuthState AuthState
+@implements IDisposable
+
+@if (!AuthState.IsInitialized)
+{
+    <div class="eatah-auth-loading">
+        <p>Laddar…</p>
+    </div>
+}
+else if (AuthState.IsAuthenticated)
+{
+    @ChildContent
+}
+else
+{
+    <Login />
+}
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthState.OnChange += StateHasChanged;
+        await AuthState.InitializeAsync();
+    }
+
+    public void Dispose()
+    {
+        AuthState.OnChange -= StateHasChanged;
+    }
+}
