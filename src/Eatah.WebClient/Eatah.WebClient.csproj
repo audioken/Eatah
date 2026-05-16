@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Eatah.Client</RootNamespace>
+    <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
+  </ItemGroup>
+
+  <!--
+    Share all UI code with the MAUI Blazor Hybrid client (Eatah.Client) via linked items.
+    Anything MAUI-specific (Platforms/, MauiProgram.cs, App.xaml*, MainPage.xaml*, Main.razor,
+    MauiUserPreferences.cs) is excluded; the WebClient supplies its own equivalents.
+  -->
+  <ItemGroup>
+    <!-- Shared C# code -->
+    <Compile Include="..\Eatah.Client\Services\**\*.cs"
+             Exclude="..\Eatah.Client\Services\MauiUserPreferences.cs;..\Eatah.Client\Services\ApiClientOptions.cs"
+             LinkBase="Services" />
+
+    <!-- Shared Razor components -->
+    <Content Include="..\Eatah.Client\Components\**\*.razor" LinkBase="Components" />
+    <Content Include="..\Eatah.Client\Components\**\*.razor.css" LinkBase="Components" />
+    <Compile Include="..\Eatah.Client\Components\**\*.cs" LinkBase="Components" />
+
+    <!-- Shared Pages -->
+    <Content Include="..\Eatah.Client\Pages\**\*.razor" LinkBase="Pages" />
+
+    <!-- Shared Shared/ (layout, nav, loading indicator) -->
+    <Content Include="..\Eatah.Client\Shared\**\*.razor" LinkBase="Shared" />
+    <Content Include="..\Eatah.Client\Shared\**\*.razor.css" LinkBase="Shared" />
+
+    <!-- _Imports.razor – exact same usings -->
+    <Content Include="..\Eatah.Client\_Imports.razor" Link="_Imports.razor" />
+  </ItemGroup>
+
+</Project>

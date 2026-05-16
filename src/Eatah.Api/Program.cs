@@ -52,6 +52,36 @@ builder.Services.AddAiFeature(builder.Configuration);
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
+// CORS – allow browser clients (Blazor WASM / web app).
+// In production, configure Cors:AllowedOrigins in appsettings / environment.
+const string CorsPolicyName = "WebClients";
+builder.Services.AddCors(cors =>
+{
+    cors.AddPolicy(CorsPolicyName, policy =>
+    {
+        if (builder.Environment.IsDevelopment())
+        {
+            // Dev: allow any localhost origin so the WASM dev server can connect.
+            policy.SetIsOriginAllowed(origin =>
+            {
+                var uri = new Uri(origin);
+                return uri.Host is "localhost" or "127.0.0.1" or "::1";
+            })
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+        }
+        else
+        {
+            var origins = builder.Configuration
+                .GetSection("Cors:AllowedOrigins")
+                .Get<string[]>() ?? [];
+            policy.WithOrigins(origins)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        }
+    });
+});
+
 var dbConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 var healthChecks = builder.Services.AddHealthChecks();
 if (!string.IsNullOrWhiteSpace(dbConnectionString))
@@ -78,6 +108,7 @@ var app = builder.Build();
 
 app.UseSerilogRequestLogging();
 app.UseExceptionHandler();
+app.UseCors(CorsPolicyName);
 app.UseRateLimiter();
 
 if (app.Environment.IsDevelopment())

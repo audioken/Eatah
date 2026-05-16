@@ -1,0 +1,21 @@
+{
+  "name": "Eatah",
+  "short_name": "Eatah",
+  "id": "/",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1f2a23",
+  "theme_color": "#5AAE00",
+  "description": "Veckoplanering för måltider – Eatah",
+  "lang": "sv-SE",
+  "icons": [
+    {
+      "src": "icons/app-icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ]
+}

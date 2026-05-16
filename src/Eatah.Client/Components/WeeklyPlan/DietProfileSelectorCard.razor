@@ -1,10 +1,10 @@
 @namespace Eatah.Client.Components.WeeklyPlan
 @using System.Globalization
 @using Eatah.Client.Services
-@using Microsoft.Maui.Storage
 @implements IDisposable
 @inject ApiClient Api
 @inject ToastService Toasts
+@inject IUserPreferences Preferences
 
 <div class="eatah-card eatah-diet-card">
     <div class="eatah-diet-card__left">
@@ -219,28 +219,14 @@
         return string.Join("|", plan.Days.OrderBy(d => d.DayOfWeek).Select(d => d.MealId?.ToString() ?? "-"));
     }
 
-    private static Guid? LoadSavedProfileId()
+    private Guid? LoadSavedProfileId()
     {
-        try
-        {
-            var raw = Preferences.Default.Get(PreferenceKey, string.Empty);
-            return Guid.TryParse(raw, out var id) ? id : null;
-        }
-        catch
-        {
-            return null;
-        }
+        var raw = Preferences.Get(PreferenceKey);
+        return Guid.TryParse(raw, out var id) ? id : null;
     }
 
-    private static void SaveSelectedProfileId(Guid id)
+    private void SaveSelectedProfileId(Guid id)
     {
-        try
-        {
-            Preferences.Default.Set(PreferenceKey, id.ToString());
-        }
-        catch
-        {
-            // Preferences not available in this host – best-effort persistence.
-        }
+        Preferences.Set(PreferenceKey, id.ToString());
     }
 }
