@@ -13,6 +13,7 @@ builder.Services.AddSingleton<IngredientCheckState>();
 builder.Services.AddSingleton<ModalService>();
 builder.Services.AddSingleton<ToastService>();
 builder.Services.AddSingleton<HeaderState>();
+builder.Services.AddSingleton<AuthState>();
 builder.Services.AddSingleton<ISafeAreaInsetsProvider, DefaultSafeAreaInsetsProvider>();
 builder.Services.AddSingleton<IUserPreferences, LocalStorageUserPreferences>();
 builder.Services.AddTransient<LoadingHttpMessageHandler>();

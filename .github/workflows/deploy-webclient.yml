@@ -27,6 +27,9 @@ jobs:
       - name: Publish WebClient
         run: dotnet publish src/Eatah.WebClient/Eatah.WebClient.csproj -c Release -o publish
 
+      - name: Disable Jekyll (allow _framework/ to be served)
+        run: touch publish/wwwroot/.nojekyll
+
       - name: Fix base href for GitHub Pages
         run: sed -i 's|<base href="/" />|<base href="/Eatah/" />|g' publish/wwwroot/index.html
 
