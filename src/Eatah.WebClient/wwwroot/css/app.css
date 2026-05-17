@@ -776,3 +776,488 @@ body.eatah-modal-open {
 
 .eatah-username-input__hint.is-ok { color: #1f5132; opacity: 1; }
 .eatah-username-input__hint.is-err { color: #a52234; opacity: 1; }
+
+/* ============================================================
+   Workspace Picker (Phase 6)
+   ============================================================ */
+.eatah-workspace-picker {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.eatah-workspace-picker__btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: transparent;
+    border: none;
+    color: #FFFFFF;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 4px 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.eatah-workspace-picker__btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.eatah-workspace-picker__chevron {
+    transition: transform 0.2s;
+    opacity: 0.7;
+}
+
+.eatah-workspace-picker__chevron--open {
+    transform: rotate(180deg);
+}
+
+.eatah-workspace-picker__dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 160px;
+    background: rgba(40, 52, 38, 0.97);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    overflow: hidden;
+    z-index: 200;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    animation: eatah-fade-in 0.12s ease-out;
+}
+
+.eatah-workspace-picker__backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 199;
+}
+
+.eatah-workspace-picker__option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 10px 14px;
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.85);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.12s;
+}
+
+.eatah-workspace-picker__option:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.eatah-workspace-picker__option--active {
+    color: #D1FFCD;
+}
+
+/* ============================================================
+   Notifications Bell + Dropdown (Phase 6)
+   ============================================================ */
+.eatah-notif-bell {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    cursor: pointer;
+    color: #FFFFFF;
+}
+
+.eatah-notif-bell__badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: #e53e3e;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 999px;
+    min-width: 16px;
+    text-align: center;
+}
+
+.eatah-notif-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 149;
+}
+
+.eatah-notif-dropdown {
+    position: fixed;
+    top: calc(var(--header-height) + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 8px);
+    right: 12px;
+    width: 300px;
+    max-height: 400px;
+    background: rgba(40, 52, 38, 0.97);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    z-index: 150;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    animation: eatah-slide-up 0.15s ease-out;
+}
+
+.eatah-notif-dropdown__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.eatah-notif-dropdown__mark-all {
+    background: transparent;
+    border: none;
+    color: rgba(209, 255, 205, 0.8);
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 0;
+}
+
+.eatah-notif-dropdown__list {
+    overflow-y: auto;
+    flex: 1;
+}
+
+.eatah-notif-dropdown__empty {
+    padding: 20px 14px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 13px;
+    margin: 0;
+}
+
+.eatah-notif-item {
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    transition: background 0.1s;
+}
+
+.eatah-notif-item--unread {
+    background: rgba(90, 174, 0, 0.1);
+}
+
+.eatah-notif-item__content { flex: 1; }
+
+.eatah-notif-item__text {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 13px;
+    margin: 0 0 3px;
+    line-height: 1.35;
+}
+
+.eatah-notif-item__time {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.eatah-notif-item__actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.eatah-notif-item__btn {
+    flex: 1;
+    padding: 6px 8px;
+    border: none;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.1s;
+}
+
+.eatah-notif-item__btn:hover { opacity: 0.85; }
+
+.eatah-notif-item__btn--accept {
+    background: var(--color-brand);
+    color: #fff;
+}
+
+.eatah-notif-item__btn--reject {
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* ============================================================
+   Profile Modal (Phase 6)
+   ============================================================ */
+.eatah-profile-modal {
+    display: flex;
+    flex-direction: column;
+    max-height: 90dvh;
+}
+
+.eatah-profile-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px 14px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    flex-shrink: 0;
+}
+
+.eatah-profile-modal__title {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0;
+    color: var(--color-text-dark);
+}
+
+.eatah-profile-modal__close {
+    background: transparent;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    color: rgba(0, 0, 0, 0.5);
+    display: inline-flex;
+}
+
+.eatah-profile-modal__body {
+    overflow-y: auto;
+    flex: 1;
+    padding: 0 18px 24px;
+}
+
+.eatah-profile-modal__alert {
+    margin: 12px 0;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 14px;
+}
+
+.eatah-profile-modal__alert--error {
+    background: rgba(220, 38, 38, 0.08);
+    color: #991b1b;
+}
+
+.eatah-profile-modal__section {
+    padding: 16px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.eatah-profile-modal__section:last-child {
+    border-bottom: none;
+}
+
+.eatah-profile-modal__section-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--color-text-dark);
+    margin: 0 0 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    opacity: 0.6;
+}
+
+.eatah-profile-modal__section-title--danger {
+    color: #b91c1c;
+    opacity: 1;
+}
+
+.eatah-profile-modal__field-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.eatah-profile-modal__field {
+    flex: 1;
+    min-width: 0;
+}
+
+.eatah-profile-modal__field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(0, 0, 0, 0.5);
+    margin-bottom: 3px;
+}
+
+.eatah-profile-modal__field span {
+    font-size: 15px;
+    color: var(--color-text-dark);
+    font-weight: 500;
+}
+
+.eatah-profile-modal__input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: inherit;
+    background: #fff;
+    color: var(--color-text-dark);
+    box-sizing: border-box;
+}
+
+.eatah-profile-modal__input:focus {
+    outline: none;
+    border-color: var(--color-brand);
+    box-shadow: 0 0 0 2px rgba(90, 174, 0, 0.2);
+}
+
+.eatah-profile-modal__input--search {
+    width: 100%;
+}
+
+.eatah-profile-modal__edit-btn {
+    background: transparent;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    color: rgba(0, 0, 0, 0.4);
+    flex-shrink: 0;
+    display: inline-flex;
+}
+
+.eatah-profile-modal__edit-btn:hover { color: var(--color-text-dark); }
+
+.eatah-profile-modal__section-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    background: transparent;
+    border: none;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--color-text-dark);
+    cursor: pointer;
+    padding: 0;
+    text-align: left;
+}
+
+.eatah-profile-modal__sub {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.eatah-profile-modal__sub-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(0, 0, 0, 0.45);
+    margin: 12px 0 6px;
+}
+
+.eatah-profile-modal__search-row {
+    margin-bottom: 8px;
+}
+
+.eatah-profile-modal__user-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.eatah-profile-modal__user-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+}
+
+.eatah-profile-modal__user-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text-dark);
+}
+
+.eatah-profile-modal__empty {
+    font-size: 13px;
+    color: rgba(0, 0, 0, 0.45);
+    margin: 4px 0 0;
+}
+
+.eatah-profile-modal__field-error {
+    font-size: 12px;
+    color: #b91c1c;
+    margin: 2px 0 0;
+}
+
+.eatah-profile-modal__danger-desc {
+    font-size: 13px;
+    color: rgba(0, 0, 0, 0.6);
+    margin: 0 0 10px;
+}
+
+.eatah-profile-modal__danger-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.eatah-profile-modal__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 9px 16px;
+    border: none;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.1s;
+}
+
+.eatah-profile-modal__btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.eatah-profile-modal__btn--primary {
+    background: var(--color-brand);
+    color: #fff;
+    width: 100%;
+}
+
+.eatah-profile-modal__btn--small {
+    background: var(--color-brand);
+    color: #fff;
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+.eatah-profile-modal__btn--danger {
+    background: #b91c1c;
+    color: #fff;
+}
+
+.eatah-profile-modal__btn--ghost {
+    background: rgba(0, 0, 0, 0.06);
+    color: var(--color-text-dark);
+}
+
+.eatah-profile-modal__section--danger .eatah-profile-modal__section-title {
+    margin-bottom: 6px;
+}
