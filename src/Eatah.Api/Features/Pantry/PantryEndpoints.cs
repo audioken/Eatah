@@ -34,6 +34,8 @@ public static class PantryEndpoints
         });
         shop.MapPost("/sync", async (SyncWeeklyPlanRequest req, ShoppingListService svc, CancellationToken ct)
             => (await svc.SyncFromWeeklyPlanAsync(req.WeeklyPlanId, ct)).ToHttpResult());
+        shop.MapPost("/sync/current", async (ShoppingListService svc, CancellationToken ct)
+            => (await svc.SyncFromCurrentWeeklyPlanAsync(ct)).ToHttpResult());
     }
 
     public static IServiceCollection AddPantryFeature(this IServiceCollection services)

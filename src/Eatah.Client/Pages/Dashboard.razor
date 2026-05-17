@@ -3,6 +3,7 @@
 @inject HeaderState Header
 @inject WorkspaceState Workspaces
 @inject IngredientCheckState CheckState
+@inject ShoppingSyncService ShoppingSync
 @implements IDisposable
 
 <div class="max-w-6xl mx-auto">
@@ -147,6 +148,7 @@
 			if (updated is not null)
 			{
 				_plan = updated;
+				ShoppingSync.TriggerSync();
 			}
 		}
 		catch (Exception ex)
@@ -172,6 +174,7 @@
 			if (updated is not null)
 			{
 				_plan = updated;
+				ShoppingSync.TriggerSync();
 			}
 		}
 		catch (Exception ex)
@@ -220,6 +223,7 @@
 			if (updated is not null)
 			{
 				_plan = updated;
+				ShoppingSync.TriggerSync();
 			}
 		}
 		catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.MealsInsufficient)
@@ -306,6 +310,7 @@
 					if (updated is not null)
 					{
 						_plan = updated;
+						ShoppingSync.TriggerSync();
 					}
 				}
 			}
@@ -340,6 +345,7 @@
 				if (updated is not null)
 				{
 					_plan = updated;
+					ShoppingSync.TriggerSync();
 				}
 			}
 		}

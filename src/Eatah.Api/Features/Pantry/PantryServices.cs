@@ -1,3 +1,4 @@
+using System.Globalization;
 using Eatah.Api.Common;
 using Eatah.Domain.Entities;
 using Eatah.Infrastructure.Persistence;
@@ -200,8 +201,10 @@ public class ShoppingListService
     }
 
     /// <summary>
-    /// Reads all meals for the given weekly plan and adds any missing ingredients to the
-    /// shopping list (skipping those already in the pantry). Returns the full updated list.
+    /// Syncs the shopping list with the given weekly plan: adds ingredients for currently
+    /// planned meals (skipping pantry items) and removes any previously-synced items that
+    /// are no longer needed. Manually-added items (Notes == null) are never removed.
+    /// Returns the full updated list.
     /// </summary>
     public async Task<Result<List<ShoppingItemResponse>>> SyncFromWeeklyPlanAsync(Guid planId, CancellationToken ct)
     {
@@ -217,19 +220,9 @@ public class ShoppingListService
         if (plan is null)
             return Error.NotFound(ErrorCodes.WeeklyPlanNotFound, "Weekly plan not found.");
 
-        // Collect all ingredient names with the source meal label
-        var ingredientsToSync = plan.Days
-            .Where(d => d.Meal is not null)
-            .SelectMany(d => d.Meal!.Ingredients.Select(i => new { Name = i.Name.Trim(), MealName = d.Meal!.Name }))
-            .DistinctBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        if (ingredientsToSync.Count == 0)
-            return await GetAllAsync(ct);
-
         var weekLabel = $"v{plan.WeekNumber}";
 
-        // Load existing pantry and shopping items for this workspace in one pass
+        // Load existing pantry ingredient IDs and all shopping items (tracked for mutations)
         var pantryIngIds = await _db.PantryItems
             .Where(p => p.WorkspaceId == wsId)
             .Select(p => p.IngredientId)
@@ -239,41 +232,56 @@ public class ShoppingListService
             .Where(s => s.WorkspaceId == wsId)
             .ToDictionaryAsync(s => s.IngredientId, ct);
 
+        // Collect unique ingredient names with their source meal
+        var ingredientsToSync = plan.Days
+            .Where(d => d.Meal is not null)
+            .SelectMany(d => d.Meal!.Ingredients.Select(i => new { Name = i.Name.Trim(), MealName = d.Meal!.Name }))
+            .DistinctBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        // Phase 1: Resolve IngredientMaster IDs and build the "needed" set
+        var neededIngredientIds = new HashSet<Guid>();
+        var ingredientsWithMaster = new List<(string MealName, IngredientMaster Master)>();
+
         foreach (var item in ingredientsToSync)
         {
-            // Skip if already in pantry
-            // Resolve IngredientMaster by name (case-insensitive)
-            var ingName = item.Name;
             var master = await _db.IngredientMaster
                 .FirstOrDefaultAsync(i =>
                     (i.WorkspaceId == null || i.WorkspaceId == wsId) &&
-                    i.Name.ToLower() == ingName.ToLower(), ct);
+                    i.Name.ToLower() == item.Name.ToLower(), ct);
 
             if (master is null)
             {
-                // Create workspace-scoped ingredient
-                master = new IngredientMaster
-                {
-                    Id = Guid.NewGuid(),
-                    Name = ingName,
-                    WorkspaceId = wsId
-                };
+                master = new IngredientMaster { Id = Guid.NewGuid(), Name = item.Name, WorkspaceId = wsId };
                 _db.IngredientMaster.Add(master);
                 await _db.SaveChangesAsync(ct);
             }
 
-            if (pantryIngIds.Contains(master.Id))
-                continue;
+            if (!pantryIngIds.Contains(master.Id))
+            {
+                neededIngredientIds.Add(master.Id);
+                ingredientsWithMaster.Add((item.MealName, master));
+            }
+        }
 
-            var note = $"{item.MealName} {weekLabel}";
+        // Phase 2: Remove stale plan-derived items (have Notes, no longer needed by current plan)
+        foreach (var stale in existingShoppingByIngId.Values
+            .Where(s => s.Notes != null && !neededIngredientIds.Contains(s.IngredientId))
+            .ToList())
+        {
+            _db.ShoppingItems.Remove(stale);
+            existingShoppingByIngId.Remove(stale.IngredientId);
+        }
+
+        // Phase 3: Add or update shopping items for needed ingredients
+        foreach (var (mealName, master) in ingredientsWithMaster)
+        {
+            var note = $"{mealName} {weekLabel}";
 
             if (existingShoppingByIngId.TryGetValue(master.Id, out var existingShop))
             {
-                // Append note if not already there
-                if (existingShop.Notes is null || !existingShop.Notes.Contains(item.MealName))
-                {
-                    existingShop.Notes = existingShop.Notes is null ? note : $"{existingShop.Notes}, {item.MealName} {weekLabel}";
-                }
+                if (existingShop.Notes is null || !existingShop.Notes.Contains(mealName))
+                    existingShop.Notes = existingShop.Notes is null ? note : $"{existingShop.Notes}, {mealName} {weekLabel}";
                 if (existingShop.IsChecked)
                 {
                     existingShop.IsChecked = false;
@@ -298,5 +306,28 @@ public class ShoppingListService
 
         await _db.SaveChangesAsync(ct);
         return await GetAllAsync(ct);
+    }
+
+    /// <summary>
+    /// Syncs the shopping list with the current ISO week's plan.
+    /// If no plan exists for the current week, returns the list unchanged.
+    /// </summary>
+    public async Task<Result<List<ShoppingItemResponse>>> SyncFromCurrentWeeklyPlanAsync(CancellationToken ct)
+    {
+        var wsId = _ws.RequireCurrent();
+        var today = DateTime.UtcNow.Date;
+        var week = ISOWeek.GetWeekOfYear(today);
+        var year = ISOWeek.GetYear(today);
+
+        var planId = await _db.WeeklyPlans
+            .AsNoTracking()
+            .Where(p => p.WorkspaceId == wsId && p.Year == year && p.WeekNumber == week)
+            .Select(p => (Guid?)p.Id)
+            .FirstOrDefaultAsync(ct);
+
+        if (planId is null)
+            return Result<List<ShoppingItemResponse>>.Success(await GetAllAsync(ct));
+
+        return await SyncFromWeeklyPlanAsync(planId.Value, ct);
     }
 }

@@ -86,4 +86,11 @@ public partial class ApiClient
         await EnsureSuccessAsync(response, ct);
         return await response.Content.ReadFromJsonAsync<List<ShoppingItemResponse>>(cancellationToken: ct) ?? [];
     }
+
+    public async Task<List<ShoppingItemResponse>> SyncShoppingFromCurrentPlanAsync(CancellationToken ct = default)
+    {
+        var response = await _http.PostAsync("api/shoppinglist/sync/current", null, ct);
+        await EnsureSuccessAsync(response, ct);
+        return await response.Content.ReadFromJsonAsync<List<ShoppingItemResponse>>(cancellationToken: ct) ?? [];
+    }
 }

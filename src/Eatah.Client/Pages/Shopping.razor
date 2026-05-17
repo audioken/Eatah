@@ -5,6 +5,7 @@
 @inject PantryStateService PantryState
 @inject ShoppingStateService ShoppingState
 @inject IngredientCheckState CheckState
+@inject ShoppingSyncService ShoppingSync
 @implements IDisposable
 
 <div class="eatah-shopping-page">
@@ -220,7 +221,6 @@
     }
     private bool _isLoading = true;
     private string? _error;
-    private Guid? _currentPlanId;
 
     protected override void OnInitialized()
     {
@@ -247,15 +247,13 @@
         _error = null;
         try
         {
-            var planTask = Api.GetCurrentWeeklyPlanAsync();
             var pantryTask = Api.GetPantryAsync();
             var shoppingTask = Api.GetShoppingListAsync();
 
-            await Task.WhenAll(pantryTask, shoppingTask, planTask);
+            await Task.WhenAll(pantryTask, shoppingTask);
 
-            ShoppingState.SetShopping(await shoppingTask);
-            _currentPlanId = (await planTask)?.Id;
             PantryState.SetPantry(await pantryTask);
+            ShoppingState.SetShopping(await shoppingTask);
             ReinitGroups();
         }
         catch (Exception ex)
@@ -267,22 +265,8 @@
             _isLoading = false;
         }
 
-        // Auto-sync from meal plan silently in the background after initial data is shown
-        if (_currentPlanId.HasValue)
-            _ = SyncSilentlyAsync(_currentPlanId.Value);
-    }
-
-    private async Task SyncSilentlyAsync(Guid planId)
-    {
-        try
-        {
-            // ShoppingState.SetShopping fires OnShoppingChanged which calls ReinitGroups + StateHasChanged
-            ShoppingState.SetShopping(await Api.SyncShoppingFromWeeklyPlanAsync(planId));
-        }
-        catch
-        {
-            // Silent failure – don't interrupt the user
-        }
+        // Auto-sync from meal plan silently after initial data is shown
+        ShoppingSync.TriggerSync();
     }
 
     private async Task AddToPantryAsync(IngredientResponse ing)
@@ -314,8 +298,7 @@
             PantryState.RemoveItem(item.Id);
 
             // Re-sync so any newly missing ingredient appears on the shopping list immediately
-            if (_currentPlanId.HasValue)
-                _ = SyncSilentlyAsync(_currentPlanId.Value);
+            ShoppingSync.TriggerSync();
         }
         catch (Exception ex)
         {
