@@ -1,7 +1,6 @@
 using Eatah.Api.Features.Auth.Email;
 using Eatah.Infrastructure.Identity;
 using FluentValidation;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -80,7 +79,9 @@ public static class AuthServiceExtensions
                 ? "dev-only-secret-replace-in-production-minimum-32-chars"
                 : authSettings.JwtSecret);
 
-        services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+        // AddIdentity already called AddAuthentication with IdentityConstants.ApplicationScheme
+        // as the default. We just add JWT Bearer on top — do NOT pass a new default scheme.
+        services.AddAuthentication()
             .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, opts =>
             {
                 opts.TokenValidationParameters = new TokenValidationParameters
@@ -107,8 +108,8 @@ public static class AuthServiceExtensions
         services.AddAuthorization(opts =>
         {
             opts.DefaultPolicy = new AuthorizationPolicyBuilder(
-                    CookieAuthenticationDefaults.AuthenticationScheme,
-                    JwtBearerDefaults.AuthenticationScheme)
+                    IdentityConstants.ApplicationScheme,   // "Identity.Application" — cookie for MAUI
+                    JwtBearerDefaults.AuthenticationScheme) // "Bearer" — JWT for WebClient
                 .RequireAuthenticatedUser()
                 .Build();
         });
