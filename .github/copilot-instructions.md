@@ -11,7 +11,13 @@
 
 ## Projektöversikt
 
-Eatah är en veckoplaneringsapp för måltider. Användaren tilldelar maträtter till veckodagar, slumpar menyer och får feedback via ett kostregelssystem. Appen byggs med .NET 10, ASP.NET Core Minimal API, PostgreSQL och .NET MAUI Blazor Hybrid.
+Eatah är en veckoplaneringsapp för måltider. Användaren tilldelar maträtter till veckodagar, slumpar menyer och får feedback via ett kostregelssystem. Appen byggs med .NET 10, ASP.NET Core Minimal API, PostgreSQL, .NET MAUI Blazor Hybrid och Blazor WebAssembly.
+
+Det finns **två klientprojekt** som delar exakt samma UI-kod:
+- `Eatah.Client` – .NET MAUI Blazor Hybrid (iOS/Android/Mac/Windows)
+- `Eatah.WebClient` – Blazor WebAssembly, driftas på GitHub Pages (`audioken.github.io/Eatah/`)
+
+**Regel:** Varje ändring i `Eatah.Client` (komponenter, sidor, services, CSS) måste fungera i `Eatah.WebClient` också. Verifiera alltid att båda projekten bygger efter en ändring.
 
 ---
 
@@ -60,14 +66,22 @@ Eatah.sln
 │   │       ├── Configurations/
 │   │       ├── Migrations/
 │   │       └── EatahDbContext.cs
-│   └── Eatah.Client/           # .NET MAUI Blazor Hybrid
-│       ├── Pages/
-│       ├── Components/
-│       │   ├── WeeklyPlan/
-│       │   ├── Meals/
-│       │   └── DietRules/
-│       ├── Services/
+│   ├── Eatah.Client/           # .NET MAUI Blazor Hybrid (iOS/Android/Mac/Win)
+│   │   ├── Pages/
+│   │   ├── Components/
+│   │   │   ├── WeeklyPlan/
+│   │   │   ├── Meals/
+│   │   │   └── DietRules/
+│   │   ├── Services/
+│   │   └── wwwroot/
+│   │       └── css/
+│   │           └── app.css     # ENDA CSS-källan (länkas in i WebClient via .csproj)
+│   └── Eatah.WebClient/        # Blazor WASM – GitHub Pages (audioken.github.io/Eatah/)
+│       ├── Program.cs          # WASM-specifik DI-setup
 │       └── wwwroot/
+│           ├── index.html
+│           └── css/
+│               └── app.webclient.css  # WebClient-specifika overrides (laddas efter app.css)
 └── tests/
     └── Eatah.Api.Tests/
 ```
@@ -96,6 +110,7 @@ Api → Domain, Infrastructure
 Infrastructure → Domain
 Domain → (inga beroenden)
 Client → (kommunicerar med Api via HTTP)
+WebClient → länkar komponenter, sidor, services och CSS från Client via .csproj
 ```
 
 **Domain-projektet får ALDRIG ha beroenden mot andra projekt eller infrastrukturpaket.**
@@ -272,11 +287,24 @@ public class MealConfiguration : IEntityTypeConfiguration<Meal>
 
 - **Två lager**:
   - **Tailwind CDN** = layout & utility (flex, grid, padding, typografi-skala, spacing).
-  - **`wwwroot/css/app.css`** = visuell identitet (färger, gradients, radii, shadows, komponent-form). Definierar **design-tokens** som CSS custom properties under `:root` och **komponentklasser** som `.eatah-card`, `.eatah-navbar`, `.eatah-pill`, `.eatah-category-icon`.
+  - **`Eatah.Client/wwwroot/css/app.css`** = visuell identitet (färger, gradients, radii, shadows, komponent-form). Definierar **design-tokens** som CSS custom properties under `:root` och **komponentklasser** som `.eatah-card`, `.eatah-navbar`, `.eatah-pill`, `.eatah-category-icon`.
 - **Ingen inline styling**. Använd Tailwind för layout, komponentklasser för identitet. Inline `style=""` tillåts endast för dynamiska värden som inte kan uttryckas i CSS (t.ex. `--icon-url` på `<Icon>` eller en beräknad procent-bredd).
 - Naming på komponentklasser: `eatah-{component}__{element}--{modifier}` (BEM-light).
 - Mobile-first: designa för mobil först, lägg till breakpoints för desktop.
 - Konsekvent färgpalett via tokens i `app.css` (kategori­färger, brand, glas-gradient).
+
+### CSS-delning mellan Client och WebClient
+
+`Eatah.Client/wwwroot/css/app.css` är **enda källan för all CSS**. `Eatah.WebClient` har ingen lokal kopia — filen länkas in via `.csproj`:
+
+```xml
+<!-- Eatah.WebClient.csproj -->
+<Content Include="..\Eatah.Client\wwwroot\css\app.css" Link="wwwroot/css/app.css" />
+```
+
+`Eatah.WebClient/wwwroot/css/app.webclient.css` laddas _efter_ `app.css` och används **enbart** för WebClient-specifika overrides. Håll den minimal — lägg hellre ny CSS i `app.css` om den gäller båda klienterna.
+
+**Regel:** Lägg ALDRIG CSS i en separat `app.css` i `Eatah.WebClient`. Filen existerar inte — all ny CSS går i `Eatah.Client/wwwroot/css/app.css`.
 
 ### Layout-shell
 

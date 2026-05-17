@@ -6,7 +6,8 @@
 
 @if (IsOpen)
 {
-    <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4" @onclick="HandleClose">
+    <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4"
+         style="padding-bottom: max(1rem, var(--navbar-height, 64px));" @onclick="HandleClose">
         <div class="w-full max-w-[400px] rounded-[20px] border border-black/10 font-kanit overflow-hidden"
              style="background: linear-gradient(135deg, #839B7F 0%, #A8D1AA 91.83%); box-shadow: 0px 8px 24px rgba(0,0,0,0.35);"
              @onclick:stopPropagation="true">

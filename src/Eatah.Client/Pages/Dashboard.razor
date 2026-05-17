@@ -71,12 +71,23 @@
 
 	protected override async Task OnInitializedAsync()
 	{
+		Workspaces.OnChange += OnWorkspaceChanged;
 		await LoadAsync();
 	}
 
 	public void Dispose()
 	{
+		Workspaces.OnChange -= OnWorkspaceChanged;
 		Header.Clear();
+	}
+
+	private void OnWorkspaceChanged()
+	{
+		_ = InvokeAsync(async () =>
+		{
+			await LoadAsync();
+			StateHasChanged();
+		});
 	}
 
 	private void UpdateHeader()

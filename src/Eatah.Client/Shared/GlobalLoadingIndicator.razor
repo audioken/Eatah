@@ -1,12 +1,10 @@
 @implements IDisposable
 @inject LoadingState LoadingState
 
-@if (_visible)
-{
-    <div class="fixed top-0 left-0 right-0 z-50 pointer-events-none">
-        <div class="h-1 bg-brand-500 animate-pulse"></div>
-    </div>
-}
+<div
+    class="fixed top-0 left-0 right-0 z-[100] pointer-events-none transition-opacity duration-200 @(_visible ? "opacity-100" : "opacity-0")">
+    <div class="h-1 bg-brand-500 animate-pulse"></div>
+</div>
 
 @code {
     private bool _visible;
