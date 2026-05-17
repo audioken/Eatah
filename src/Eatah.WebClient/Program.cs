@@ -14,9 +14,11 @@ builder.Services.AddSingleton<ModalService>();
 builder.Services.AddSingleton<ToastService>();
 builder.Services.AddSingleton<HeaderState>();
 builder.Services.AddSingleton<AuthState>();
+builder.Services.AddSingleton<WorkspaceState>();
 builder.Services.AddSingleton<ISafeAreaInsetsProvider, DefaultSafeAreaInsetsProvider>();
 builder.Services.AddSingleton<IUserPreferences, LocalStorageUserPreferences>();
 builder.Services.AddTransient<LoadingHttpMessageHandler>();
+builder.Services.AddTransient<WorkspaceHeaderHandler>();
 
 // JWT Bearer auth — token is stored in localStorage and injected via TokenAuthorizationHandler.
 builder.Services.AddSingleton<ITokenStore, LocalStorageTokenStore>();
@@ -27,6 +29,7 @@ builder.Services.AddHttpClient<ApiClient>(client =>
         client.BaseAddress = WebApiClientOptions.GetBaseAddress(builder.HostEnvironment.BaseAddress);
     })
     .AddHttpMessageHandler<TokenAuthorizationHandler>()
+    .AddHttpMessageHandler<WorkspaceHeaderHandler>()
     .AddHttpMessageHandler<LoadingHttpMessageHandler>();
 
 await builder.Build().RunAsync();
