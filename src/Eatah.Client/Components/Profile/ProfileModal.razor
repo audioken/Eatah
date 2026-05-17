@@ -137,6 +137,15 @@
             }
         </section>
 
+        @* ── Sign out ── *@
+        <section class="eatah-profile-modal__section">
+            <button type="button" class="eatah-profile-modal__btn eatah-profile-modal__btn--ghost"
+                    @onclick="LogoutAsync">
+                <Icon Name="logout" Size="18" />
+                Logga ut
+            </button>
+        </section>
+
         @* ── Danger zone ── *@
         <section class="eatah-profile-modal__section eatah-profile-modal__section--danger">
             <h3 class="eatah-profile-modal__section-title eatah-profile-modal__section-title--danger">
@@ -203,6 +212,14 @@
     }
 
     private void Close() => Modals.Close(Instance!);
+
+    private async Task LogoutAsync()
+    {
+        await Auth.LogoutAsync();
+        Modals.Close(Instance!);
+        Workspaces.Reset();
+        Nav.NavigateTo(Nav.BaseUri, forceLoad: false);
+    }
 
     private void ToggleEditName()
     {

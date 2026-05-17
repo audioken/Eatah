@@ -74,7 +74,7 @@ h1:focus { outline: none; }
 .eatah-bg {
     position: fixed;
     inset: -22px -16px;
-    background: url('/images/bg.png') center / cover no-repeat;
+    background: url('../images/bg.png') center / cover no-repeat;
     filter: blur(4px);
     z-index: 0;
     pointer-events: none;
