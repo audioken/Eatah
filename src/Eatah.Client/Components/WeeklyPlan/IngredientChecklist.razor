@@ -3,6 +3,8 @@
 @implements IDisposable
 @inject ApiClient Api
 @inject IngredientCheckState CheckState
+@inject PantryStateService PantryState
+@inject ShoppingStateService ShoppingState
 
 @if (IsOpen)
 {
@@ -45,8 +47,10 @@
 
                     @* Left: Skafferi – ingredients already in pantry *@
                     <div>
-                        <div class="flex items-center gap-1.5 text-white/80 text-[11px] font-semibold uppercase tracking-wider mb-2 px-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="@IconPaths.CheckViewBox" fill="currentColor" class="w-3 h-3">
+                        <div
+                            class="flex items-center gap-1.5 text-white/80 text-[11px] font-semibold uppercase tracking-wider mb-2 px-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="@IconPaths.CheckViewBox" fill="currentColor"
+                                 class="w-3 h-3">
                                 <path d="@IconPaths.CheckPath" />
                             </svg>
                             Skafferi
@@ -57,22 +61,37 @@
                         }
                         @foreach (var name in PantryIngredients)
                         {
-                            <div class="flex items-center gap-2 px-2 py-[6px] rounded-[10px] bg-white/25 border border-white/20 mb-1.5">
+                            <div
+                                class="flex items-center gap-2 px-2 py-[6px] rounded-[10px] bg-white/25 border border-white/20 mb-1.5">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="@IconPaths.CheckViewBox" fill="#7CD331"
                                      class="w-[11px] h-[11px] flex-shrink-0">
                                     <path d="@IconPaths.CheckPath" />
                                 </svg>
-                                <span class="text-dayCardText/55 text-[13px] font-medium line-through leading-snug truncate">@name</span>
+                                <span
+                                class="text-dayCardText/55 text-[13px] font-medium line-through leading-snug truncate">@name</span>
                             </div>
                         }
                     </div>
 
                     @* Right: Köp – ingredients not yet in pantry *@
                     <div>
-                        <div class="flex items-center gap-1.5 text-white/80 text-[11px] font-semibold uppercase tracking-wider mb-2 px-1">
+                        <div
+                            class="flex items-center gap-1.5 text-white/80 text-[11px] font-semibold uppercase tracking-wider mb-2 px-1">
                             <Icon Name="basket" Size="12" CssClass="opacity-80" />
                             Köp
                         </div>
+                        @if (_selectedMissing.Count > 0)
+                        {
+                            <div class="eatah-checklist-actions mb-2">
+                                <button type="button" class="eatah-checklist-actions__btn eatah-checklist-actions__btn--primary"
+                                        @onclick="MoveSelectedToPantryAsync">
+                                    <Icon Name="arrow-left" Size="12" />
+                                    <span>Till skafferi</span>
+                                </button>
+                                <div class="eatah-checklist-actions__slot" />
+                                <div class="eatah-checklist-actions__slot" />
+                            </div>
+                        }
                         @if (!MissingIngredients.Any())
                         {
                             <div class="text-white/70 text-[12px] italic px-1 py-1">Allt klart ✓</div>
@@ -80,16 +99,20 @@
                         @foreach (var name in MissingIngredients)
                         {
                             var onList = _shoppingNames.Contains(name);
-                            <div class="flex items-center gap-2 px-2 py-[6px] rounded-[10px] border mb-1.5 @(onList ? "bg-white/35 border-white/30" : "bg-white/15 border-white/10")">
-                                @if (onList)
-                                {
-                                    <Icon Name="basket" Size="11" CssClass="text-dayCardText/60 flex-shrink-0" />
-                                }
-                                else
-                                {
-                                    <span class="text-[#F24E4E] text-[14px] font-bold leading-none flex-shrink-0">!</span>
-                                }
-                                <span class="text-dayCardText text-[13px] font-medium leading-snug truncate @(onList ? "opacity-80" : "opacity-60")">@name</span>
+                            var isSelected = _selectedMissing.Contains(name);
+                            var rowClass = isSelected ? "bg-white/50 border-white/60" : onList ? "bg-white/35 border-white/30" :
+              "bg-white/15 border-white/10";
+                            var selectClass = isSelected ? "eatah-checklist-select--active" : "";
+                            var textClass = isSelected ? "opacity-100" : onList ? "opacity-80" : "opacity-60";
+                            <div class="flex items-center gap-1.5 px-2 py-[6px] rounded-[10px] border mb-1.5 cursor-pointer @rowClass"
+                                 @onclick="() => ToggleMissingSelection(name)">
+                                <span class="eatah-checklist-select @selectClass">
+                                    @if (isSelected)
+                                    {
+                                        <Icon Name="check" Size="9" />
+                                    }
+                                </span>
+                                <span class="text-dayCardText text-[13px] font-medium leading-snug truncate @textClass">@name</span>
                             </div>
                         }
                     </div>
@@ -107,6 +130,8 @@
     [Parameter] public EventCallback OnClose { get; set; }
 
     private List<string>? _ingredients;
+    private Dictionary<string, Guid> _ingredientIds = new(StringComparer.OrdinalIgnoreCase);
+    private HashSet<string> _selectedMissing = new(StringComparer.OrdinalIgnoreCase);
     private HashSet<string> _shoppingNames = new(StringComparer.OrdinalIgnoreCase);
     private bool _isLoading;
     private Guid? _loadedFor;
@@ -124,8 +149,14 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        if (IsOpen && MealId is not null && MealId != _loadedFor)
+        if (!IsOpen)
         {
+            _selectedMissing.Clear();
+            return;
+        }
+        if (MealId is not null && MealId != _loadedFor)
+        {
+            _selectedMissing.Clear();
             await LoadAsync(MealId.Value);
         }
     }
@@ -142,10 +173,12 @@
             else
             {
                 var meal = await Api.GetMealAsync(mealId);
-                var names = meal?.Ingredients.Select(i => i.Name).ToList() ?? [];
+                var ingList = meal?.Ingredients ?? [];
+                var names = ingList.Select(i => i.Name).ToList();
                 CheckState.SetIngredients(mealId, names);
                 _ingredients = names;
             }
+            _ingredientIds.Clear(); // always re-resolve master IDs lazily on move
 
             // Fetch fresh shopping list so the Köp column shows a cart icon for items
             // already queued, vs "!" for ingredients not covered anywhere.
@@ -165,6 +198,60 @@
     }
 
     private Task HandleClose() => OnClose.InvokeAsync();
+
+    private void ToggleMissingSelection(string name)
+    {
+        if (!_selectedMissing.Remove(name))
+            _selectedMissing.Add(name);
+    }
+
+    private async Task MoveSelectedToPantryAsync()
+    {
+        var toMove = _selectedMissing.ToList();
+        _selectedMissing.Clear();
+
+        foreach (var name in toMove)
+        {
+            try
+            {
+                // Meal.Ingredients use ephemeral per-meal GUIDs, not IngredientMaster IDs.
+                // Always resolve via the catalog so pantry gets the correct master ID.
+                if (!_ingredientIds.TryGetValue(name, out var ingredientId))
+                {
+                    var matches = await Api.SearchIngredientsAsync(name);
+                    var master = matches.FirstOrDefault(i => string.Equals(i.Name, name, StringComparison.OrdinalIgnoreCase));
+                    if (master is null) continue;
+                    ingredientId = master.Id;
+                    _ingredientIds[name] = ingredientId;
+                }
+
+                PantryItemResponse? pantryItem = null;
+                try
+                {
+                    pantryItem = await Api.AddToPantryAsync(ingredientId);
+                }
+                catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.PantryItemAlreadyExists) { }
+
+                if (pantryItem is not null)
+                {
+                    PantryState.AddItem(pantryItem);
+                    CheckState.AddPantryName(name);
+                    // Remove from shopping list if it was queued there
+                    var shoppingItem = ShoppingState.Items.FirstOrDefault(s => s.IngredientId == ingredientId);
+                    if (shoppingItem is not null)
+                    {
+                        try { await Api.RemoveFromShoppingListAsync(shoppingItem.Id); } catch { }
+                        ShoppingState.RemoveItem(shoppingItem.Id);
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // Re-add to selection so user can retry
+                _selectedMissing.Add(name);
+            }
+        }
+    }
 
     public void Dispose()
     {

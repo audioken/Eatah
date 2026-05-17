@@ -69,6 +69,22 @@ public class IngredientCheckState
     }
 
     /// <summary>
+    /// Marks a single ingredient name as pantry-present without rebuilding the full set.
+    /// Call this after a successful AddToPantry API call for real-time UI sync.
+    /// </summary>
+    public void AddPantryName(string name)
+    {
+        _pantryNames.Add(name);
+        // Pre-check this ingredient in every loaded meal that contains it.
+        foreach (var (mealId, ings) in _ingredients)
+        {
+            if (ings.Contains(name, StringComparer.OrdinalIgnoreCase))
+                GetChecked(mealId).Add(name);
+        }
+        OnChange?.Invoke();
+    }
+
+    /// <summary>
     /// Returns true when all known ingredients for the meal are checked.
     /// Returns false when at least one is missing (or when ingredients are not yet known).
     /// </summary>

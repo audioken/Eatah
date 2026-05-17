@@ -2,6 +2,9 @@
 @inject ApiClient Api
 @inject ToastService Toasts
 @inject HeaderState Header
+@inject PantryStateService PantryState
+@inject ShoppingStateService ShoppingState
+@inject IngredientCheckState CheckState
 @implements IDisposable
 
 <div class="eatah-shopping-page">
@@ -42,7 +45,7 @@
                 <div class="eatah-shopping-col__header">
                     <Icon Name="house" Size="16" CssClass="eatah-shopping-col__header-icon" />
                     <span>Skafferi</span>
-                    <span class="eatah-shopping-col__count">@_pantry.Count</span>
+                    <span class="eatah-shopping-col__count">@PantryState.Items.Count</span>
                 </div>
 
                 <div class="eatah-shopping-col__add">
@@ -50,13 +53,13 @@
                 </div>
 
                 <div class="eatah-shopping-col__list">
-                    @if (_pantry.Count == 0)
+                    @if (!PantryState.Items.Any())
                     {
                         <p class="eatah-shopping-col__empty">Skafferiet är tomt.</p>
                     }
                     else
                     {
-                        @foreach (var item in _pantry)
+                        @foreach (var item in PantryState.Items)
                         {
                             <div class="eatah-shopping-item eatah-shopping-item--pantry">
                                 <div class="eatah-shopping-item__body">
@@ -78,15 +81,27 @@
                 <div class="eatah-shopping-col__header">
                     <Icon Name="basket" Size="16" CssClass="eatah-shopping-col__header-icon" />
                     <span>Köplista</span>
-                    <span class="eatah-shopping-col__count">@_shopping.Count(s => !s.IsChecked)</span>
+                    <span class="eatah-shopping-col__count">@ShoppingState.Items.Count(s => !s.IsChecked)</span>
                 </div>
 
                 <div class="eatah-shopping-col__add">
                     <IngredientSearch Placeholder="Lägg till på köplistan…" OnSelected="AddToShoppingAsync" />
                 </div>
+                @if (_selectedShoppingItems.Count > 0)
+                {
+                    <div class="eatah-shopping-actions">
+                        <button type="button" class="eatah-shopping-actions__btn eatah-shopping-actions__btn--primary"
+                                @onclick="MoveSelectedToPantryAsync">
+                            <Icon Name="arrow-left" Size="13" />
+                            <span>Flytta till skafferi</span>
+                        </button>
+                        <div class="eatah-shopping-actions__slot" />
+                        <div class="eatah-shopping-actions__slot" />
+                    </div>
+                }
 
                 <div class="eatah-shopping-col__list">
-                    @if (_shopping.Count == 0)
+                    @if (ShoppingState.Items.Count == 0)
                     {
                         <p class="eatah-shopping-col__empty">Köplistan är tom.</p>
                     }
@@ -112,11 +127,16 @@
                                         <div class="eatah-shopping-group__items">
                                             @foreach (var item in group)
                                             {
-                                                <div class="eatah-shopping-item eatah-shopping-item--unchecked">
-                                                    <button type="button" class="eatah-shopping-item__check"
-                                                            title="Markera som köpt"
-                                                            @onclick="() => CheckItemAsync(item)">
-                                                        <span class="eatah-shopping-item__check-circle" />
+                                                var isSelected = _selectedShoppingItems.Contains(item.Id);
+                                                var itemSelClass = isSelected ? "eatah-shopping-item--selected" : "";
+                                                var btnSelClass = isSelected ? "eatah-shopping-item__select--active" : "";
+                                                <div class="eatah-shopping-item eatah-shopping-item--unchecked @itemSelClass">
+                                                    <button type="button" class="eatah-shopping-item__select @btnSelClass"
+                                                            @onclick="() => ToggleShoppingSelection(item.Id)">
+                                                        @if (isSelected)
+                                                        {
+                                                            <Icon Name="check" Size="10" />
+                                                        }
                                                     </button>
                                                     <div class="eatah-shopping-item__body">
                                                         <span class="eatah-shopping-item__name">@item.Name</span>
@@ -135,12 +155,18 @@
                         }
                         else
                         {
-                            @foreach (var item in _shopping.Where(s => !s.IsChecked))
+                            @foreach (var item in ShoppingState.Items.Where(s => !s.IsChecked))
                             {
-                                <div class="eatah-shopping-item eatah-shopping-item--unchecked">
-                                    <button type="button" class="eatah-shopping-item__check" title="Markera som köpt"
-                                            @onclick="() => CheckItemAsync(item)">
-                                        <span class="eatah-shopping-item__check-circle" />
+                                var isSelected = _selectedShoppingItems.Contains(item.Id);
+                                var itemSelClass = isSelected ? "eatah-shopping-item--selected" : "";
+                                var btnSelClass = isSelected ? "eatah-shopping-item__select--active" : "";
+                                <div class="eatah-shopping-item eatah-shopping-item--unchecked @itemSelClass">
+                                    <button type="button" class="eatah-shopping-item__select @btnSelClass"
+                                            @onclick="() => ToggleShoppingSelection(item.Id)">
+                                        @if (isSelected)
+                                        {
+                                            <Icon Name="check" Size="10" />
+                                        }
                                     </button>
                                     <div class="eatah-shopping-item__body">
                                         <span class="eatah-shopping-item__name">@item.Name</span>
@@ -158,7 +184,7 @@
                         }
 
                         <!-- Checked items (grayed out) -->
-                        @if (_shopping.Any(s => s.IsChecked))
+                        @if (ShoppingState.Items.Any(s => s.IsChecked))
                         {
                             <div class="eatah-shopping-checked-divider">
                                 <span>Köpt</span>
@@ -166,7 +192,7 @@
                                     Rensa
                                 </button>
                             </div>
-                            @foreach (var item in _shopping.Where(s => s.IsChecked))
+                            @foreach (var item in ShoppingState.Items.Where(s => s.IsChecked))
                             {
                                 <div class="eatah-shopping-item eatah-shopping-item--checked">
                                     <button type="button" class="eatah-shopping-item__check eatah-shopping-item__check--done"
@@ -191,12 +217,11 @@
 </div>
 
 @code {
-    private List<PantryItemResponse> _pantry = [];
-    private List<ShoppingItemResponse> _shopping = [];
+    private HashSet<Guid> _selectedShoppingItems = [];
     private HashSet<string> _expandedGroups = new(StringComparer.OrdinalIgnoreCase);
 
     private IList<IGrouping<string?, ShoppingItemResponse>> UncheckedGroups =>
-        _shopping
+        ShoppingState.Items
             .Where(s => !s.IsChecked)
             .GroupBy(s => ExtractMealName(s.Notes))
             .OrderBy(g => g.Key is null ? 1 : 0)
@@ -219,9 +244,19 @@
     protected override void OnInitialized()
     {
         Header.Set(center: @<span>Köplista</span>);
+        PantryState.OnChanged += OnPantryChanged;
+        ShoppingState.OnChanged += OnShoppingChanged;
     }
 
-    public void Dispose() => Header.Clear();
+    public void Dispose()
+    {
+        Header.Clear();
+        PantryState.OnChanged -= OnPantryChanged;
+        ShoppingState.OnChanged -= OnShoppingChanged;
+    }
+
+    private void OnPantryChanged() => InvokeAsync(StateHasChanged);
+    private void OnShoppingChanged() { ReinitGroups(); InvokeAsync(StateHasChanged); }
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -237,9 +272,9 @@
 
             await Task.WhenAll(pantryTask, shoppingTask, planTask);
 
-            _pantry = await pantryTask;
-            _shopping = await shoppingTask;
+            ShoppingState.SetShopping(await shoppingTask);
             _currentPlanId = (await planTask)?.Id;
+            PantryState.SetPantry(await pantryTask);
             ReinitGroups();
         }
         catch (Exception ex)
@@ -259,7 +294,7 @@
         _error = null;
         try
         {
-            _shopping = await Api.SyncShoppingFromWeeklyPlanAsync(_currentPlanId.Value);
+            ShoppingState.SetShopping(await Api.SyncShoppingFromWeeklyPlanAsync(_currentPlanId.Value));
             ReinitGroups();
             Toasts.Show("Köplistan är synkad med veckans matplan.");
         }
@@ -278,8 +313,11 @@
         try
         {
             var item = await Api.AddToPantryAsync(ing.Id);
-            if (item is not null && !_pantry.Any(p => p.IngredientId == ing.Id))
-                _pantry.Insert(0, item);
+            if (item is not null)
+            {
+                PantryState.AddItem(item);
+                CheckState.AddPantryName(ing.Name);
+            }
         }
         catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.PantryItemAlreadyExists)
         {
@@ -296,7 +334,7 @@
         try
         {
             await Api.RemoveFromPantryAsync(item.Id);
-            _pantry.Remove(item);
+            PantryState.RemoveItem(item.Id);
         }
         catch (Exception ex)
         {
@@ -309,17 +347,52 @@
         try
         {
             var item = await Api.AddToShoppingListAsync(ing.Id);
-            if (item is not null && !_shopping.Any(s => s.IngredientId == ing.Id))
-                _shopping.Insert(0, item);
-            else if (item is not null)
-            {
-                var idx = _shopping.FindIndex(s => s.IngredientId == ing.Id);
-                if (idx >= 0) _shopping[idx] = item;
-            }
+            if (item is not null)
+                ShoppingState.AddOrUpdateItem(item);
         }
         catch (Exception ex)
         {
             _error = ex.Message;
+        }
+    }
+
+    private void ToggleShoppingSelection(Guid itemId)
+    {
+        if (!_selectedShoppingItems.Remove(itemId))
+            _selectedShoppingItems.Add(itemId);
+    }
+
+    private async Task MoveSelectedToPantryAsync()
+    {
+        var toMove = ShoppingState.Items
+            .Where(s => _selectedShoppingItems.Contains(s.Id) && !s.IsChecked)
+            .ToList();
+        _selectedShoppingItems.Clear();
+
+        foreach (var item in toMove)
+        {
+            try
+            {
+                PantryItemResponse? pantryItem = null;
+                try
+                {
+                    pantryItem = await Api.AddToPantryAsync(item.IngredientId);
+                }
+                catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.PantryItemAlreadyExists) { }
+
+                await Api.RemoveFromShoppingListAsync(item.Id);
+                ShoppingState.RemoveItem(item.Id);
+
+                if (pantryItem is not null)
+                {
+                    PantryState.AddItem(pantryItem);
+                    CheckState.AddPantryName(item.Name);
+                }
+            }
+            catch (Exception ex)
+            {
+                _error = ex.Message;
+            }
         }
     }
 
@@ -328,10 +401,7 @@
         try
         {
             await Api.ToggleShoppingItemAsync(item.Id, true);
-            var idx = _shopping.IndexOf(item);
-            if (idx >= 0) _shopping[idx] = item with { IsChecked = true };
-            // Refresh pantry since auto-add may have happened
-            _pantry = await Api.GetPantryAsync();
+            ShoppingState.UpdateItem(item with { IsChecked = true });
         }
         catch (Exception ex)
         {
@@ -344,8 +414,7 @@
         try
         {
             await Api.ToggleShoppingItemAsync(item.Id, false);
-            var idx = _shopping.IndexOf(item);
-            if (idx >= 0) _shopping[idx] = item with { IsChecked = false };
+            ShoppingState.UpdateItem(item with { IsChecked = false });
         }
         catch (Exception ex)
         {
@@ -358,7 +427,7 @@
         try
         {
             await Api.RemoveFromShoppingListAsync(item.Id);
-            _shopping.Remove(item);
+            ShoppingState.RemoveItem(item.Id);
         }
         catch (Exception ex)
         {
@@ -371,7 +440,7 @@
         try
         {
             await Api.ClearCheckedShoppingItemsAsync();
-            _shopping = _shopping.Where(s => !s.IsChecked).ToList();
+            ShoppingState.RemoveChecked();
         }
         catch (Exception ex)
         {
@@ -407,7 +476,7 @@
     /// <summary>Ensures all meal groups are expanded by default (new groups only; preserves manual collapse).</summary>
     private void ReinitGroups()
     {
-        foreach (var key in _shopping
+        foreach (var key in ShoppingState.Items
             .Where(s => !s.IsChecked)
             .Select(s => ExtractMealName(s.Notes) ?? "Övrigt")
             .Distinct(StringComparer.OrdinalIgnoreCase))

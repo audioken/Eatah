@@ -1461,6 +1461,80 @@ body.eatah-modal-open {
     color: #fff;
 }
 
+/* Multiselect checkbox (replaces check circle for unchecked items) */
+.eatah-shopping-item__select {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    border: 2px solid rgba(255, 255, 255, 0.45);
+    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s;
+    padding: 0;
+    color: #fff;
+}
+
+.eatah-shopping-item__select:hover {
+    border-color: rgba(255, 255, 255, 0.8);
+}
+
+.eatah-shopping-item__select--active {
+    border-color: var(--color-brand);
+    background: var(--color-brand);
+}
+
+/* Selected item highlight */
+.eatah-shopping-item--selected {
+    background: rgba(255, 255, 255, 0.38);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Bulk-action bar (Shopping.razor – below IngredientSearch) */
+.eatah-shopping-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px 4px;
+    flex-shrink: 0;
+}
+
+.eatah-shopping-actions__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border: none;
+    border-radius: 20px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    white-space: nowrap;
+}
+
+.eatah-shopping-actions__btn:hover {
+    opacity: 0.85;
+}
+
+.eatah-shopping-actions__btn--primary {
+    background: rgba(255, 255, 255, 0.25);
+    color: #fff;
+    backdrop-filter: blur(4px);
+}
+
+.eatah-shopping-actions__slot {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+    flex-shrink: 0;
+}
+
 /* Remove button */
 .eatah-shopping-item__remove {
     flex-shrink: 0;
@@ -1676,4 +1750,68 @@ body.eatah-modal-open {
 
 .eatah-ing-search__option--new strong {
     color: #D1FFCD;
+}
+
+/* ============================================================
+   IngredientChecklist – multiselect checkbox + action bar
+   ============================================================ */
+
+/* Checkbox in the Köp column */
+.eatah-checklist-select {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.12s, background 0.12s;
+    color: #fff;
+}
+
+.eatah-checklist-select--active {
+    border-color: var(--color-brand);
+    background: var(--color-brand);
+}
+
+/* Bulk-action bar inside the Köp column */
+.eatah-checklist-actions {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.eatah-checklist-actions__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 9px;
+    border: none;
+    border-radius: 20px;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    white-space: nowrap;
+}
+
+.eatah-checklist-actions__btn:hover {
+    opacity: 0.85;
+}
+
+.eatah-checklist-actions__btn--primary {
+    background: rgba(255, 255, 255, 0.25);
+    color: #fff;
+    backdrop-filter: blur(4px);
+}
+
+.eatah-checklist-actions__slot {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+    flex-shrink: 0;
 }
