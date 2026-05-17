@@ -40,8 +40,22 @@
     <!-- _Imports.razor – exact same usings -->
     <Content Include="..\Eatah.Client\_Imports.razor" Link="_Imports.razor" />
 
-    <!-- Shared CSS – single source of truth; WebClient-specific overrides go in app.webclient.css -->
-    <Content Include="..\Eatah.Client\wwwroot\css\app.css" Link="wwwroot/css/app.css" />
   </ItemGroup>
+
+  <!--
+    Copy the shared CSS from Eatah.Client into this project's source wwwroot BEFORE the
+    static web assets manifest is generated. The manifest registers css/app.css under
+    ContentRootIndex 0 (= source wwwroot), so the file must physically exist there for the
+    Blazor WASM dev server to serve it with the correct text/css MIME type.
+    The generated copy is excluded from git via .gitignore.
+  -->
+  <Target Name="CopySharedCssToSourceWwwroot" BeforeTargets="Build;ResolveStaticWebAssets">
+    <MakeDir Directories="$(MSBuildThisFileDirectory)wwwroot\css" />
+    <Copy
+      SourceFiles="$(MSBuildThisFileDirectory)..\Eatah.Client\wwwroot\css\app.css"
+      DestinationFolder="$(MSBuildThisFileDirectory)wwwroot\css"
+      SkipUnchangedFiles="true"
+    />
+  </Target>
 
 </Project>

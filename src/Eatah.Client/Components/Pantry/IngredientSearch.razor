@@ -1,0 +1,130 @@
+@namespace Eatah.Client.Components.Pantry
+@inject ApiClient Api
+
+<div class="eatah-ing-search" @onfocusout="OnFocusOut">
+    <div class="eatah-ing-search__input-wrap">
+        <input type="text" class="eatah-ing-search__input" placeholder="@Placeholder" value="@_query" @oninput="OnInput"
+               @onfocus="OnFocus" autocomplete="off" spellcheck="false" />
+        @if (_isSearching)
+        {
+            <span class="eatah-ing-search__spinner" />
+        }
+    </div>
+
+    @if (_showDropdown && _results.Count > 0)
+    {
+        <ul class="eatah-ing-search__dropdown" @onmousedown:stopPropagation="true">
+            @foreach (var r in _results)
+            {
+                <li class="eatah-ing-search__option" @onclick="() => Select(r)">
+                    <span class="eatah-ing-search__option-name">@r.Name</span>
+                    @if (!string.IsNullOrEmpty(r.Category))
+                    {
+                        <span class="eatah-ing-search__option-cat">@r.Category</span>
+                    }
+                </li>
+            }
+            @if (!string.IsNullOrWhiteSpace(_query) && !_results.Any(r => r.Name.Equals(_query,
+        StringComparison.OrdinalIgnoreCase)))
+            {
+                <li class="eatah-ing-search__option eatah-ing-search__option--new" @onclick="CreateNew">
+                    <span>Lägg till "<strong>@_query</strong>"</span>
+                </li>
+            }
+        </ul>
+    }
+    else if (_showDropdown && !string.IsNullOrWhiteSpace(_query) && !_isSearching)
+    {
+        <ul class="eatah-ing-search__dropdown">
+            <li class="eatah-ing-search__option eatah-ing-search__option--new" @onclick="CreateNew">
+                <span>Lägg till "<strong>@_query</strong>"</span>
+            </li>
+        </ul>
+    }
+</div>
+
+@code {
+    [Parameter] public string Placeholder { get; set; } = "Sök ingrediens…";
+    [Parameter] public EventCallback<IngredientResponse> OnSelected { get; set; }
+
+    private string _query = string.Empty;
+    private List<IngredientResponse> _results = [];
+    private bool _showDropdown;
+    private bool _isSearching;
+    private CancellationTokenSource _cts = new();
+
+    private async Task OnInput(ChangeEventArgs e)
+    {
+        _query = e.Value?.ToString() ?? string.Empty;
+        _cts.Cancel();
+        _cts = new CancellationTokenSource();
+
+        if (string.IsNullOrWhiteSpace(_query))
+        {
+            _results = [];
+            _showDropdown = false;
+            return;
+        }
+
+        _isSearching = true;
+        _showDropdown = true;
+        try
+        {
+            await Task.Delay(200, _cts.Token);
+            _results = await Api.SearchIngredientsAsync(_query, _cts.Token);
+        }
+        catch (OperationCanceledException) { }
+        finally
+        {
+            _isSearching = false;
+        }
+    }
+
+    private void OnFocus()
+    {
+        if (!string.IsNullOrWhiteSpace(_query))
+            _showDropdown = true;
+    }
+
+    private void OnFocusOut()
+    {
+        // Small delay to allow click on dropdown option to fire first
+        _ = Task.Delay(200).ContinueWith(_ =>
+        {
+            _showDropdown = false;
+            InvokeAsync(StateHasChanged);
+        });
+    }
+
+    private async Task Select(IngredientResponse ingredient)
+    {
+        _query = string.Empty;
+        _showDropdown = false;
+        _results = [];
+        await OnSelected.InvokeAsync(ingredient);
+    }
+
+    private async Task CreateNew()
+    {
+        if (string.IsNullOrWhiteSpace(_query)) return;
+        var name = _query.Trim();
+        _query = string.Empty;
+        _showDropdown = false;
+        _results = [];
+
+        IngredientResponse? created = null;
+        try
+        {
+            created = await Api.CreateIngredientAsync(new CreateIngredientRequest(name));
+        }
+        catch
+        {
+            // If it already exists, search for it
+            var matches = await Api.SearchIngredientsAsync(name);
+            created = matches.FirstOrDefault(r => r.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (created is not null)
+            await OnSelected.InvokeAsync(created);
+    }
+}

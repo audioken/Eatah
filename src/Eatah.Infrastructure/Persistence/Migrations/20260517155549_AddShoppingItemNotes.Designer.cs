@@ -3,6 +3,7 @@ using System;
 using Eatah.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Eatah.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(EatahDbContext))]
-    partial class EatahDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260517155549_AddShoppingItemNotes")]
+    partial class AddShoppingItemNotes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

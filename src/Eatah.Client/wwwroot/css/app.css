@@ -1261,3 +1261,348 @@ body.eatah-modal-open {
 .eatah-profile-modal__section--danger .eatah-profile-modal__section-title {
     margin-bottom: 6px;
 }
+
+/* ============================================================
+   Shopping page (Phase 7)
+   ============================================================ */
+.eatah-shopping-page {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+/* Sync button */
+.eatah-shopping-sync-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border: none;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    backdrop-filter: blur(4px);
+}
+
+.eatah-shopping-sync-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.eatah-shopping-sync-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Two-column layout */
+.eatah-shopping-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    align-items: start;
+}
+
+@media (max-width: 480px) {
+    .eatah-shopping-columns {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Column */
+.eatah-shopping-col {
+    background: var(--gradient-card-glass);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-soft);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    max-height: calc(100dvh - var(--header-height) - var(--navbar-height) - 80px);
+}
+
+.eatah-shopping-col__header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 14px 10px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--color-text-on-card);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    flex-shrink: 0;
+}
+
+.eatah-shopping-col__header-icon {
+    opacity: 0.8;
+}
+
+.eatah-shopping-col__count {
+    margin-left: auto;
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 999px;
+}
+
+.eatah-shopping-col__add {
+    padding: 10px 10px 6px;
+    flex-shrink: 0;
+}
+
+.eatah-shopping-col__list {
+    overflow-y: auto;
+    flex: 1;
+    padding: 2px 10px 10px;
+}
+
+.eatah-shopping-col__empty {
+    font-size: 13px;
+    color: var(--color-text-muted);
+    text-align: center;
+    padding: 20px 0;
+    margin: 0;
+}
+
+/* Shopping / pantry item row */
+.eatah-shopping-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.eatah-shopping-item:last-child {
+    border-bottom: none;
+}
+
+.eatah-shopping-item__body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.eatah-shopping-item__name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text-on-card);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.eatah-shopping-item__meta,
+.eatah-shopping-item__notes {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.eatah-shopping-item--checked .eatah-shopping-item__name {
+    text-decoration: line-through;
+    opacity: 0.6;
+}
+
+/* Check circle (unchecked state) */
+.eatah-shopping-item__check {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.45);
+    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s;
+    padding: 0;
+}
+
+.eatah-shopping-item__check:hover {
+    border-color: var(--color-brand);
+}
+
+.eatah-shopping-item__check-circle {
+    display: block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+/* Checked state */
+.eatah-shopping-item__check--done {
+    border-color: var(--color-brand);
+    background: var(--color-brand);
+    color: #fff;
+}
+
+/* Remove button */
+.eatah-shopping-item__remove {
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.4);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: color 0.12s;
+}
+
+.eatah-shopping-item__remove:hover {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* Checked-items divider */
+.eatah-shopping-checked-divider {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 4px 4px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-muted);
+}
+
+.eatah-shopping-clear-btn {
+    background: transparent;
+    border: none;
+    color: var(--color-text-muted);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: color 0.12s;
+}
+
+.eatah-shopping-clear-btn:hover {
+    color: #fff;
+}
+
+/* ============================================================
+   Ingredient search autocomplete (Phase 7)
+   ============================================================ */
+.eatah-ing-search {
+    position: relative;
+    width: 100%;
+}
+
+.eatah-ing-search__input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.eatah-ing-search__input {
+    width: 100%;
+    padding: 8px 32px 8px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    font-family: inherit;
+    font-size: 13px;
+    box-sizing: border-box;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.eatah-ing-search__input::placeholder {
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.eatah-ing-search__input:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.55);
+    background: rgba(255, 255, 255, 0.18);
+}
+
+.eatah-ing-search__spinner {
+    position: absolute;
+    right: 10px;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: eatah-spin 0.7s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes eatah-spin {
+    to { transform: rotate(360deg); }
+}
+
+.eatah-ing-search__dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: rgba(36, 48, 34, 0.97);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 10px;
+    overflow: hidden;
+    z-index: 300;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    list-style: none;
+    margin: 0;
+    padding: 4px 0;
+    max-height: 220px;
+    overflow-y: auto;
+    animation: eatah-fade-in 0.1s ease-out;
+}
+
+.eatah-ing-search__option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.eatah-ing-search__option:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.eatah-ing-search__option-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.eatah-ing-search__option-cat {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.45);
+    margin-left: 8px;
+}
+
+.eatah-ing-search__option--new {
+    color: var(--color-brand);
+    font-size: 13px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.eatah-ing-search__option--new span {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.eatah-ing-search__option--new strong {
+    color: #D1FFCD;
+}

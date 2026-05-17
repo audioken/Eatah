@@ -114,3 +114,14 @@ public record NotificationResponse(Guid Id, NotificationType Type, string Payloa
 
 public record UpdateProfileRequest(string? DisplayName, string? Email);
 public record DeleteAccountRequest(string Password);
+
+// ---- Ingredients / Pantry / Shopping ----
+
+public record IngredientResponse(Guid Id, string Name, string? Category, bool IsSystem);
+public record CreateIngredientRequest(string Name, string? Category = null);
+public record PantryItemResponse(Guid Id, Guid IngredientId, string Name, string? Category, DateTime AddedAt);
+public record ShoppingItemResponse(Guid Id, Guid IngredientId, string Name, string? Category, bool IsChecked, DateTime AddedAt, string? Notes);
+public record AddShoppingItemRequest(Guid IngredientId, string? Notes = null);
+public record AddPantryItemRequest(Guid IngredientId);
+public record ToggleShoppingItemRequest(bool IsChecked);
+public record SyncWeeklyPlanRequest(Guid WeeklyPlanId);

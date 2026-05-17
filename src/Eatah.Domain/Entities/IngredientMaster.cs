@@ -33,4 +33,6 @@ public class ShoppingItem
     public IngredientMaster? Ingredient { get; set; }
     public bool IsChecked { get; set; }
     public DateTime AddedAt { get; set; } = DateTime.UtcNow;
+    /// <summary>Optional source annotation, e.g. "Tacos v17".</summary>
+    public string? Notes { get; set; }
 }

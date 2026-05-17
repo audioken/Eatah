@@ -119,11 +119,11 @@ public class ShoppingListService
             .Include(s => s.Ingredient)
             .Where(s => s.WorkspaceId == wsId)
             .OrderBy(s => s.IsChecked).ThenByDescending(s => s.AddedAt)
-            .Select(s => new ShoppingItemResponse(s.Id, s.IngredientId, s.Ingredient!.Name, s.Ingredient.Category, s.IsChecked, s.AddedAt))
+            .Select(s => new ShoppingItemResponse(s.Id, s.IngredientId, s.Ingredient!.Name, s.Ingredient.Category, s.IsChecked, s.AddedAt, s.Notes))
             .ToListAsync(ct);
     }
 
-    public async Task<Result<ShoppingItemResponse>> AddAsync(Guid ingredientId, CancellationToken ct)
+    public async Task<Result<ShoppingItemResponse>> AddAsync(Guid ingredientId, string? notes, CancellationToken ct)
     {
         var wsId = _ws.RequireCurrent();
         var ing = await _db.IngredientMaster
@@ -132,8 +132,10 @@ public class ShoppingListService
         var existing = await _db.ShoppingItems.FirstOrDefaultAsync(s => s.WorkspaceId == wsId && s.IngredientId == ingredientId, ct);
         if (existing is not null)
         {
-            if (existing.IsChecked) { existing.IsChecked = false; existing.AddedAt = DateTime.UtcNow; await _db.SaveChangesAsync(ct); }
-            return new ShoppingItemResponse(existing.Id, ing.Id, ing.Name, ing.Category, existing.IsChecked, existing.AddedAt);
+            if (existing.IsChecked) { existing.IsChecked = false; existing.AddedAt = DateTime.UtcNow; }
+            if (notes is not null) existing.Notes = notes;
+            await _db.SaveChangesAsync(ct);
+            return new ShoppingItemResponse(existing.Id, ing.Id, ing.Name, ing.Category, existing.IsChecked, existing.AddedAt, existing.Notes);
         }
         var entity = new ShoppingItem
         {
@@ -141,19 +143,40 @@ public class ShoppingListService
             WorkspaceId = wsId,
             IngredientId = ingredientId,
             IsChecked = false,
-            AddedAt = DateTime.UtcNow
+            AddedAt = DateTime.UtcNow,
+            Notes = notes
         };
         _db.ShoppingItems.Add(entity);
         await _db.SaveChangesAsync(ct);
-        return new ShoppingItemResponse(entity.Id, ing.Id, ing.Name, ing.Category, false, entity.AddedAt);
+        return new ShoppingItemResponse(entity.Id, ing.Id, ing.Name, ing.Category, false, entity.AddedAt, entity.Notes);
     }
 
     public async Task<Result> ToggleAsync(Guid id, bool isChecked, CancellationToken ct)
     {
         var wsId = _ws.RequireCurrent();
-        var entity = await _db.ShoppingItems.FirstOrDefaultAsync(s => s.Id == id && s.WorkspaceId == wsId, ct);
+        var entity = await _db.ShoppingItems
+            .Include(s => s.Ingredient)
+            .FirstOrDefaultAsync(s => s.Id == id && s.WorkspaceId == wsId, ct);
         if (entity is null) return Error.NotFound(ErrorCodes.ShoppingItemNotFound, "Shopping item not found.");
         entity.IsChecked = isChecked;
+
+        // Auto-move to pantry when checked
+        if (isChecked)
+        {
+            var inPantry = await _db.PantryItems
+                .AnyAsync(p => p.WorkspaceId == wsId && p.IngredientId == entity.IngredientId, ct);
+            if (!inPantry)
+            {
+                _db.PantryItems.Add(new PantryItem
+                {
+                    Id = Guid.NewGuid(),
+                    WorkspaceId = wsId,
+                    IngredientId = entity.IngredientId,
+                    AddedAt = DateTime.UtcNow
+                });
+            }
+        }
+
         await _db.SaveChangesAsync(ct);
         return Result.Success();
     }
@@ -174,5 +197,106 @@ public class ShoppingListService
         await _db.ShoppingItems
             .Where(s => s.WorkspaceId == wsId && s.IsChecked)
             .ExecuteDeleteAsync(ct);
+    }
+
+    /// <summary>
+    /// Reads all meals for the given weekly plan and adds any missing ingredients to the
+    /// shopping list (skipping those already in the pantry). Returns the full updated list.
+    /// </summary>
+    public async Task<Result<List<ShoppingItemResponse>>> SyncFromWeeklyPlanAsync(Guid planId, CancellationToken ct)
+    {
+        var wsId = _ws.RequireCurrent();
+
+        var plan = await _db.WeeklyPlans
+            .AsNoTracking()
+            .Include(p => p.Days)
+                .ThenInclude(d => d.Meal)
+                    .ThenInclude(m => m!.Ingredients)
+            .FirstOrDefaultAsync(p => p.Id == planId && p.WorkspaceId == wsId, ct);
+
+        if (plan is null)
+            return Error.NotFound(ErrorCodes.WeeklyPlanNotFound, "Weekly plan not found.");
+
+        // Collect all ingredient names with the source meal label
+        var ingredientsToSync = plan.Days
+            .Where(d => d.Meal is not null)
+            .SelectMany(d => d.Meal!.Ingredients.Select(i => new { Name = i.Name.Trim(), MealName = d.Meal!.Name }))
+            .DistinctBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (ingredientsToSync.Count == 0)
+            return await GetAllAsync(ct);
+
+        var weekLabel = $"v{plan.WeekNumber}";
+
+        // Load existing pantry and shopping items for this workspace in one pass
+        var pantryIngIds = await _db.PantryItems
+            .Where(p => p.WorkspaceId == wsId)
+            .Select(p => p.IngredientId)
+            .ToHashSetAsync(ct);
+
+        var existingShoppingByIngId = await _db.ShoppingItems
+            .Where(s => s.WorkspaceId == wsId)
+            .ToDictionaryAsync(s => s.IngredientId, ct);
+
+        foreach (var item in ingredientsToSync)
+        {
+            // Skip if already in pantry
+            // Resolve IngredientMaster by name (case-insensitive)
+            var ingName = item.Name;
+            var master = await _db.IngredientMaster
+                .FirstOrDefaultAsync(i =>
+                    (i.WorkspaceId == null || i.WorkspaceId == wsId) &&
+                    i.Name.ToLower() == ingName.ToLower(), ct);
+
+            if (master is null)
+            {
+                // Create workspace-scoped ingredient
+                master = new IngredientMaster
+                {
+                    Id = Guid.NewGuid(),
+                    Name = ingName,
+                    WorkspaceId = wsId
+                };
+                _db.IngredientMaster.Add(master);
+                await _db.SaveChangesAsync(ct);
+            }
+
+            if (pantryIngIds.Contains(master.Id))
+                continue;
+
+            var note = $"{item.MealName} {weekLabel}";
+
+            if (existingShoppingByIngId.TryGetValue(master.Id, out var existingShop))
+            {
+                // Append note if not already there
+                if (existingShop.Notes is null || !existingShop.Notes.Contains(item.MealName))
+                {
+                    existingShop.Notes = existingShop.Notes is null ? note : $"{existingShop.Notes}, {item.MealName} {weekLabel}";
+                }
+                if (existingShop.IsChecked)
+                {
+                    existingShop.IsChecked = false;
+                    existingShop.AddedAt = DateTime.UtcNow;
+                }
+            }
+            else
+            {
+                var newItem = new ShoppingItem
+                {
+                    Id = Guid.NewGuid(),
+                    WorkspaceId = wsId,
+                    IngredientId = master.Id,
+                    IsChecked = false,
+                    AddedAt = DateTime.UtcNow,
+                    Notes = note
+                };
+                _db.ShoppingItems.Add(newItem);
+                existingShoppingByIngId[master.Id] = newItem;
+            }
+        }
+
+        await _db.SaveChangesAsync(ct);
+        return await GetAllAsync(ct);
     }
 }

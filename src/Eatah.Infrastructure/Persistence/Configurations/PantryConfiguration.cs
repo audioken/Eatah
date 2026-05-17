@@ -44,6 +44,7 @@ public class ShoppingItemConfiguration : IEntityTypeConfiguration<ShoppingItem>
         b.Property(x => x.IngredientId).HasColumnName("ingredient_id");
         b.Property(x => x.IsChecked).HasColumnName("is_checked");
         b.Property(x => x.AddedAt).HasColumnName("added_at").HasDefaultValueSql("NOW()");
+        b.Property(x => x.Notes).HasColumnName("notes").HasMaxLength(200);
         b.HasOne(x => x.Ingredient).WithMany().HasForeignKey(x => x.IngredientId).OnDelete(DeleteBehavior.Restrict);
         b.HasIndex(x => new { x.WorkspaceId, x.IngredientId }).IsUnique();
     }

@@ -24,7 +24,7 @@
     private readonly List<NavItem> _items = new()
     {
         new("Kost", "vegan", NavAction.ComingSoon), // becomes modal in fas 2
-        new("Köplista", "basket", NavAction.ComingSoon, "/shopping"),// becomes route in fas 7
+        new("Köplista", "basket", NavAction.Navigate, "/shopping"),
         new("Matplan", "calendar", NavAction.Navigate, "/"),
         new("Chat", "chat", NavAction.ComingSoon), // becomes modal in fas 8
         new("Profil", "profile", NavAction.Profile), // opens profile modal

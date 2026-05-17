@@ -22,7 +22,7 @@ public static class PantryEndpoints
         var shop = app.MapGroup("/api/shoppinglist").WithTags("ShoppingList").RequireAuthorization();
         shop.MapGet("/", async (ShoppingListService svc, CancellationToken ct) => Results.Ok(await svc.GetAllAsync(ct)));
         shop.MapPost("/", async (AddShoppingItemRequest req, ShoppingListService svc, CancellationToken ct)
-            => (await svc.AddAsync(req.IngredientId, ct)).ToHttpResult());
+            => (await svc.AddAsync(req.IngredientId, req.Notes, ct)).ToHttpResult());
         shop.MapPatch("/{id:guid}", async (Guid id, ToggleShoppingItemRequest req, ShoppingListService svc, CancellationToken ct)
             => (await svc.ToggleAsync(id, req.IsChecked, ct)).ToNoContentResult());
         shop.MapDelete("/{id:guid}", async (Guid id, ShoppingListService svc, CancellationToken ct)
@@ -32,6 +32,8 @@ public static class PantryEndpoints
             await svc.ClearCheckedAsync(ct);
             return Results.NoContent();
         });
+        shop.MapPost("/sync", async (SyncWeeklyPlanRequest req, ShoppingListService svc, CancellationToken ct)
+            => (await svc.SyncFromWeeklyPlanAsync(req.WeeklyPlanId, ct)).ToHttpResult());
     }
 
     public static IServiceCollection AddPantryFeature(this IServiceCollection services)

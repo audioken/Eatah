@@ -58,6 +58,12 @@ public static class ApiErrorCodes
 
     // Notifications
     public const string NotificationNotFound = "notification_not_found";
+
+    // Ingredients / Pantry / Shopping
+    public const string IngredientNotFound = "ingredient_not_found";
+    public const string PantryItemNotFound = "pantry_item_not_found";
+    public const string PantryItemAlreadyExists = "pantry_item_already_exists";
+    public const string ShoppingItemNotFound = "shopping_item_not_found";
 }
 
 /// <summary>
