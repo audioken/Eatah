@@ -105,6 +105,15 @@
                 var meal = await Api.GetMealAsync(mealId);
                 var names = meal?.Ingredients.Select(i => i.Name).ToList() ?? new List<string>();
                 CheckState.SetIngredients(mealId, names);
+
+                // Pre-check ingredients that are already in the pantry.
+                // Only done once per meal (first open); manual toggles are preserved after that.
+                var pantry = await Api.GetPantryAsync();
+                var pantryNames = pantry.Select(p => p.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                var checkedSet = CheckState.GetChecked(mealId);
+                foreach (var name in names.Where(n => pantryNames.Contains(n)))
+                    checkedSet.Add(name);
+
                 _ingredients = names;
             }
             _loadedFor = mealId;
