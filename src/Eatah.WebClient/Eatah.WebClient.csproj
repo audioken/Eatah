@@ -39,6 +39,9 @@
 
     <!-- _Imports.razor – exact same usings -->
     <Content Include="..\Eatah.Client\_Imports.razor" Link="_Imports.razor" />
+
+    <!-- Shared CSS – single source of truth; WebClient-specific overrides go in app.webclient.css -->
+    <Content Include="..\Eatah.Client\wwwroot\css\app.css" Link="wwwroot/css/app.css" />
   </ItemGroup>
 
 </Project>
