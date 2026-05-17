@@ -1297,25 +1297,25 @@ body.eatah-modal-open {
     cursor: not-allowed;
 }
 
-/* Two-column layout */
+/* Two-column layout – single shared card */
 .eatah-shopping-columns {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 12px;
+    gap: 0;
     align-items: start;
+    background: linear-gradient(135deg, #839B7F 0%, #A8D1AA 91.83%);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-soft);
+    overflow: hidden;
 }
 
-@media (max-width: 480px) {
-    .eatah-shopping-columns {
-        grid-template-columns: 1fr;
-    }
+/* Vertical divider between the two columns */
+.eatah-shopping-col + .eatah-shopping-col {
+    border-left: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 /* Column */
 .eatah-shopping-col {
-    background: var(--gradient-card-glass);
-    border-radius: var(--radius-card);
-    box-shadow: var(--shadow-soft);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -1326,16 +1326,18 @@ body.eatah-modal-open {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 12px 14px 10px;
-    font-size: 15px;
+    padding: 10px 12px 8px;
+    font-size: 11px;
     font-weight: 700;
-    color: var(--color-text-on-card);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: rgba(255, 255, 255, 0.85);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
     flex-shrink: 0;
 }
 
 .eatah-shopping-col__header-icon {
-    opacity: 0.8;
+    opacity: 0.75;
 }
 
 .eatah-shopping-col__count {
@@ -1349,35 +1351,49 @@ body.eatah-modal-open {
 }
 
 .eatah-shopping-col__add {
-    padding: 10px 10px 6px;
+    padding: 8px 8px 4px;
     flex-shrink: 0;
 }
 
 .eatah-shopping-col__list {
     overflow-y: auto;
     flex: 1;
-    padding: 2px 10px 10px;
+    padding: 4px 8px 10px;
 }
 
 .eatah-shopping-col__empty {
-    font-size: 13px;
-    color: var(--color-text-muted);
+    font-size: 12px;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.5);
     text-align: center;
-    padding: 20px 0;
+    padding: 16px 0;
     margin: 0;
 }
 
-/* Shopping / pantry item row */
+/* Shopping / pantry item row – rounded pill style matching IngredientChecklist */
 .eatah-shopping-item {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 7px 4px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 6px 8px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    margin-bottom: 5px;
 }
 
 .eatah-shopping-item:last-child {
-    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.eatah-shopping-item--pantry {
+    background: rgba(255, 255, 255, 0.22);
+    border-color: rgba(255, 255, 255, 0.18);
+}
+
+.eatah-shopping-item--checked {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.1);
 }
 
 .eatah-shopping-item__body {
@@ -1389,7 +1405,7 @@ body.eatah-modal-open {
 }
 
 .eatah-shopping-item__name {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
     color: var(--color-text-on-card);
     overflow: hidden;
@@ -1400,7 +1416,7 @@ body.eatah-modal-open {
 .eatah-shopping-item__meta,
 .eatah-shopping-item__notes {
     font-size: 11px;
-    color: var(--color-text-muted);
+    color: rgba(255, 255, 255, 0.65);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1408,7 +1424,7 @@ body.eatah-modal-open {
 
 .eatah-shopping-item--checked .eatah-shopping-item__name {
     text-decoration: line-through;
-    opacity: 0.6;
+    opacity: 0.55;
 }
 
 /* Check circle (unchecked state) */
@@ -1462,6 +1478,61 @@ body.eatah-modal-open {
 
 .eatah-shopping-item__remove:hover {
     color: rgba(255, 255, 255, 0.9);
+}
+
+/* Meal group in shopping list */
+.eatah-shopping-group {
+    margin-bottom: 4px;
+}
+
+.eatah-shopping-group__header {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    padding: 5px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: left;
+    color: rgba(255, 255, 255, 0.9);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 3px;
+    transition: background 0.12s;
+}
+
+.eatah-shopping-group__header:hover {
+    background: rgba(255, 255, 255, 0.18);
+}
+
+.eatah-shopping-group__chevron {
+    flex-shrink: 0;
+    opacity: 0.65;
+}
+
+.eatah-shopping-group__name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.eatah-shopping-group__count {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 999px;
+    flex-shrink: 0;
+}
+
+.eatah-shopping-group__items {
+    padding-left: 4px;
+    margin-bottom: 2px;
 }
 
 /* Checked-items divider */

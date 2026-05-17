@@ -2,6 +2,7 @@
 @inject ApiClient Api
 @inject HeaderState Header
 @inject WorkspaceState Workspaces
+@inject IngredientCheckState CheckState
 @implements IDisposable
 
 <div class="max-w-6xl mx-auto">
@@ -104,9 +105,11 @@
 		{
 			var planTask = Api.GetCurrentWeeklyPlanAsync();
 			var mealsTask = Api.GetMealsAsync();
-			await Task.WhenAll(planTask, mealsTask);
+			var pantryTask = Api.GetPantryAsync();
+			await Task.WhenAll(planTask, mealsTask, pantryTask);
 			_plan = await planTask;
 			_meals = await mealsTask;
+			CheckState.SetPantryItems((await pantryTask).Select(p => p.Name));
 		}
 		catch (Exception ex)
 		{

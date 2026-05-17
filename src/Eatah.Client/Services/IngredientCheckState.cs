@@ -3,15 +3,19 @@ namespace Eatah.Client.Services;
 /// <summary>
 /// Tracks which ingredients have been checked for each meal so that
 /// both the ingredient checklist modal and the day card badge stay in sync.
+/// Pantry items are pre-checked automatically when ingredients are registered.
 /// </summary>
 public class IngredientCheckState
 {
     private readonly Dictionary<Guid, IReadOnlyList<string>> _ingredients = new();
     private readonly Dictionary<Guid, HashSet<string>> _checked = new();
+    private HashSet<string> _pantryNames = new(StringComparer.OrdinalIgnoreCase);
 
     public event Action? OnChange;
 
     public bool HasIngredients(Guid mealId) => _ingredients.ContainsKey(mealId);
+
+    public bool IsInPantry(string name) => _pantryNames.Contains(name);
 
     public IReadOnlyList<string> GetIngredients(Guid mealId) =>
         _ingredients.TryGetValue(mealId, out var list) ? list : Array.Empty<string>();
@@ -28,8 +32,32 @@ public class IngredientCheckState
 
     public void SetIngredients(Guid mealId, IEnumerable<string> ingredients)
     {
-        _ingredients[mealId] = ingredients.ToList();
-        _ = GetChecked(mealId); // ensure the checked set exists
+        var list = ingredients.ToList();
+        _ingredients[mealId] = list;
+        var set = GetChecked(mealId);
+        // Pre-check any ingredient that is already in the pantry.
+        foreach (var name in list.Where(n => _pantryNames.Contains(n)))
+            set.Add(name);
+        OnChange?.Invoke();
+    }
+
+    /// <summary>
+    /// Updates the set of pantry ingredient names. Should be called once at page load.
+    /// Clears and rebuilds the checked state for all loaded meals so that additions
+    /// and removals from the pantry are both reflected correctly.
+    /// </summary>
+    public void SetPantryItems(IEnumerable<string> pantryNames)
+    {
+        _pantryNames = new HashSet<string>(pantryNames, StringComparer.OrdinalIgnoreCase);
+        // Rebuild checked state for every loaded meal from pantry only.
+        // This discards stale checks (e.g. items removed from pantry since last load).
+        foreach (var (mealId, ings) in _ingredients)
+        {
+            var set = GetChecked(mealId);
+            set.Clear();
+            foreach (var name in ings.Where(n => _pantryNames.Contains(n)))
+                set.Add(name);
+        }
         OnChange?.Invoke();
     }
 

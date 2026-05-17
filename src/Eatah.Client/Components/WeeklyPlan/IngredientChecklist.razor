@@ -8,10 +8,11 @@
 {
     <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4"
          style="padding-bottom: max(1rem, var(--navbar-height, 64px));" @onclick="HandleClose">
-        <div class="w-full max-w-[400px] rounded-[20px] border border-black/10 font-kanit overflow-hidden"
+        <div class="w-full max-w-[420px] rounded-[20px] border border-black/10 font-kanit overflow-hidden"
              style="background: linear-gradient(135deg, #839B7F 0%, #A8D1AA 91.83%); box-shadow: 0px 8px 24px rgba(0,0,0,0.35);"
              @onclick:stopPropagation="true">
 
+            @* Header *@
             <div class="px-5 pt-4 pb-3 flex items-center justify-between">
                 <div>
                     <div class="text-white font-medium text-[20px] leading-tight uppercase tracking-tight">
@@ -29,41 +30,72 @@
                 </button>
             </div>
 
-            <div class="px-3 pb-4 space-y-2 max-h-[60vh] overflow-y-auto">
-                @if (_isLoading)
-                {
-                    <div class="px-3 py-6 text-center text-white/90 text-sm">Laddar ingredienser...</div>
-                }
-                else if (_ingredients is null || _ingredients.Count == 0)
-                {
-                    <div class="px-3 py-6 text-center text-white/90 text-sm">Inga ingredienser registrerade.</div>
-                }
-                else
-                {
-                    @foreach (var name in _ingredients)
-                    {
-                        var isChecked = MealId is Guid id && CheckState.GetChecked(id).Contains(name);
-                        <button type="button"
-                                class="w-full flex items-center gap-3 px-3 py-2 rounded-[12px] border border-black/10 bg-white/40 hover:bg-white/60 transition text-left"
-                                @onclick="() => Toggle(name)">
-                            <span
-                                class="inline-flex items-center justify-center w-[22px] h-[22px] rounded-md border-2 @(isChecked ? "bg-[#7CD331] border-[#7CD331]" : "bg-white/80 border-white")">
-                                @if (isChecked)
+            @* Two-column body *@
+            @if (_isLoading)
+            {
+                <div class="px-4 py-6 text-center text-white/90 text-sm">Laddar ingredienser…</div>
+            }
+            else if (_ingredients is null || _ingredients.Count == 0)
+            {
+                <div class="px-4 py-6 text-center text-white/90 text-sm">Inga ingredienser registrerade.</div>
+            }
+            else
+            {
+                <div class="grid grid-cols-2 gap-2 px-3 pb-4 max-h-[60vh] overflow-y-auto">
+
+                    @* Left: Skafferi – ingredients already in pantry *@
+                    <div>
+                        <div class="flex items-center gap-1.5 text-white/80 text-[11px] font-semibold uppercase tracking-wider mb-2 px-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="@IconPaths.CheckViewBox" fill="currentColor" class="w-3 h-3">
+                                <path d="@IconPaths.CheckPath" />
+                            </svg>
+                            Skafferi
+                        </div>
+                        @if (!PantryIngredients.Any())
+                        {
+                            <div class="text-white/50 text-[12px] italic px-1 py-1">Ingenting ännu</div>
+                        }
+                        @foreach (var name in PantryIngredients)
+                        {
+                            <div class="flex items-center gap-2 px-2 py-[6px] rounded-[10px] bg-white/25 border border-white/20 mb-1.5">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="@IconPaths.CheckViewBox" fill="#7CD331"
+                                     class="w-[11px] h-[11px] flex-shrink-0">
+                                    <path d="@IconPaths.CheckPath" />
+                                </svg>
+                                <span class="text-dayCardText/55 text-[13px] font-medium line-through leading-snug truncate">@name</span>
+                            </div>
+                        }
+                    </div>
+
+                    @* Right: Köp – ingredients not yet in pantry *@
+                    <div>
+                        <div class="flex items-center gap-1.5 text-white/80 text-[11px] font-semibold uppercase tracking-wider mb-2 px-1">
+                            <Icon Name="basket" Size="12" CssClass="opacity-80" />
+                            Köp
+                        </div>
+                        @if (!MissingIngredients.Any())
+                        {
+                            <div class="text-white/70 text-[12px] italic px-1 py-1">Allt klart ✓</div>
+                        }
+                        @foreach (var name in MissingIngredients)
+                        {
+                            var onList = _shoppingNames.Contains(name);
+                            <div class="flex items-center gap-2 px-2 py-[6px] rounded-[10px] border mb-1.5 @(onList ? "bg-white/35 border-white/30" : "bg-white/15 border-white/10")">
+                                @if (onList)
                                 {
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="@IconPaths.CheckViewBox" fill="white"
-                                         class="w-3 h-3">
-                                        <path d="@IconPaths.CheckPath" />
-                                    </svg>
+                                    <Icon Name="basket" Size="11" CssClass="text-dayCardText/60 flex-shrink-0" />
                                 }
-                            </span>
-                            <span
-                                class="font-medium text-[15px] @(isChecked ? "line-through text-dayCardText/60" : "text-dayCardText")">
-                                @name
-                            </span>
-                        </button>
-                    }
-                }
-            </div>
+                                else
+                                {
+                                    <span class="text-[#F24E4E] text-[14px] font-bold leading-none flex-shrink-0">!</span>
+                                }
+                                <span class="text-dayCardText text-[13px] font-medium leading-snug truncate @(onList ? "opacity-80" : "opacity-60")">@name</span>
+                            </div>
+                        }
+                    </div>
+
+                </div>
+            }
         </div>
     </div>
 }
@@ -75,8 +107,15 @@
     [Parameter] public EventCallback OnClose { get; set; }
 
     private List<string>? _ingredients;
+    private HashSet<string> _shoppingNames = new(StringComparer.OrdinalIgnoreCase);
     private bool _isLoading;
     private Guid? _loadedFor;
+
+    private IEnumerable<string> PantryIngredients =>
+        _ingredients?.Where(n => CheckState.IsInPantry(n)) ?? [];
+
+    private IEnumerable<string> MissingIngredients =>
+        _ingredients?.Where(n => !CheckState.IsInPantry(n)) ?? [];
 
     protected override void OnInitialized()
     {
@@ -103,35 +142,26 @@
             else
             {
                 var meal = await Api.GetMealAsync(mealId);
-                var names = meal?.Ingredients.Select(i => i.Name).ToList() ?? new List<string>();
+                var names = meal?.Ingredients.Select(i => i.Name).ToList() ?? [];
                 CheckState.SetIngredients(mealId, names);
-
-                // Pre-check ingredients that are already in the pantry.
-                // Only done once per meal (first open); manual toggles are preserved after that.
-                var pantry = await Api.GetPantryAsync();
-                var pantryNames = pantry.Select(p => p.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-                var checkedSet = CheckState.GetChecked(mealId);
-                foreach (var name in names.Where(n => pantryNames.Contains(n)))
-                    checkedSet.Add(name);
-
                 _ingredients = names;
             }
+
+            // Fetch fresh shopping list so the Köp column shows a cart icon for items
+            // already queued, vs "!" for ingredients not covered anywhere.
+            var shopping = await Api.GetShoppingListAsync();
+            _shoppingNames = shopping.Select(s => s.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
             _loadedFor = mealId;
         }
         catch
         {
-            _ingredients = new List<string>();
+            _ingredients = [];
         }
         finally
         {
             _isLoading = false;
         }
-    }
-
-    private void Toggle(string name)
-    {
-        if (MealId is not Guid id) return;
-        CheckState.Toggle(id, name);
     }
 
     private Task HandleClose() => OnClose.InvokeAsync();

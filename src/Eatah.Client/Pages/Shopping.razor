@@ -92,26 +92,69 @@
                     }
                     else
                     {
-                        <!-- Unchecked items first -->
-                        @foreach (var item in _shopping.Where(s => !s.IsChecked))
+                        @* Unchecked items – grouped by meal if Notes contains a meal name *@
+                        @if (UseGroups)
                         {
-                            <div class="eatah-shopping-item eatah-shopping-item--unchecked">
-                                <button type="button" class="eatah-shopping-item__check" title="Markera som köpt"
-                                        @onclick="() => CheckItemAsync(item)">
-                                    <span class="eatah-shopping-item__check-circle" />
-                                </button>
-                                <div class="eatah-shopping-item__body">
-                                    <span class="eatah-shopping-item__name">@item.Name</span>
-                                    @if (!string.IsNullOrEmpty(item.Notes))
+                            @foreach (var group in UncheckedGroups)
+                            {
+                                var groupKey = group.Key ?? "Övrigt";
+                                var isExpanded = _expandedGroups.Contains(groupKey);
+                                <div class="eatah-shopping-group">
+                                    <button type="button" class="eatah-shopping-group__header"
+                                            @onclick="() => ToggleGroup(groupKey)">
+                                        <Icon Name="@(isExpanded ? "angle-down-solid" : "angle-right-solid")"
+                                              Size="10" CssClass="eatah-shopping-group__chevron" />
+                                        <span class="eatah-shopping-group__name">@groupKey</span>
+                                        <span class="eatah-shopping-group__count">@group.Count()</span>
+                                    </button>
+                                    @if (isExpanded)
                                     {
-                                        <span class="eatah-shopping-item__notes">@item.Notes</span>
+                                        <div class="eatah-shopping-group__items">
+                                            @foreach (var item in group)
+                                            {
+                                                <div class="eatah-shopping-item eatah-shopping-item--unchecked">
+                                                    <button type="button" class="eatah-shopping-item__check"
+                                                            title="Markera som köpt"
+                                                            @onclick="() => CheckItemAsync(item)">
+                                                        <span class="eatah-shopping-item__check-circle" />
+                                                    </button>
+                                                    <div class="eatah-shopping-item__body">
+                                                        <span class="eatah-shopping-item__name">@item.Name</span>
+                                                    </div>
+                                                    <button type="button" class="eatah-shopping-item__remove"
+                                                            title="Ta bort"
+                                                            @onclick="() => RemoveFromShoppingAsync(item)">
+                                                        <Icon Name="close" Size="12" />
+                                                    </button>
+                                                </div>
+                                            }
+                                        </div>
                                     }
                                 </div>
-                                <button type="button" class="eatah-shopping-item__remove" title="Ta bort"
-                                        @onclick="() => RemoveFromShoppingAsync(item)">
-                                    <Icon Name="close" Size="12" />
-                                </button>
-                            </div>
+                            }
+                        }
+                        else
+                        {
+                            @foreach (var item in _shopping.Where(s => !s.IsChecked))
+                            {
+                                <div class="eatah-shopping-item eatah-shopping-item--unchecked">
+                                    <button type="button" class="eatah-shopping-item__check" title="Markera som köpt"
+                                            @onclick="() => CheckItemAsync(item)">
+                                        <span class="eatah-shopping-item__check-circle" />
+                                    </button>
+                                    <div class="eatah-shopping-item__body">
+                                        <span class="eatah-shopping-item__name">@item.Name</span>
+                                        @if (!string.IsNullOrEmpty(item.Notes))
+                                        {
+                                            <span class="eatah-shopping-item__notes">@item.Notes</span>
+                                        }
+                                    </div>
+                                    <button type="button" class="eatah-shopping-item__remove" title="Ta bort"
+                                            @onclick="() => RemoveFromShoppingAsync(item)">
+                                        <Icon Name="close" Size="12" />
+                                    </button>
+                                </div>
+                            }
                         }
 
                         <!-- Checked items (grayed out) -->
@@ -150,6 +193,24 @@
 @code {
     private List<PantryItemResponse> _pantry = [];
     private List<ShoppingItemResponse> _shopping = [];
+    private HashSet<string> _expandedGroups = new(StringComparer.OrdinalIgnoreCase);
+
+    private IList<IGrouping<string?, ShoppingItemResponse>> UncheckedGroups =>
+        _shopping
+            .Where(s => !s.IsChecked)
+            .GroupBy(s => ExtractMealName(s.Notes))
+            .OrderBy(g => g.Key is null ? 1 : 0)
+            .ThenBy(g => g.Key)
+            .ToList();
+
+    private bool UseGroups
+    {
+        get
+        {
+            var g = UncheckedGroups;
+            return g.Count > 1 || g.Any(x => x.Key != null);
+        }
+    }
     private bool _isLoading = true;
     private bool _isSyncing;
     private string? _error;
@@ -179,6 +240,7 @@
             _pantry = await pantryTask;
             _shopping = await shoppingTask;
             _currentPlanId = (await planTask)?.Id;
+            ReinitGroups();
         }
         catch (Exception ex)
         {
@@ -198,6 +260,7 @@
         try
         {
             _shopping = await Api.SyncShoppingFromWeeklyPlanAsync(_currentPlanId.Value);
+            ReinitGroups();
             Toasts.Show("Köplistan är synkad med veckans matplan.");
         }
         catch (Exception ex)
@@ -318,10 +381,38 @@
 
     private static string FormatDate(DateTime dt)
     {
-        var local = dt.ToLocalTime();
-        var today = DateTime.Today;
-        if (local.Date == today) return "idag";
-        if (local.Date == today.AddDays(-1)) return "igår";
-        return local.ToString("d MMM");
+        var days = (int)(DateTime.Today - dt.ToLocalTime().Date).TotalDays;
+        if (days == 0) return "idag";
+        if (days == 1) return "1 dag sen";
+        return $"{days} dagar sen";
+    }
+
+    /// <summary>Extract meal name from Notes like "Pasta Carbonara v22" → "Pasta Carbonara".</summary>
+    private static string? ExtractMealName(string? notes)
+    {
+        if (string.IsNullOrEmpty(notes)) return null;
+        var first = notes.Split(',')[0].Trim();
+        var vIdx = first.LastIndexOf(" v");
+        if (vIdx > 0 && vIdx < first.Length - 2 && int.TryParse(first[(vIdx + 2)..], out _))
+            return first[..vIdx];
+        return first;
+    }
+
+    private void ToggleGroup(string key)
+    {
+        if (!_expandedGroups.Remove(key))
+            _expandedGroups.Add(key);
+    }
+
+    /// <summary>Ensures all meal groups are expanded by default (new groups only; preserves manual collapse).</summary>
+    private void ReinitGroups()
+    {
+        foreach (var key in _shopping
+            .Where(s => !s.IsChecked)
+            .Select(s => ExtractMealName(s.Notes) ?? "Övrigt")
+            .Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            _expandedGroups.Add(key);
+        }
     }
 }
