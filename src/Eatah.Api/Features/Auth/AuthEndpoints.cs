@@ -1,9 +1,16 @@
 using Eatah.Api.Features.Auth.Email;
+using Eatah.Infrastructure.Identity;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace Eatah.Api.Features.Auth;
 
@@ -66,7 +73,45 @@ public static class AuthServiceExtensions
         .AddEntityFrameworkStores<Eatah.Infrastructure.Persistence.EatahDbContext>()
         .AddDefaultTokenProviders();
 
-        services.AddAuthorization();
+        // Multi-scheme: MAUI uses cookies; WebClient uses JWT Bearer.
+        var authSettings = configuration.GetSection(AuthSettings.SectionName).Get<AuthSettings>() ?? new();
+        var keyBytes = Encoding.UTF8.GetBytes(
+            string.IsNullOrWhiteSpace(authSettings.JwtSecret)
+                ? "dev-only-secret-replace-in-production-minimum-32-chars"
+                : authSettings.JwtSecret);
+
+        services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+            .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, opts =>
+            {
+                opts.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = authSettings.JwtIssuer,
+                    ValidAudience = authSettings.JwtAudience,
+                    IssuerSigningKey = new SymmetricSecurityKey(keyBytes)
+                };
+                opts.Events = new JwtBearerEvents
+                {
+                    OnChallenge = ctx =>
+                    {
+                        ctx.HandleResponse();
+                        ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        return Task.CompletedTask;
+                    }
+                };
+            });
+
+        services.AddAuthorization(opts =>
+        {
+            opts.DefaultPolicy = new AuthorizationPolicyBuilder(
+                    CookieAuthenticationDefaults.AuthenticationScheme,
+                    JwtBearerDefaults.AuthenticationScheme)
+                .RequireAuthenticatedUser()
+                .Build();
+        });
 
         services.ConfigureApplicationCookie(opts =>
         {
@@ -123,5 +168,39 @@ public static class AuthServiceExtensions
         services.AddScoped<IValidator<ChangePasswordRequest>, ChangePasswordValidator>();
 
         return services;
+    }
+}
+
+/// <summary>
+/// JWT generation helper shared by login, confirm and reset-password endpoints.
+/// </summary>
+internal static class JwtTokenHelper
+{
+    internal static string GenerateToken(EatahUser user, AuthSettings settings)
+    {
+        var secret = string.IsNullOrWhiteSpace(settings.JwtSecret)
+            ? "dev-only-secret-replace-in-production-minimum-32-chars"
+            : settings.JwtSecret;
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
+        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var claims = new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim(ClaimTypes.Email, user.Email!),
+            new Claim(ClaimTypes.Name, user.DisplayName)
+        };
+
+        var descriptor = new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity(claims),
+            Expires = DateTime.UtcNow.AddDays(settings.JwtExpiryDays),
+            Issuer = settings.JwtIssuer,
+            Audience = settings.JwtAudience,
+            SigningCredentials = creds
+        };
+
+        var handler = new JwtSecurityTokenHandler();
+        return handler.WriteToken(handler.CreateToken(descriptor));
     }
 }

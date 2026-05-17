@@ -2,6 +2,7 @@ using Eatah.Api.Common;
 using Eatah.Infrastructure.Identity;
 using FluentValidation;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Options;
 
 namespace Eatah.Api.Features.Auth;
 
@@ -12,12 +13,13 @@ public static class Login
         IValidator<LoginRequest> validator,
         UserManager<EatahUser> userManager,
         SignInManager<EatahUser> signInManager,
+        IOptions<AuthSettings> authSettings,
         CancellationToken ct)
     {
         var validationError = await validator.ValidateRequestAsync(request, ct);
         if (validationError is not null)
         {
-            return Result<UserResponse>.Failure(validationError).ToHttpResult();
+            return Result<AuthResponse>.Failure(validationError).ToHttpResult();
         }
 
         var identifier = request.EmailOrUsername.Trim();
@@ -27,14 +29,14 @@ public static class Login
 
         if (user is null)
         {
-            return Result<UserResponse>
+            return Result<AuthResponse>
                 .Failure(Error.BadRequest(ErrorCodes.AuthInvalidCredentials, "Invalid email/username or password."))
                 .ToHttpResult();
         }
 
         if (!user.EmailConfirmed)
         {
-            return Result<UserResponse>
+            return Result<AuthResponse>
                 .Failure(Error.BadRequest(ErrorCodes.AuthEmailNotConfirmed, "Email address has not been confirmed."))
                 .ToHttpResult();
         }
@@ -42,11 +44,12 @@ public static class Login
         var signIn = await signInManager.PasswordSignInAsync(user, request.Password, request.RememberMe, lockoutOnFailure: true);
         if (!signIn.Succeeded)
         {
-            return Result<UserResponse>
+            return Result<AuthResponse>
                 .Failure(Error.BadRequest(ErrorCodes.AuthInvalidCredentials, "Invalid email/username or password."))
                 .ToHttpResult();
         }
 
-        return Results.Ok(new UserResponse(user.Id, user.Email!, user.DisplayName));
+        var token = JwtTokenHelper.GenerateToken(user, authSettings.Value);
+        return Results.Ok(new AuthResponse(user.Id, user.Email!, user.DisplayName, token));
     }
 }

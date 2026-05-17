@@ -13,18 +13,18 @@ public partial class ApiClient
         return await response.Content.ReadFromJsonAsync<RegistrationResponse>(cancellationToken: ct);
     }
 
-    public async Task<UserResponse?> ConfirmEmailAsync(ConfirmEmailRequest request, CancellationToken ct = default)
+    public async Task<AuthResponse?> ConfirmEmailAsync(ConfirmEmailRequest request, CancellationToken ct = default)
     {
         var response = await _http.PostAsJsonAsync("api/auth/confirm", request, ct);
         await EnsureSuccessAsync(response, ct);
-        return await response.Content.ReadFromJsonAsync<UserResponse>(cancellationToken: ct);
+        return await response.Content.ReadFromJsonAsync<AuthResponse>(cancellationToken: ct);
     }
 
-    public async Task<UserResponse?> LoginAsync(LoginRequest request, CancellationToken ct = default)
+    public async Task<AuthResponse?> LoginAsync(LoginRequest request, CancellationToken ct = default)
     {
         var response = await _http.PostAsJsonAsync("api/auth/login", request, ct);
         await EnsureSuccessAsync(response, ct);
-        return await response.Content.ReadFromJsonAsync<UserResponse>(cancellationToken: ct);
+        return await response.Content.ReadFromJsonAsync<AuthResponse>(cancellationToken: ct);
     }
 
     public async Task LogoutAsync(CancellationToken ct = default)
@@ -39,11 +39,11 @@ public partial class ApiClient
         await EnsureSuccessAsync(response, ct);
     }
 
-    public async Task<UserResponse?> ResetPasswordAsync(ResetPasswordRequest request, CancellationToken ct = default)
+    public async Task<AuthResponse?> ResetPasswordAsync(ResetPasswordRequest request, CancellationToken ct = default)
     {
         var response = await _http.PostAsJsonAsync("api/auth/password-reset", request, ct);
         await EnsureSuccessAsync(response, ct);
-        return await response.Content.ReadFromJsonAsync<UserResponse>(cancellationToken: ct);
+        return await response.Content.ReadFromJsonAsync<AuthResponse>(cancellationToken: ct);
     }
 
     public async Task ChangePasswordAsync(ChangePasswordRequest request, CancellationToken ct = default)

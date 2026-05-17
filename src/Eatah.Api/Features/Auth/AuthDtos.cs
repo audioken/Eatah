@@ -18,6 +18,9 @@ public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 
 public record UserResponse(Guid Id, string Email, string DisplayName);
 
+/// <summary>Returned by login, email confirmation and password reset. Includes a JWT for header-based auth clients.</summary>
+public record AuthResponse(Guid Id, string Email, string DisplayName, string Token);
+
 public record RegistrationResponse(Guid UserId, string Email, bool ConfirmationEmailSent);
 
 public record DisplayNameAvailabilityResponse(string DisplayName, bool Available);

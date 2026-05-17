@@ -3,6 +3,7 @@ using Eatah.Api.Features.Workspaces;
 using Eatah.Infrastructure.Identity;
 using FluentValidation;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Options;
 
 namespace Eatah.Api.Features.Auth;
 
@@ -14,6 +15,7 @@ public static class ConfirmEmailAndSetCredentials
         UserManager<EatahUser> userManager,
         SignInManager<EatahUser> signInManager,
         WorkspaceService workspaceService,
+        IOptions<AuthSettings> authSettings,
         CancellationToken ct)
     {
         var validationError = await validator.ValidateRequestAsync(request, ct);
@@ -85,7 +87,8 @@ public static class ConfirmEmailAndSetCredentials
         // Ensure the user has a Personal workspace (idempotent).
         await workspaceService.EnsurePersonalAsync(user.Id, user.DisplayName, ct);
 
-        return Results.Ok(new UserResponse(user.Id, user.Email!, user.DisplayName));
+        var token = JwtTokenHelper.GenerateToken(user, authSettings.Value);
+        return Results.Ok(new AuthResponse(user.Id, user.Email!, user.DisplayName, token));
     }
 }
 

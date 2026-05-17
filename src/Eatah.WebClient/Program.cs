@@ -17,13 +17,17 @@ builder.Services.AddSingleton<AuthState>();
 builder.Services.AddSingleton<ISafeAreaInsetsProvider, DefaultSafeAreaInsetsProvider>();
 builder.Services.AddSingleton<IUserPreferences, LocalStorageUserPreferences>();
 builder.Services.AddTransient<LoadingHttpMessageHandler>();
-builder.Services.AddTransient<BrowserCredentialsHandler>();
+
+// JWT Bearer auth — token is stored in localStorage and injected via TokenAuthorizationHandler.
+builder.Services.AddSingleton<ITokenStore, LocalStorageTokenStore>();
+builder.Services.AddTransient<TokenAuthorizationHandler>();
 
 builder.Services.AddHttpClient<ApiClient>(client =>
     {
         client.BaseAddress = WebApiClientOptions.GetBaseAddress(builder.HostEnvironment.BaseAddress);
     })
-    .AddHttpMessageHandler<BrowserCredentialsHandler>()
+    .AddHttpMessageHandler<TokenAuthorizationHandler>()
     .AddHttpMessageHandler<LoadingHttpMessageHandler>();
 
 await builder.Build().RunAsync();
+

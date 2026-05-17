@@ -13,4 +13,7 @@ public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 
 public record UserResponse(Guid Id, string Email, string DisplayName);
 
+/// <summary>Returned by login, email confirmation and password reset. Includes the JWT Bearer token.</summary>
+public record AuthResponse(Guid Id, string Email, string DisplayName, string Token);
+
 public record DisplayNameAvailabilityResponse(string Name, bool Available);

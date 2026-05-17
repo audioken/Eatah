@@ -2,6 +2,7 @@ using Eatah.Api.Common;
 using Eatah.Infrastructure.Identity;
 using FluentValidation;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Options;
 
 namespace Eatah.Api.Features.Auth;
 
@@ -12,25 +13,26 @@ public static class ResetPassword
         IValidator<ResetPasswordRequest> validator,
         UserManager<EatahUser> userManager,
         SignInManager<EatahUser> signInManager,
+        IOptions<AuthSettings> authSettings,
         CancellationToken ct)
     {
         var validationError = await validator.ValidateRequestAsync(request, ct);
         if (validationError is not null)
         {
-            return Result<UserResponse>.Failure(validationError).ToHttpResult();
+            return Result<AuthResponse>.Failure(validationError).ToHttpResult();
         }
 
         var user = await userManager.FindByIdAsync(request.UserId.ToString());
         if (user is null)
         {
-            return Result<UserResponse>
+            return Result<AuthResponse>
                 .Failure(Error.BadRequest(ErrorCodes.AuthInvalidToken, "Reset token is invalid."))
                 .ToHttpResult();
         }
 
         if (!TokenEncoding.TryDecode(request.Token, out var rawToken))
         {
-            return Result<UserResponse>
+            return Result<AuthResponse>
                 .Failure(Error.BadRequest(ErrorCodes.AuthInvalidToken, "Reset token is invalid."))
                 .ToHttpResult();
         }
@@ -42,12 +44,13 @@ public static class ResetPassword
             var code = first.Code.Contains("Token", StringComparison.OrdinalIgnoreCase)
                 ? ErrorCodes.AuthInvalidToken
                 : ErrorCodes.AuthPasswordInvalid;
-            return Result<UserResponse>
+            return Result<AuthResponse>
                 .Failure(Error.BadRequest(code, first.Description))
                 .ToHttpResult();
         }
 
         await signInManager.SignInAsync(user, isPersistent: true);
-        return Results.Ok(new UserResponse(user.Id, user.Email!, user.DisplayName));
+        var token = JwtTokenHelper.GenerateToken(user, authSettings.Value);
+        return Results.Ok(new AuthResponse(user.Id, user.Email!, user.DisplayName, token));
     }
 }
