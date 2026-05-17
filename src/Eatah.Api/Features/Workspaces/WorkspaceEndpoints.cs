@@ -11,6 +11,7 @@ public static class WorkspaceEndpoints
             .RequireAuthorization();
 
         group.MapGet("/", GetMyWorkspaces.Handle);
+        group.MapGet("/members", GetWorkspaceMembers.Handle);
         group.MapPost("/household", CreateHousehold.Handle);
         group.MapDelete("/household", LeaveHousehold.Handle);
         group.MapPatch("/{id:guid}", RenameWorkspace.Handle);

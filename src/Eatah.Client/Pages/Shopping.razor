@@ -7,6 +7,7 @@
 @inject IngredientCheckState CheckState
 @inject ShoppingSyncService ShoppingSync
 @inject ChatState ChatState
+@inject WorkspaceState WorkspaceState
 @implements IDisposable
 
 <div class="eatah-shopping-page">
@@ -80,12 +81,12 @@
                             <span>Flytta till skafferi</span>
                         </button>
                         <button type="button" class="eatah-shopping-actions__btn eatah-shopping-actions__btn--chat"
-                                @onclick="SendIWillBuyAsync" title="Jag köper dessa">
+                                @onclick="() => OpenChatDropdown('i')" title="Jag köper dessa">
                             <Icon Name="chat" Size="13" />
                             <span>Jag köper</span>
                         </button>
                         <button type="button" class="eatah-shopping-actions__btn eatah-shopping-actions__btn--chat"
-                                @onclick="SendCanYouBuyAsync" title="Be någon köpa dessa">
+                                @onclick="() => OpenChatDropdown('k')" title="Be någon köpa dessa">
                             <Icon Name="chat" Size="13" />
                             <span>Kan du köpa?</span>
                         </button>
@@ -208,9 +209,52 @@
     }
 </div>
 
+@* Chat recipient picker dropdown *@
+@if (_showChatDropdown)
+{
+    <div class="eatah-chat-recipient-overlay" @onclick="() => _showChatDropdown = false">
+        <div class="eatah-chat-recipient-picker" @onclick:stopPropagation="true">
+            <div class="eatah-chat-recipient-picker__title">Skicka till&hellip;</div>
+
+            @* Household group chat *@
+            <button type="button" class="eatah-chat-recipient-item"
+                    @onclick="SendToGroupAsync">
+                <div class="eatah-chat-recipient-item__avatar eatah-chat-recipient-item__avatar--group">
+                    <Icon Name="house" Size="14" />
+                </div>
+                <span class="eatah-chat-recipient-item__name">Hush&aring;llschatten</span>
+            </button>
+
+            @* Individual household members *@
+            @foreach (var member in _householdMembers)
+            {
+                var m = member;
+                <button type="button" class="eatah-chat-recipient-item"
+                        @onclick="() => SendToMemberAsync(m)">
+                    <div class="eatah-chat-recipient-item__avatar">
+                        <Icon Name="profile" Size="14" />
+                    </div>
+                    <span class="eatah-chat-recipient-item__name">@m.DisplayName</span>
+                </button>
+            }
+
+            @if (_dropdownLoading)
+            {
+                <div class="eatah-chat-recipient-picker__loading">Laddar&hellip;</div>
+            }
+        </div>
+    </div>
+}
+
 @code {
     private HashSet<Guid> _selectedShoppingItems = [];
     private HashSet<string> _expandedGroups = new(StringComparer.OrdinalIgnoreCase);
+
+    // Chat recipient picker state
+    private bool _showChatDropdown;
+    private bool _dropdownLoading;
+    private char _pendingChatType; // 'i' = Jag köper, 'k' = Kan du köpa
+    private List<WorkspaceMemberResponse> _householdMembers = [];
 
     private IList<IGrouping<string?, ShoppingItemResponse>> UncheckedGroups =>
         ShoppingState.Items
@@ -458,26 +502,45 @@
         }
     }
 
-    private async Task SendChatShoppingMessageAsync(string prefix)
+    private async Task OpenChatDropdown(char type)
     {
-        var selected = ShoppingState.Items
-            .Where(s => _selectedShoppingItems.Contains(s.Id) && !s.IsChecked)
-            .Select(s => s.Name)
-            .ToList();
-        if (!selected.Any()) return;
+        if (!_selectedShoppingItems.Any(id => ShoppingState.Items.Any(s => s.Id == id && !s.IsChecked)))
+            return;
 
-        var items = string.Join(", ", selected);
-        var message = $"{prefix}: {items}";
+        if (WorkspaceState.Current?.Type != WorkspaceType.Household)
+        {
+            Toasts.Show("Chattknapparna används i ett hushåll.");
+            return;
+        }
+
+        _pendingChatType = type;
+        _showChatDropdown = true;
+
+        // Lazy-load household members once
+        if (!_householdMembers.Any())
+        {
+            _dropdownLoading = true;
+            try { _householdMembers = await Api.GetWorkspaceMembersAsync(); }
+            catch { }
+            _dropdownLoading = false;
+        }
+    }
+
+    private async Task SendToGroupAsync()
+    {
+        _showChatDropdown = false;
+        var message = BuildChatMessage(_pendingChatType == 'i' ? "Jag köper" : "Kan du köpa");
+        if (message is null) return;
 
         try
         {
-            var threads = await Api.GetChatThreadsAsync();
-            var group = threads.FirstOrDefault(t => t.Type == "Group");
-            if (group is null) { Toasts.Show("Ingen gruppchat hittades."); return; }
+            var groupThread = await Api.GetOrCreateGroupThreadAsync();
+            if (groupThread is null) { Toasts.Show("Kunde inte hitta hushållschatten."); return; }
 
-            await Api.SendChatMessageAsync(group.Id, message);
-            Toasts.Show("Meddelande skickat till hushållet 💬");
-            ChatState.Open(group);
+            await Api.SendChatMessageAsync(groupThread.Id, message);
+            Toasts.Show("Meddelande skickat till Hushållschatten 💬");
+            var summary = new ChatThreadSummaryResponse(groupThread.Id, groupThread.WorkspaceId, "Group", null, null, null, null);
+            ChatState.Open(summary);
         }
         catch
         {
@@ -485,6 +548,35 @@
         }
     }
 
-    private Task SendIWillBuyAsync() => SendChatShoppingMessageAsync("Jag köper");
-    private Task SendCanYouBuyAsync() => SendChatShoppingMessageAsync("Kan du köpa");
+    private async Task SendToMemberAsync(WorkspaceMemberResponse member)
+    {
+        _showChatDropdown = false;
+        var message = BuildChatMessage(_pendingChatType == 'i' ? "Jag köper" : "Kan du köpa");
+        if (message is null) return;
+
+        try
+        {
+            var thread = await Api.GetOrCreateDirectThreadAsync(member.UserId);
+            if (thread is null) { Toasts.Show("Kunde inte öppna chatten."); return; }
+
+            await Api.SendChatMessageAsync(thread.Id, message);
+            Toasts.Show($"Meddelande skickat till {member.DisplayName} 💬");
+            ChatState.Open(thread);
+        }
+        catch
+        {
+            Toasts.Show("Kunde inte skicka meddelande.");
+        }
+    }
+
+    private string? BuildChatMessage(string prefix)
+    {
+        var selected = ShoppingState.Items
+            .Where(s => _selectedShoppingItems.Contains(s.Id) && !s.IsChecked)
+            .Select(s => s.Name)
+            .ToList();
+        if (!selected.Any()) return null;
+        return $"{prefix}: {string.Join(", ", selected)}";
+    }
 }
+

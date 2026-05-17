@@ -11,3 +11,4 @@ public record WorkspaceResponse(
 
 public record CreateHouseholdRequest(string Name);
 public record RenameWorkspaceRequest(string Name);
+public record WorkspaceMemberResponse(Guid UserId, string DisplayName);

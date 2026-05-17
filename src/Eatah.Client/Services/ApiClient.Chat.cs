@@ -12,6 +12,13 @@ public partial class ApiClient
         return await response.Content.ReadFromJsonAsync<List<ChatThreadSummaryResponse>>(cancellationToken: ct) ?? [];
     }
 
+    public async Task<ChatGroupThreadResponse?> GetOrCreateGroupThreadAsync(CancellationToken ct = default)
+    {
+        var response = await _http.GetAsync("api/chat/thread", ct);
+        await EnsureSuccessAsync(response, ct);
+        return await response.Content.ReadFromJsonAsync<ChatGroupThreadResponse>(cancellationToken: ct);
+    }
+
     public async Task<ChatThreadSummaryResponse?> GetOrCreateDirectThreadAsync(Guid buddyUserId, CancellationToken ct = default)
     {
         var response = await _http.PostAsJsonAsync("api/chat/threads/direct",

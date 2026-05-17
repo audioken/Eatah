@@ -131,20 +131,44 @@
     private Guid? _editingMessageId;
     private string _editText = string.Empty;
     private ElementReference _messagesEl;
+    private Guid? _subscribedThreadId;
 
     private CancellationTokenSource? _longPressCts;
 
     protected override async Task OnParametersSetAsync()
     {
+        var newThreadId = Thread.Id;
+        if (_subscribedThreadId == newThreadId) return;
+
+        // Unsubscribe from old thread first
+        if (_subscribedThreadId.HasValue)
+        {
+            UnsubscribeFromHub();
+            await Hub.LeaveThreadAsync(_subscribedThreadId.Value);
+        }
+
+        _subscribedThreadId = newThreadId;
         _messages.Clear();
         _isLoading = true;
         await LoadMessagesAsync();
-        await Hub.JoinThreadAsync(Thread.Id);
+        await Hub.JoinThreadAsync(newThreadId);
+        SubscribeToHub();
+    }
 
+    private void SubscribeToHub()
+    {
         Hub.MessageReceived += OnMessageReceived;
         Hub.MessageEdited += OnMessageEdited;
         Hub.MessageDeleted += OnMessageDeleted;
         Hub.ReactionUpdated += OnReactionUpdated;
+    }
+
+    private void UnsubscribeFromHub()
+    {
+        Hub.MessageReceived -= OnMessageReceived;
+        Hub.MessageEdited -= OnMessageEdited;
+        Hub.MessageDeleted -= OnMessageDeleted;
+        Hub.ReactionUpdated -= OnReactionUpdated;
     }
 
     private async Task LoadMessagesAsync()
@@ -296,11 +320,9 @@
 
     public async ValueTask DisposeAsync()
     {
-        Hub.MessageReceived -= OnMessageReceived;
-        Hub.MessageEdited -= OnMessageEdited;
-        Hub.MessageDeleted -= OnMessageDeleted;
-        Hub.ReactionUpdated -= OnReactionUpdated;
-        await Hub.LeaveThreadAsync(Thread.Id);
+        UnsubscribeFromHub();
+        if (_subscribedThreadId.HasValue)
+            await Hub.LeaveThreadAsync(_subscribedThreadId.Value);
         _longPressCts?.Dispose();
     }
 }

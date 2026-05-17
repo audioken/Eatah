@@ -11,4 +11,11 @@ public partial class ApiClient
         await EnsureSuccessAsync(response, ct);
         return await response.Content.ReadFromJsonAsync<List<WorkspaceResponse>>(cancellationToken: ct) ?? [];
     }
+
+    public async Task<List<WorkspaceMemberResponse>> GetWorkspaceMembersAsync(CancellationToken ct = default)
+    {
+        var response = await _http.GetAsync("api/workspaces/members", ct);
+        await EnsureSuccessAsync(response, ct);
+        return await response.Content.ReadFromJsonAsync<List<WorkspaceMemberResponse>>(cancellationToken: ct) ?? [];
+    }
 }

@@ -1832,6 +1832,85 @@ body.eatah-modal-open {
     background: rgba(139, 92, 246, 0.5);
 }
 
+/* ---- Chat recipient picker (shopping page dropdown) ---- */
+.eatah-chat-recipient-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 250;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 80px; /* above navbar */
+}
+
+.eatah-chat-recipient-picker {
+    background: var(--color-surface, #1e1e2e);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 8px;
+    min-width: 220px;
+    max-width: 320px;
+    width: 90%;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.eatah-chat-recipient-picker__title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.4);
+    padding: 4px 10px 8px;
+}
+
+.eatah-chat-recipient-picker__loading {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.4);
+    text-align: center;
+    padding: 8px;
+}
+
+.eatah-chat-recipient-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-radius: 10px;
+    padding: 8px 10px;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.12s;
+}
+
+.eatah-chat-recipient-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.eatah-chat-recipient-item__avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.eatah-chat-recipient-item__avatar--group {
+    background: rgba(34, 197, 94, 0.2);
+    color: var(--color-brand, #22c55e);
+}
+
+.eatah-chat-recipient-item__name {
+    font-size: 14px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+}
+
 /* Chat overlay backdrop */
 .eatah-chat-overlay {
     position: fixed;
@@ -1842,13 +1921,14 @@ body.eatah-modal-open {
     display: flex;
     align-items: flex-end;
     justify-content: center;
+    padding-bottom: calc(var(--navbar-height) + env(safe-area-inset-bottom, 0px));
 }
 
 /* Chat panel */
 .eatah-chat-panel {
     width: 100%;
     max-width: 640px;
-    height: 85dvh;
+    height: 76dvh;
     background: var(--color-surface);
     border-radius: 20px 20px 0 0;
     display: flex;
@@ -1860,10 +1940,12 @@ body.eatah-modal-open {
 @media (min-width: 640px) {
     .eatah-chat-overlay {
         align-items: center;
+        padding-bottom: 0;
     }
     .eatah-chat-panel {
         border-radius: 20px;
-        height: 75dvh;
+        height: 70dvh;
+        max-height: 680px;
     }
 }
 
@@ -1900,7 +1982,7 @@ body.eatah-modal-open {
     color: #fff;
 }
 
-/* Panel body = sidebar + thread area */
+/* Panel body - horizontal layout */
 .eatah-chat-panel__body {
     display: flex;
     flex: 1;
@@ -1909,58 +1991,114 @@ body.eatah-modal-open {
 
 /* Sidebar */
 .eatah-chat-panel__sidebar {
-    width: 52px;
+    width: 160px;
     flex-shrink: 0;
     border-right: 1px solid rgba(255, 255, 255, 0.06);
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    padding: 8px 4px;
-    overflow-y: auto;
+    overflow: hidden;
 }
 
-@media (min-width: 380px) {
+@media (min-width: 480px) {
     .eatah-chat-panel__sidebar {
-        width: 64px;
+        width: 200px;
     }
 }
 
-/* Thread list item in sidebar */
-.eatah-chat-thread-item {
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
+/* Sidebar header */
+.eatah-chat-panel__sidebar-header {
     display: flex;
     align-items: center;
-    justify-content: center;
-    background: rgba(255, 255, 255, 0.08);
-    cursor: pointer;
-    border: 2px solid transparent;
-    transition: background 0.15s, border-color 0.15s;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     flex-shrink: 0;
-    position: relative;
+    font-size: 13px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Thread list */
+.eatah-chat-panel__thread-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 0;
+}
+
+/* Thread list item */
+.eatah-chat-thread-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: transparent;
+    cursor: pointer;
+    border: none;
+    border-left: 3px solid transparent;
+    text-align: left;
+    transition: background 0.15s;
 }
 
 .eatah-chat-thread-item:hover {
-    background: rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.07);
 }
 
 .eatah-chat-thread-item--active {
-    border-color: var(--color-brand, #22c55e);
-    background: rgba(34, 197, 94, 0.15);
+    background: rgba(34, 197, 94, 0.1);
+    border-left-color: var(--color-brand, #22c55e);
 }
 
-.eatah-chat-thread-item__label {
-    font-size: 8px;
-    font-weight: 700;
+.eatah-chat-thread-item__avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
     color: rgba(255, 255, 255, 0.6);
-    text-align: center;
-    margin-top: 2px;
-    max-width: 52px;
+}
+
+.eatah-chat-thread-item__avatar--group {
+    background: rgba(34, 197, 94, 0.2);
+    color: var(--color-brand, #22c55e);
+}
+
+.eatah-chat-thread-item__info {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.eatah-chat-thread-item__name {
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.eatah-chat-thread-item__preview {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.4);
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 1px;
+}
+
+/* Loading / empty states in sidebar and thread area */
+.eatah-chat-panel__loading,
+.eatah-chat-panel__empty {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.4);
+    text-align: center;
+    padding: 16px 8px;
 }
 
 /* Thread area */
@@ -1973,15 +2111,29 @@ body.eatah-modal-open {
 
 /* Thread header */
 .eatah-chat-panel__thread-header {
-    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    flex-shrink: 0;
-}
-
-.eatah-chat-panel__thread-name {
     font-size: 14px;
     font-weight: 600;
     color: #fff;
+    flex-shrink: 0;
+}
+
+.eatah-chat-panel__thread-icon {
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
+.eatah-chat-panel__empty {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.35);
 }
 
 /* Chat thread message area */
@@ -2294,11 +2446,4 @@ body.eatah-modal-open {
     cursor: default;
 }
 
-/* Panel loading / empty states */
-.eatah-chat-panel__loading,
-.eatah-chat-panel__empty {
-    color: rgba(255, 255, 255, 0.4);
-    font-size: 14px;
-    text-align: center;
-    padding: 40px 16px;
-}
+

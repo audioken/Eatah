@@ -27,27 +27,31 @@ public sealed class ChatHubService : IAsyncDisposable
 
     public async Task StartAsync(string hubUrl, CancellationToken ct = default)
     {
-        if (_connection is not null) return;
+        if (_connection is null)
+        {
+            var token = _tokenStore.Token;
 
-        var token = _tokenStore.Token;
+            _connection = new HubConnectionBuilder()
+                .WithUrl(hubUrl, opts =>
+                {
+                    if (!string.IsNullOrEmpty(token))
+                        opts.AccessTokenProvider = () => Task.FromResult<string?>(token);
+#pragma warning disable CA1416
+                    opts.UseDefaultCredentials = true;
+#pragma warning restore CA1416
+                })
+                .WithAutomaticReconnect()
+                .Build();
 
-        _connection = new HubConnectionBuilder()
-            .WithUrl(hubUrl, opts =>
-            {
-                if (!string.IsNullOrEmpty(token))
-                    opts.AccessTokenProvider = () => Task.FromResult<string?>(token);
-                opts.UseDefaultCredentials = true;
-            })
-            .WithAutomaticReconnect()
-            .Build();
+            _connection.On<ChatMessageResponse>("MessageReceived", msg => MessageReceived?.Invoke(msg));
+            _connection.On<ChatMessageResponse>("MessageEdited", msg => MessageEdited?.Invoke(msg));
+            _connection.On<Guid>("MessageDeleted", id => MessageDeleted?.Invoke(id));
+            _connection.On<ReactionUpdatePayload>("ReactionUpdated", payload =>
+                ReactionUpdated?.Invoke(payload.MessageId, payload.Reactions));
+        }
 
-        _connection.On<ChatMessageResponse>("MessageReceived", msg => MessageReceived?.Invoke(msg));
-        _connection.On<ChatMessageResponse>("MessageEdited", msg => MessageEdited?.Invoke(msg));
-        _connection.On<Guid>("MessageDeleted", id => MessageDeleted?.Invoke(id));
-        _connection.On<ReactionUpdatePayload>("ReactionUpdated", payload =>
-            ReactionUpdated?.Invoke(payload.MessageId, payload.Reactions));
-
-        await _connection.StartAsync(ct);
+        if (_connection.State == HubConnectionState.Disconnected)
+            await _connection.StartAsync(ct);
     }
 
     public async Task JoinThreadAsync(Guid threadId)

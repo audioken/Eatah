@@ -91,6 +91,7 @@ public record GenerateDietProfileRequest(
 public enum WorkspaceType { Personal = 0, Household = 1 }
 
 public record WorkspaceResponse(Guid Id, string Name, WorkspaceType Type, int MemberCount, bool IsOwner);
+public record WorkspaceMemberResponse(Guid UserId, string DisplayName);
 
 // ---- Friends ----
 
@@ -153,3 +154,4 @@ public record SendChatMessageRequest(string Text);
 public record EditChatMessageRequest(string Text);
 public record ToggleChatReactionRequest(string Emoji);
 public record GetOrCreateDirectThreadRequest(Guid BuddyUserId);
+public record ChatGroupThreadResponse(Guid Id, Guid WorkspaceId);
