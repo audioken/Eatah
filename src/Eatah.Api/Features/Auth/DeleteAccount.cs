@@ -4,6 +4,7 @@ using Eatah.Domain.Entities;
 using Eatah.Infrastructure.Identity;
 using Eatah.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace Eatah.Api.Features.Auth;
@@ -11,7 +12,7 @@ namespace Eatah.Api.Features.Auth;
 public static class DeleteAccount
 {
     public static async Task<IResult> Handle(
-        DeleteAccountRequest request,
+        [FromBody] DeleteAccountRequest request,
         UserManager<EatahUser> userManager,
         ClaimsPrincipal principal,
         EatahDbContext db,
