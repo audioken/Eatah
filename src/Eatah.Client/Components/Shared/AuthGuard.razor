@@ -1,4 +1,5 @@
 @inject AuthState AuthState
+@inject WorkspaceState WorkspaceState
 @inject NavigationManager Nav
 @implements IDisposable
 
@@ -23,6 +24,10 @@ else if (AuthState.IsAuthenticated)
         if (!AuthState.IsAuthenticated)
         {
             Nav.NavigateTo("auth/login");
+        }
+        else
+        {
+            await WorkspaceState.InitializeAsync();
         }
     }
 

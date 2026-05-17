@@ -85,3 +85,32 @@ public record DietEvaluationResponse(
 public record GenerateDietProfileRequest(
     string Name,
     string? Description);
+
+// ---- Workspaces ----
+
+public enum WorkspaceType { Personal = 0, Household = 1 }
+
+public record WorkspaceResponse(Guid Id, string Name, WorkspaceType Type, int MemberCount, bool IsOwner);
+
+// ---- Friends ----
+
+public enum RequestStatus { Pending = 0, Accepted = 1, Rejected = 2, Cancelled = 3 }
+
+public record UserSearchResult(Guid Id, string DisplayName);
+public record SendFriendRequestRequest(Guid ToUserId);
+public record RespondToFriendRequestRequest(bool Accept);
+public record FriendRequestResponse(
+    Guid Id, Guid FromUserId, string FromDisplayName, Guid ToUserId, string ToDisplayName,
+    Guid HouseholdWorkspaceId, RequestStatus Status, DateTime CreatedAt);
+public record FriendResponse(Guid Id, string DisplayName);
+
+// ---- Notifications ----
+
+public enum NotificationType { FriendRequest = 0, FriendRequestAccepted = 1, ChatMessage = 2, ChatMention = 3 }
+
+public record NotificationResponse(Guid Id, NotificationType Type, string Payload, DateTime CreatedAt, DateTime? ReadAt);
+
+// ---- Profile ----
+
+public record UpdateProfileRequest(string? DisplayName, string? Email);
+public record DeleteAccountRequest(string Password);

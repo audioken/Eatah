@@ -44,6 +44,20 @@ public static class ApiErrorCodes
     public const string AuthPasswordInvalid = "auth_password_invalid";
     public const string AuthNotAuthenticated = "auth_not_authenticated";
     public const string AuthEmailSendFailed = "auth_email_send_failed";
+
+    // Workspaces
+    public const string WorkspaceNotFound = "workspace_not_found";
+    public const string WorkspaceAccessDenied = "workspace_access_denied";
+    public const string WorkspaceHouseholdAlreadyExists = "workspace_household_already_exists";
+
+    // Friends
+    public const string FriendRequestNotFound = "friend_request_not_found";
+    public const string FriendRequestAlreadyPending = "friend_request_already_pending";
+    public const string FriendRequestSelf = "friend_request_self";
+    public const string FriendRequestCannotInviteHouseholdMember = "friend_request_cannot_invite_household_member";
+
+    // Notifications
+    public const string NotificationNotFound = "notification_not_found";
 }
 
 /// <summary>

@@ -14,6 +14,10 @@ public record ResetPasswordRequest(Guid UserId, string Token, string NewPassword
 
 public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 
+public record UpdateProfileRequest(string? DisplayName, string? Email);
+
+public record DeleteAccountRequest(string Password);
+
 // ----- Responses -----
 
 public record UserResponse(Guid Id, string Email, string DisplayName);

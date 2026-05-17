@@ -1,5 +1,6 @@
 @inject NavigationManager Nav
 @inject ToastService Toasts
+@inject ModalService Modals
 @implements IDisposable
 
 <nav class="eatah-navbar" aria-label="Huvudnavigering">
@@ -18,7 +19,7 @@
 @code {
     private record NavItem(string Label, string Icon, NavAction Action, string? Route = null);
 
-    private enum NavAction { Navigate, ComingSoon }
+    private enum NavAction { Navigate, ComingSoon, Profile }
 
     private readonly List<NavItem> _items = new()
     {
@@ -26,7 +27,7 @@
         new("Köplista", "basket", NavAction.ComingSoon, "/shopping"),// becomes route in fas 7
         new("Matplan", "calendar", NavAction.Navigate, "/"),
         new("Chat", "chat", NavAction.ComingSoon), // becomes modal in fas 8
-        new("Profil", "profile", NavAction.ComingSoon), // becomes modal in fas 6
+        new("Profil", "profile", NavAction.Profile), // opens profile modal
     };
 
     protected override void OnInitialized()
@@ -61,6 +62,9 @@
                 break;
             case NavAction.ComingSoon:
                 Toasts.Show($"{item.Label} kommer snart");
+                break;
+            case NavAction.Profile:
+                Modals.Show<ProfileModal>();
                 break;
         }
     }

@@ -29,6 +29,7 @@ public static class MauiProgram
 		builder.Services.AddSingleton<ITokenStore, InMemoryTokenStore>();
 		builder.Services.AddTransient<TokenAuthorizationHandler>();
 		builder.Services.AddTransient<LoadingHttpMessageHandler>();
+		builder.Services.AddTransient<WorkspaceHeaderHandler>();
 
 		// Shared cookie jar so the auth cookie survives across requests within the app session.
 		builder.Services.AddSingleton(new System.Net.CookieContainer());
@@ -50,9 +51,11 @@ public static class MauiProgram
 			AllowAutoRedirect = false
 		})
 		.AddHttpMessageHandler<TokenAuthorizationHandler>()
+		.AddHttpMessageHandler<WorkspaceHeaderHandler>()
 		.AddHttpMessageHandler<LoadingHttpMessageHandler>();
 
 		builder.Services.AddSingleton<AuthState>();
+		builder.Services.AddSingleton<WorkspaceState>();
 
 		return builder.Build();
 	}

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Eatah.Client.Services.Contracts;
 
 namespace Eatah.Client.Services;
@@ -72,5 +73,22 @@ public partial class ApiClient
         var response = await _http.GetAsync($"api/auth/check-displayname?name={Uri.EscapeDataString(name)}", ct);
         await EnsureSuccessAsync(response, ct);
         return await response.Content.ReadFromJsonAsync<DisplayNameAvailabilityResponse>(cancellationToken: ct);
+    }
+
+    public async Task<UserResponse?> UpdateProfileAsync(UpdateProfileRequest request, CancellationToken ct = default)
+    {
+        var response = await _http.PutAsJsonAsync("api/auth/profile", request, ct);
+        await EnsureSuccessAsync(response, ct);
+        return await response.Content.ReadFromJsonAsync<UserResponse>(cancellationToken: ct);
+    }
+
+    public async Task DeleteAccountAsync(DeleteAccountRequest request, CancellationToken ct = default)
+    {
+        var httpRequest = new HttpRequestMessage(HttpMethod.Delete, "api/auth/me")
+        {
+            Content = JsonContent.Create(request)
+        };
+        var response = await _http.SendAsync(httpRequest, ct);
+        await EnsureSuccessAsync(response, ct);
     }
 }

@@ -1,0 +1,54 @@
+@namespace Eatah.Client.Components.Shared
+@inject WorkspaceState Workspaces
+@implements IDisposable
+
+@{
+    var chevronClass = "eatah-workspace-picker__chevron" + (_open ? " eatah-workspace-picker__chevron--open" : "");
+}
+<div class="eatah-workspace-picker">
+    <button type="button" class="eatah-workspace-picker__btn" @onclick="Toggle">
+        <span class="eatah-workspace-picker__label">@(Workspaces.Current?.Name ?? "Personligt")</span>
+        <Icon Name="chevron-down" Size="14" CssClass="@chevronClass" />
+    </button>
+
+    @if (_open && Workspaces.Workspaces.Count > 1)
+    {
+        <div class="eatah-workspace-picker__dropdown">
+            @foreach (var ws in Workspaces.Workspaces)
+            {
+                var isActive = ws.Id == Workspaces.CurrentId;
+                <button type="button"
+                        class="eatah-workspace-picker__option @(isActive ? "eatah-workspace-picker__option--active" : "")"
+                        @onclick="() => Select(ws.Id)">
+                    <Icon Name="@(ws.Type == WorkspaceType.Household ? "house" : "profile")" Size="16" />
+                    <span>@ws.Name</span>
+                    @if (isActive)
+                    {
+                        <Icon Name="check" Size="14" />
+                    }
+                </button>
+            }
+        </div>
+        <div class="eatah-workspace-picker__backdrop" @onclick="Close"></div>
+    }
+</div>
+
+@code {
+    private bool _open;
+
+    protected override void OnInitialized()
+    {
+        Workspaces.OnChange += StateHasChanged;
+    }
+
+    private void Toggle() => _open = !_open;
+    private void Close() => _open = false;
+
+    private void Select(Guid id)
+    {
+        Workspaces.SwitchTo(id);
+        _open = false;
+    }
+
+    public void Dispose() => Workspaces.OnChange -= StateHasChanged;
+}

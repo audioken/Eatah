@@ -1,0 +1,175 @@
+@namespace Eatah.Client.Components.Shared
+@inject ApiClient Api
+@implements IDisposable
+
+<div class="eatah-notif-bell" @onclick="ToggleDropdown">
+    <Icon Name="bell" Size="22" />
+    @if (_unreadCount > 0)
+    {
+        <span class="eatah-notif-bell__badge">@(_unreadCount > 9 ? "9+" : _unreadCount.ToString())</span>
+    }
+</div>
+
+@if (_open)
+{
+    <div class="eatah-notif-backdrop" @onclick="Close"></div>
+    <div class="eatah-notif-dropdown" @onclick:stopPropagation="true">
+        <div class="eatah-notif-dropdown__header">
+            <span>Notiser</span>
+            @if (_notifications.Any(n => n.ReadAt is null))
+            {
+                <button type="button" class="eatah-notif-dropdown__mark-all" @onclick="MarkAllReadAsync">
+                    Markera alla som lästa
+                </button>
+            }
+        </div>
+        <div class="eatah-notif-dropdown__list">
+            @if (_notifications.Count == 0)
+            {
+                <p class="eatah-notif-dropdown__empty">Inga notiser.</p>
+            }
+            else
+            {
+                @foreach (var notif in _notifications)
+                {
+                    <div class="eatah-notif-item @(notif.ReadAt is null ? "eatah-notif-item--unread" : "")">
+                        <div class="eatah-notif-item__content">
+                            <p class="eatah-notif-item__text">@GetNotifText(notif)</p>
+                            <span class="eatah-notif-item__time">@FormatTime(notif.CreatedAt)</span>
+                        </div>
+                        @if (notif.Type == NotificationType.FriendRequest && notif.ReadAt is null)
+                        {
+                            var reqId = ParseFriendRequestPayload(notif.Payload);
+                            @if (reqId != Guid.Empty)
+                            {
+                                <div class="eatah-notif-item__actions">
+                                    <button type="button" class="eatah-notif-item__btn eatah-notif-item__btn--accept"
+                                            @onclick="() => RespondAsync(reqId, notif.Id, true)">
+                                        Acceptera
+                                    </button>
+                                    <button type="button" class="eatah-notif-item__btn eatah-notif-item__btn--reject"
+                                            @onclick="() => RespondAsync(reqId, notif.Id, false)">
+                                        Neka
+                                    </button>
+                                </div>
+                            }
+                        }
+                    </div>
+                }
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public EventCallback OnFriendRequestResponded { get; set; }
+
+    private bool _open;
+    private List<NotificationResponse> _notifications = [];
+    private int _unreadCount;
+    private System.Threading.Timer? _pollTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        _pollTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadAsync();
+                StateHasChanged();
+            });
+        }, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _notifications = await Api.GetNotificationsAsync();
+            _unreadCount = _notifications.Count(n => n.ReadAt is null);
+        }
+        catch { }
+    }
+
+    private void ToggleDropdown()
+    {
+        _open = !_open;
+        if (_open)
+        {
+            _ = InvokeAsync(async () =>
+            {
+                await LoadAsync();
+                StateHasChanged();
+            });
+        }
+    }
+
+    private void Close() => _open = false;
+
+    private async Task MarkAllReadAsync()
+    {
+        try
+        {
+            await Api.MarkAllNotificationsAsReadAsync();
+            await LoadAsync();
+        }
+        catch { }
+    }
+
+    private async Task RespondAsync(Guid requestId, Guid notifId, bool accept)
+    {
+        try
+        {
+            await Api.RespondToFriendRequestAsync(requestId, accept);
+            await Api.MarkNotificationAsReadAsync(notifId);
+            await LoadAsync();
+            await OnFriendRequestResponded.InvokeAsync();
+        }
+        catch { }
+    }
+
+    private string GetNotifText(NotificationResponse notif)
+    {
+        try
+        {
+            var doc = System.Text.Json.JsonDocument.Parse(notif.Payload);
+            return notif.Type switch
+            {
+                NotificationType.FriendRequest =>
+                    doc.RootElement.TryGetProperty("fromDisplayName", out var n)
+                        ? $"{n.GetString()} vill bli din foodbuddy och dela sin meny med dig"
+                        : "Någon vill bli din foodbuddy",
+                NotificationType.FriendRequestAccepted =>
+                    doc.RootElement.TryGetProperty("byDisplayName", out var n)
+                        ? $"{n.GetString()} accepterade din foodbuddy-förfrågan"
+                        : "Din foodbuddy-förfrågan accepterades",
+                _ => "Ny notis"
+            };
+        }
+        catch { return "Notis"; }
+    }
+
+    private Guid ParseFriendRequestPayload(string payload)
+    {
+        try
+        {
+            var doc = System.Text.Json.JsonDocument.Parse(payload);
+            if (doc.RootElement.TryGetProperty("requestId", out var rid) && rid.TryGetGuid(out var id))
+                return id;
+        }
+        catch { }
+        return Guid.Empty;
+    }
+
+    private static string FormatTime(DateTime utc)
+    {
+        var diff = DateTime.UtcNow - utc;
+        if (diff.TotalMinutes < 1) return "Just nu";
+        if (diff.TotalHours < 1) return $"{(int)diff.TotalMinutes} min sedan";
+        if (diff.TotalDays < 1) return $"{(int)diff.TotalHours} tim sedan";
+        return utc.ToLocalTime().ToString("d MMM");
+    }
+
+    public void Dispose() => _pollTimer?.Dispose();
+}

@@ -102,6 +102,20 @@ public class AuthState
     }
 
     /// <summary>
+    /// Re-fetches the current user from the API and updates local state.
+    /// Useful after a profile update.
+    /// </summary>
+    public async Task RefreshUserAsync(CancellationToken ct = default)
+    {
+        var user = await _api.GetMeAsync(ct);
+        if (user is not null)
+        {
+            _currentUser = user;
+            OnChange?.Invoke();
+        }
+    }
+
+    /// <summary>
     /// Called by <see cref="ApiClient"/>-aware code paths when a request unexpectedly returns 401,
     /// indicating the token has expired or been revoked.
     /// </summary>

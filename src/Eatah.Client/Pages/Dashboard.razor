@@ -1,6 +1,7 @@
 ﻿@page "/"
 @inject ApiClient Api
 @inject HeaderState Header
+@inject WorkspaceState Workspaces
 @implements IDisposable
 
 <div class="max-w-6xl mx-auto">
@@ -81,9 +82,7 @@
 	private void UpdateHeader()
 	{
 		var weekText = _plan is null ? "Veckoplan" : $"Vecka {_plan.WeekNumber}";
-		Header.Set(
-			center: builder => builder.AddContent(0, weekText),
-			left: builder => builder.AddContent(0, "Personligt"));
+		Header.Set(center: builder => builder.AddContent(0, weekText));
 	}
 
 	private async Task LoadAsync()

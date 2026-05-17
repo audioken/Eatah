@@ -35,6 +35,8 @@ public static class AuthEndpoints
         authedGroup.MapPost("/logout", Logout.Handle).WithName(nameof(Logout));
         authedGroup.MapPost("/password-change", ChangePassword.Handle).WithName(nameof(ChangePassword));
         authedGroup.MapGet("/me", Me.Handle).WithName(nameof(Me));
+        authedGroup.MapPut("/profile", UpdateProfile.Handle).WithName(nameof(UpdateProfile));
+        authedGroup.MapDelete("/me", DeleteAccount.Handle).WithName(nameof(DeleteAccount));
 
         return app;
     }

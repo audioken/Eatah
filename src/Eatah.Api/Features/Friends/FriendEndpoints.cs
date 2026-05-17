@@ -57,6 +57,17 @@ public static class GetMyFriends
     }
 }
 
+public static class GetPendingFriendRequests
+{
+    public static async Task<IResult> Handle(FriendService service, ICurrentUser currentUser, CancellationToken ct)
+    {
+        if (currentUser.UserId is not Guid userId)
+            return Error.Unauthorized(ErrorCodes.AuthNotAuthenticated, "Not authenticated.").ToHttpResult();
+        var list = await service.GetPendingIncomingAsync(userId, ct);
+        return Results.Ok(list);
+    }
+}
+
 public static class FriendEndpoints
 {
     public static void MapFriendEndpoints(this IEndpointRouteBuilder app)
@@ -66,6 +77,7 @@ public static class FriendEndpoints
 
         var group = app.MapGroup("/api/friends").WithTags("Friends").RequireAuthorization();
         group.MapGet("/", GetMyFriends.Handle);
+        group.MapGet("/requests/incoming", GetPendingFriendRequests.Handle);
         group.MapPost("/requests", SendFriendRequest.Handle);
         group.MapPost("/requests/{id:guid}/respond", RespondToFriendRequest.Handle);
         group.MapDelete("/requests/{id:guid}", CancelFriendRequest.Handle);

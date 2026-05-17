@@ -188,4 +188,25 @@ public class FriendService
             .Select(u => new FriendResponse(u.Id, u.DisplayName))
             .ToListAsync(ct);
     }
+
+    public async Task<List<FriendRequestResponse>> GetPendingIncomingAsync(Guid userId, CancellationToken ct)
+    {
+        var requests = await _db.FriendRequests
+            .AsNoTracking()
+            .Where(r => r.ToUserId == userId && r.Status == RequestStatus.Pending)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync(ct);
+
+        var result = new List<FriendRequestResponse>();
+        foreach (var r in requests)
+        {
+            var from = await _users.FindByIdAsync(r.FromUserId.ToString());
+            var to = await _users.FindByIdAsync(r.ToUserId.ToString());
+            result.Add(new FriendRequestResponse(
+                r.Id, r.FromUserId, from?.DisplayName ?? "",
+                r.ToUserId, to?.DisplayName ?? "",
+                r.HouseholdWorkspaceId, r.Status, r.CreatedAt));
+        }
+        return result;
+    }
 }

@@ -1,0 +1,369 @@
+@namespace Eatah.Client.Components.Profile
+@inject ApiClient Api
+@inject AuthState Auth
+@inject WorkspaceState Workspaces
+@inject ModalService Modals
+@inject ToastService Toasts
+@inject NavigationManager Nav
+@implements IDisposable
+
+<div class="eatah-profile-modal">
+    <div class="eatah-profile-modal__header">
+        <h2 class="eatah-profile-modal__title">Profil</h2>
+        <button type="button" class="eatah-profile-modal__close" @onclick="Close" aria-label="Stäng">
+            <Icon Name="close" Size="20" />
+        </button>
+    </div>
+
+    <div class="eatah-profile-modal__body">
+
+        @if (_error is not null)
+        {
+            <div class="eatah-profile-modal__alert eatah-profile-modal__alert--error">@_error</div>
+        }
+
+        @* ── Account info ── *@
+        <section class="eatah-profile-modal__section">
+            <div class="eatah-profile-modal__field-row">
+                <div class="eatah-profile-modal__field">
+                    <label>Användarnamn</label>
+                    @if (_editingName)
+                    {
+                        <input class="eatah-profile-modal__input" @bind="_newName" @bind:event="oninput"
+                               placeholder="@Auth.CurrentUser?.DisplayName" />
+                    }
+                    else
+                    {
+                        <span>@Auth.CurrentUser?.DisplayName</span>
+                    }
+                </div>
+                <button type="button" class="eatah-profile-modal__edit-btn" @onclick="ToggleEditName"
+                        title="Redigera användarnamn">
+                    <Icon Name="@(_editingName ? "close" : "edit")" Size="18" />
+                </button>
+            </div>
+
+            <div class="eatah-profile-modal__field-row">
+                <div class="eatah-profile-modal__field">
+                    <label>E-post</label>
+                    @if (_editingEmail)
+                    {
+                        <input type="email" class="eatah-profile-modal__input" @bind="_newEmail" @bind:event="oninput"
+                               placeholder="@Auth.CurrentUser?.Email" />
+                    }
+                    else
+                    {
+                        <span>@Auth.CurrentUser?.Email</span>
+                    }
+                </div>
+                <button type="button" class="eatah-profile-modal__edit-btn" @onclick="ToggleEditEmail"
+                        title="Redigera e-post">
+                    <Icon Name="@(_editingEmail ? "close" : "edit")" Size="18" />
+                </button>
+            </div>
+
+            @if (_editingName || _editingEmail)
+            {
+                <button type="button" class="eatah-profile-modal__btn eatah-profile-modal__btn--primary" disabled="@_saving"
+                        @onclick="SaveProfileAsync">
+                    @(_saving ? "Sparar..." : "Spara ändringar")
+                </button>
+            }
+        </section>
+
+        @* ── Password ── *@
+        <section class="eatah-profile-modal__section">
+            <button type="button" class="eatah-profile-modal__section-toggle" @onclick="TogglePassword">
+                <span>Byt lösenord</span>
+                <Icon Name="@(_showPassword ? "chevron-up" : "chevron-down")" Size="18" />
+            </button>
+            @if (_showPassword)
+            {
+                <div class="eatah-profile-modal__sub">
+                    <PasswordInput Label="Nuvarande lösenord" @bind-Value="_currentPassword" Id="pw-current" />
+                    <PasswordInput Label="Nytt lösenord" @bind-Value="_newPassword" Id="pw-new" />
+                    <PasswordInput Label="Upprepa nytt lösenord" @bind-Value="_confirmPassword" Id="pw-confirm" />
+                    @if (_passwordError is not null)
+                    {
+                        <p class="eatah-profile-modal__field-error">@_passwordError</p>
+                    }
+                    <button type="button" class="eatah-profile-modal__btn eatah-profile-modal__btn--primary"
+                            disabled="@_saving" @onclick="ChangePasswordAsync">
+                        @(_saving ? "Sparar..." : "Byt lösenord")
+                    </button>
+                </div>
+            }
+        </section>
+
+        @* ── Foodbuddies ── *@
+        <section class="eatah-profile-modal__section">
+            <h3 class="eatah-profile-modal__section-title">Foodbuddies</h3>
+            <div class="eatah-profile-modal__search-row">
+                <input class="eatah-profile-modal__input eatah-profile-modal__input--search"
+                       placeholder="Sök efter användare..." value="@_searchQuery" @oninput="OnSearchInput" />
+            </div>
+
+            @if (_searchResults.Count > 0)
+            {
+                <ul class="eatah-profile-modal__user-list">
+                    @foreach (var user in _searchResults)
+                    {
+                        <li class="eatah-profile-modal__user-row">
+                            <span class="eatah-profile-modal__user-name">@user.DisplayName</span>
+                            <button type="button" class="eatah-profile-modal__btn eatah-profile-modal__btn--small"
+                                    @onclick="() => SendFriendRequestAsync(user)">
+                                Lägg till
+                            </button>
+                        </li>
+                    }
+                </ul>
+            }
+            else if (!string.IsNullOrWhiteSpace(_searchQuery) && _searchQuery.Length >= 2 && !_searching)
+            {
+                <p class="eatah-profile-modal__empty">Ingen användare hittades.</p>
+            }
+
+            @if (_friends.Count > 0)
+            {
+                <h4 class="eatah-profile-modal__sub-title">Dina foodbuddies</h4>
+                <ul class="eatah-profile-modal__user-list">
+                    @foreach (var f in _friends)
+                    {
+                        <li class="eatah-profile-modal__user-row">
+                            <span class="eatah-profile-modal__user-name">@f.DisplayName</span>
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+
+        @* ── Danger zone ── *@
+        <section class="eatah-profile-modal__section eatah-profile-modal__section--danger">
+            <h3 class="eatah-profile-modal__section-title eatah-profile-modal__section-title--danger">
+                Riskzon
+            </h3>
+            <p class="eatah-profile-modal__danger-desc">
+                Att radera ditt konto är permanent och kan inte ångras. All din data tas bort.
+            </p>
+            @if (!_confirmingDelete)
+            {
+                <button type="button" class="eatah-profile-modal__btn eatah-profile-modal__btn--danger"
+                        @onclick="() => _confirmingDelete = true">
+                    Radera konto
+                </button>
+            }
+            else
+            {
+                <p class="eatah-profile-modal__danger-desc">Ange ditt lösenord för att bekräfta:</p>
+                <PasswordInput Label="Lösenord" @bind-Value="_deletePassword" Id="pw-delete" />
+                <div class="eatah-profile-modal__danger-actions">
+                    <button type="button" class="eatah-profile-modal__btn eatah-profile-modal__btn--ghost"
+                            @onclick="() => _confirmingDelete = false">
+                        Avbryt
+                    </button>
+                    <button type="button" class="eatah-profile-modal__btn eatah-profile-modal__btn--danger"
+                            disabled="@_saving" @onclick="DeleteAccountAsync">
+                        @(_saving ? "Raderar..." : "Bekräfta radering")
+                    </button>
+                </div>
+            }
+        </section>
+
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] private ModalInstance? Instance { get; set; }
+
+    private bool _editingName;
+    private bool _editingEmail;
+    private string _newName = "";
+    private string _newEmail = "";
+    private bool _saving;
+    private string? _error;
+
+    private bool _showPassword;
+    private string _currentPassword = "";
+    private string _newPassword = "";
+    private string _confirmPassword = "";
+    private string? _passwordError;
+
+    private string _searchQuery = "";
+    private bool _searching;
+    private List<UserSearchResult> _searchResults = [];
+    private List<FriendResponse> _friends = [];
+    private CancellationTokenSource? _searchCts;
+
+    private bool _confirmingDelete;
+    private string _deletePassword = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { _friends = await Api.GetFriendsAsync(); } catch { }
+    }
+
+    private void Close() => Modals.Close(Instance!);
+
+    private void ToggleEditName()
+    {
+        _editingName = !_editingName;
+        if (_editingName) _newName = Auth.CurrentUser?.DisplayName ?? "";
+    }
+
+    private void ToggleEditEmail()
+    {
+        _editingEmail = !_editingEmail;
+        if (_editingEmail) _newEmail = Auth.CurrentUser?.Email ?? "";
+    }
+
+    private void TogglePassword() => _showPassword = !_showPassword;
+
+    private async Task SaveProfileAsync()
+    {
+        _saving = true;
+        _error = null;
+        try
+        {
+            var req = new UpdateProfileRequest(
+                _editingName ? _newName.Trim() : null,
+                _editingEmail ? _newEmail.Trim() : null);
+            var updated = await Api.UpdateProfileAsync(req);
+            if (updated is not null)
+            {
+                await Auth.RefreshUserAsync();
+                _editingName = false;
+                _editingEmail = false;
+                Toasts.Show("Profilen uppdaterades.");
+            }
+        }
+        catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.AuthDisplayNameTaken)
+        {
+            _error = "Användarnamnet är redan taget.";
+        }
+        catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.AuthEmailTaken)
+        {
+            _error = "E-postadressen är redan registrerad.";
+        }
+        catch
+        {
+            _error = "Något gick fel. Försök igen.";
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task ChangePasswordAsync()
+    {
+        _passwordError = null;
+        if (_newPassword != _confirmPassword)
+        {
+            _passwordError = "Lösenorden matchar inte.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(_currentPassword) || string.IsNullOrWhiteSpace(_newPassword))
+        {
+            _passwordError = "Fyll i alla fält.";
+            return;
+        }
+        _saving = true;
+        try
+        {
+            await Api.ChangePasswordAsync(new ChangePasswordRequest(_currentPassword, _newPassword));
+            _showPassword = false;
+            _currentPassword = _newPassword = _confirmPassword = "";
+            Toasts.Show("Lösenordet ändrades.");
+        }
+        catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.AuthPasswordInvalid)
+        {
+            _passwordError = "Fel nuvarande lösenord.";
+        }
+        catch
+        {
+            _passwordError = "Något gick fel.";
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        _searchQuery = e.Value?.ToString() ?? "";
+        _searchCts?.Cancel();
+        _searchCts = new CancellationTokenSource();
+        var ct = _searchCts.Token;
+
+        if (_searchQuery.Length < 2)
+        {
+            _searchResults = [];
+            return;
+        }
+
+        _searching = true;
+        try
+        {
+            await Task.Delay(300, ct);
+            _searchResults = await Api.SearchUsersAsync(_searchQuery, ct);
+        }
+        catch (OperationCanceledException) { }
+        catch { _searchResults = []; }
+        finally
+        {
+            _searching = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SendFriendRequestAsync(UserSearchResult user)
+    {
+        try
+        {
+            await Api.SendFriendRequestAsync(new SendFriendRequestRequest(user.Id));
+            _searchResults = _searchResults.Where(u => u.Id != user.Id).ToList();
+            Toasts.Show($"Förfrågan skickad till {user.DisplayName}.");
+        }
+        catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.FriendRequestAlreadyPending)
+        {
+            Toasts.Show("En förfrågan är redan skickad.");
+        }
+        catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.WorkspaceHouseholdAlreadyExists)
+        {
+            Toasts.Show($"{user.DisplayName} är redan foodbuddy.");
+        }
+        catch
+        {
+            Toasts.Show("Något gick fel.");
+        }
+    }
+
+    private async Task DeleteAccountAsync()
+    {
+        _saving = true;
+        _error = null;
+        try
+        {
+            await Api.DeleteAccountAsync(new DeleteAccountRequest(_deletePassword));
+            await Auth.LogoutAsync();
+            Modals.Close(Instance!);
+            Workspaces.Reset();
+            Nav.NavigateTo(Nav.BaseUri, forceLoad: false);
+        }
+        catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.AuthPasswordInvalid)
+        {
+            _error = "Fel lösenord. Försök igen.";
+        }
+        catch
+        {
+            _error = "Kontot kunde inte raderas. Försök igen.";
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    public void Dispose() => _searchCts?.Cancel();
+}
