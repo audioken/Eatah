@@ -88,6 +88,6 @@
     {
         await Auth.LogoutAsync();
         Toasts.Show("Du är utloggad.");
-        Nav.NavigateTo("/", forceLoad: false);
+        Nav.NavigateTo(Nav.BaseUri, forceLoad: false);
     }
 }

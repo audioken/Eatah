@@ -81,7 +81,8 @@ builder.Services.AddCors(cors =>
                 return uri.Host is "localhost" or "127.0.0.1" or "::1";
             })
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowCredentials();
         }
         else
         {
@@ -90,7 +91,8 @@ builder.Services.AddCors(cors =>
                 .Get<string[]>() ?? [];
             policy.WithOrigins(origins)
                   .AllowAnyHeader()
-                  .AllowAnyMethod();
+                  .AllowAnyMethod()
+                  .AllowCredentials();
         }
     });
 });

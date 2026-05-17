@@ -1,4 +1,5 @@
 @inject AuthState AuthState
+@inject NavigationManager Nav
 @implements IDisposable
 
 @if (!AuthState.IsInitialized)
@@ -11,22 +12,31 @@ else if (AuthState.IsAuthenticated)
 {
     @ChildContent
 }
-else
-{
-    <Login />
-}
 
 @code {
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        AuthState.OnChange += StateHasChanged;
+        AuthState.OnChange += OnAuthStateChanged;
         await AuthState.InitializeAsync();
+        if (!AuthState.IsAuthenticated)
+        {
+            Nav.NavigateTo("auth/login");
+        }
+    }
+
+    private void OnAuthStateChanged()
+    {
+        if (AuthState.IsInitialized && !AuthState.IsAuthenticated)
+        {
+            Nav.NavigateTo("auth/login");
+        }
+        StateHasChanged();
     }
 
     public void Dispose()
     {
-        AuthState.OnChange -= StateHasChanged;
+        AuthState.OnChange -= OnAuthStateChanged;
     }
 }

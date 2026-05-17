@@ -72,8 +72,10 @@ public static class AuthServiceExtensions
         {
             opts.Cookie.Name = "eatah.auth";
             opts.Cookie.HttpOnly = true;
-            opts.Cookie.SameSite = SameSiteMode.Lax;
-            opts.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+            // SameSite=None + Secure=Always is required so the cookie is sent on
+            // cross-origin requests from the Blazor WASM client (audioken.github.io → eatah.onrender.com).
+            opts.Cookie.SameSite = SameSiteMode.None;
+            opts.Cookie.SecurePolicy = CookieSecurePolicy.Always;
             opts.ExpireTimeSpan = TimeSpan.FromDays(30);
             opts.SlidingExpiration = true;
             opts.Events.OnRedirectToLogin = ctx =>

@@ -52,7 +52,12 @@
         switch (item.Action)
         {
             case NavAction.Navigate when item.Route is not null:
-                Nav.NavigateTo(item.Route);
+                // Build an absolute URI respecting the app base path (important for
+                // sub-path deployments such as GitHub Pages /Eatah).
+                var target = item.Route == "/"
+                    ? Nav.BaseUri
+                    : Nav.BaseUri.TrimEnd('/') + "/" + item.Route.TrimStart('/');
+                Nav.NavigateTo(target);
                 break;
             case NavAction.ComingSoon:
                 Toasts.Show($"{item.Label} kommer snart");

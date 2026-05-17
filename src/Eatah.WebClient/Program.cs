@@ -17,11 +17,13 @@ builder.Services.AddSingleton<AuthState>();
 builder.Services.AddSingleton<ISafeAreaInsetsProvider, DefaultSafeAreaInsetsProvider>();
 builder.Services.AddSingleton<IUserPreferences, LocalStorageUserPreferences>();
 builder.Services.AddTransient<LoadingHttpMessageHandler>();
+builder.Services.AddTransient<BrowserCredentialsHandler>();
 
 builder.Services.AddHttpClient<ApiClient>(client =>
     {
         client.BaseAddress = WebApiClientOptions.GetBaseAddress(builder.HostEnvironment.BaseAddress);
     })
+    .AddHttpMessageHandler<BrowserCredentialsHandler>()
     .AddHttpMessageHandler<LoadingHttpMessageHandler>();
 
 await builder.Build().RunAsync();
