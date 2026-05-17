@@ -19,24 +19,6 @@
     }
     else
     {
-        <!-- Sync button -->
-        @if (_currentPlanId.HasValue)
-        {
-            <div class="flex justify-end mb-3">
-                <button type="button" class="eatah-shopping-sync-btn" @onclick="SyncAsync" disabled="@_isSyncing">
-                    @if (_isSyncing)
-                    {
-                        <span>Synkar…</span>
-                    }
-                    else
-                    {
-                        <Icon Name="dice" Size="14" />
-                        <span>Synka från matplan</span>
-                    }
-                </button>
-            </div>
-        }
-
         <!-- Two-column layout -->
         <div class="eatah-shopping-columns">
 
@@ -237,7 +219,6 @@
         }
     }
     private bool _isLoading = true;
-    private bool _isSyncing;
     private string? _error;
     private Guid? _currentPlanId;
 
@@ -285,26 +266,22 @@
         {
             _isLoading = false;
         }
+
+        // Auto-sync from meal plan silently in the background after initial data is shown
+        if (_currentPlanId.HasValue)
+            _ = SyncSilentlyAsync(_currentPlanId.Value);
     }
 
-    private async Task SyncAsync()
+    private async Task SyncSilentlyAsync(Guid planId)
     {
-        if (!_currentPlanId.HasValue) return;
-        _isSyncing = true;
-        _error = null;
         try
         {
-            ShoppingState.SetShopping(await Api.SyncShoppingFromWeeklyPlanAsync(_currentPlanId.Value));
-            ReinitGroups();
-            Toasts.Show("Köplistan är synkad med veckans matplan.");
+            // ShoppingState.SetShopping fires OnShoppingChanged which calls ReinitGroups + StateHasChanged
+            ShoppingState.SetShopping(await Api.SyncShoppingFromWeeklyPlanAsync(planId));
         }
-        catch (Exception ex)
+        catch
         {
-            _error = $"Kunde inte synka: {ex.Message}";
-        }
-        finally
-        {
-            _isSyncing = false;
+            // Silent failure – don't interrupt the user
         }
     }
 
@@ -335,6 +312,10 @@
         {
             await Api.RemoveFromPantryAsync(item.Id);
             PantryState.RemoveItem(item.Id);
+
+            // Re-sync so any newly missing ingredient appears on the shopping list immediately
+            if (_currentPlanId.HasValue)
+                _ = SyncSilentlyAsync(_currentPlanId.Value);
         }
         catch (Exception ex)
         {
