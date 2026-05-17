@@ -125,3 +125,31 @@ public record AddShoppingItemRequest(Guid IngredientId, string? Notes = null);
 public record AddPantryItemRequest(Guid IngredientId);
 public record ToggleShoppingItemRequest(bool IsChecked);
 public record SyncWeeklyPlanRequest(Guid WeeklyPlanId);
+
+// ---- Chat ----
+
+public record ChatThreadSummaryResponse(
+    Guid Id,
+    Guid WorkspaceId,
+    string Type,
+    Guid? DirectPartnerId,
+    string? DirectPartnerDisplayName,
+    string? LastMessagePreview,
+    DateTime? LastMessageAt);
+
+public record ChatMessageResponse(
+    Guid Id,
+    Guid ThreadId,
+    Guid AuthorUserId,
+    string AuthorDisplayName,
+    string Text,
+    DateTime CreatedAt,
+    DateTime? EditedAt,
+    DateTime? DeletedAt,
+    IReadOnlyList<ChatReactionGroupResponse> Reactions);
+
+public record ChatReactionGroupResponse(string Emoji, int Count, IReadOnlyList<Guid> UserIds);
+public record SendChatMessageRequest(string Text);
+public record EditChatMessageRequest(string Text);
+public record ToggleChatReactionRequest(string Emoji);
+public record GetOrCreateDirectThreadRequest(Guid BuddyUserId);

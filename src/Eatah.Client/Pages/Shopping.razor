@@ -6,6 +6,7 @@
 @inject ShoppingStateService ShoppingState
 @inject IngredientCheckState CheckState
 @inject ShoppingSyncService ShoppingSync
+@inject ChatState ChatState
 @implements IDisposable
 
 <div class="eatah-shopping-page">
@@ -78,8 +79,16 @@
                             <Icon Name="arrow-left" Size="13" />
                             <span>Flytta till skafferi</span>
                         </button>
-                        <div class="eatah-shopping-actions__slot" />
-                        <div class="eatah-shopping-actions__slot" />
+                        <button type="button" class="eatah-shopping-actions__btn eatah-shopping-actions__btn--chat"
+                                @onclick="SendIWillBuyAsync" title="Jag köper dessa">
+                            <Icon Name="chat" Size="13" />
+                            <span>Jag köper</span>
+                        </button>
+                        <button type="button" class="eatah-shopping-actions__btn eatah-shopping-actions__btn--chat"
+                                @onclick="SendCanYouBuyAsync" title="Be någon köpa dessa">
+                            <Icon Name="chat" Size="13" />
+                            <span>Kan du köpa?</span>
+                        </button>
                     </div>
                 }
 
@@ -448,4 +457,34 @@
             _expandedGroups.Add(key);
         }
     }
+
+    private async Task SendChatShoppingMessageAsync(string prefix)
+    {
+        var selected = ShoppingState.Items
+            .Where(s => _selectedShoppingItems.Contains(s.Id) && !s.IsChecked)
+            .Select(s => s.Name)
+            .ToList();
+        if (!selected.Any()) return;
+
+        var items = string.Join(", ", selected);
+        var message = $"{prefix}: {items}";
+
+        try
+        {
+            var threads = await Api.GetChatThreadsAsync();
+            var group = threads.FirstOrDefault(t => t.Type == "Group");
+            if (group is null) { Toasts.Show("Ingen gruppchat hittades."); return; }
+
+            await Api.SendChatMessageAsync(group.Id, message);
+            Toasts.Show("Meddelande skickat till hushållet 💬");
+            ChatState.Open(group);
+        }
+        catch
+        {
+            Toasts.Show("Kunde inte skicka meddelande.");
+        }
+    }
+
+    private Task SendIWillBuyAsync() => SendChatShoppingMessageAsync("Jag köper");
+    private Task SendCanYouBuyAsync() => SendChatShoppingMessageAsync("Kan du köpa");
 }

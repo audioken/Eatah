@@ -1,0 +1,22 @@
+@* Emoji reaction picker shown on long-press of a message bubble *@
+<div class="eatah-reaction-picker" @onclick:stopPropagation="true">
+    @foreach (var emoji in _emojis)
+    {
+        <button type="button" class="eatah-reaction-picker__btn" @onclick="() => Pick(emoji)"
+                aria-label="@emoji">
+            @emoji
+        </button>
+    }
+</div>
+
+@code {
+    private static readonly string[] _emojis = { "👍", "👎", "😂", "😢", "❤" };
+
+    [Parameter, EditorRequired] public EventCallback<string> OnPicked { get; set; }
+    [Parameter] public EventCallback OnDismiss { get; set; }
+
+    private async Task Pick(string emoji)
+    {
+        await OnPicked.InvokeAsync(emoji);
+    }
+}

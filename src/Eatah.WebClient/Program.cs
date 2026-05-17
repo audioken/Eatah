@@ -18,6 +18,8 @@ builder.Services.AddSingleton<ToastService>();
 builder.Services.AddSingleton<HeaderState>();
 builder.Services.AddSingleton<AuthState>();
 builder.Services.AddSingleton<WorkspaceState>();
+builder.Services.AddSingleton<ChatState>();
+builder.Services.AddSingleton<ChatHubService>();
 builder.Services.AddSingleton<ISafeAreaInsetsProvider, DefaultSafeAreaInsetsProvider>();
 builder.Services.AddSingleton<IUserPreferences, LocalStorageUserPreferences>();
 builder.Services.AddTransient<LoadingHttpMessageHandler>();

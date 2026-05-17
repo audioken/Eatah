@@ -1,0 +1,156 @@
+@inject ApiClient Api
+@inject ChatState ChatState
+@inject ChatHubService Hub
+@inject AuthState Auth
+@inject WorkspaceState Workspace
+@implements IDisposable
+
+@if (ChatState.IsOpen)
+{
+    <div class="eatah-chat-overlay" @onclick="CloseIfBackdrop">
+        <div class="eatah-chat-panel" @onclick:stopPropagation="true">
+
+            <!-- Thread list sidebar -->
+            <div class="eatah-chat-panel__sidebar">
+                <div class="eatah-chat-panel__sidebar-header">
+                    <span>Chattar</span>
+                    <button type="button" class="eatah-chat-panel__close" @onclick="() => ChatState.Close()">
+                        <Icon Name="close" Size="16" />
+                    </button>
+                </div>
+
+                <div class="eatah-chat-panel__thread-list">
+                    @foreach (var thread in _threads)
+                    {
+                        var isActive = ChatState.ActiveThread?.Id == thread.Id;
+                        <button type="button"
+                                class="eatah-chat-thread-item @(isActive ? "eatah-chat-thread-item--active" : "")"
+                                @onclick="() => SelectThread(thread)">
+                            @if (thread.Type == "Group")
+                            {
+                                <div class="eatah-chat-thread-item__avatar eatah-chat-thread-item__avatar--group">
+                                    <Icon Name="house" Size="14" />
+                                </div>
+                                <div class="eatah-chat-thread-item__info">
+                                    <span class="eatah-chat-thread-item__name">Hushållet</span>
+                                    @if (thread.LastMessagePreview is not null)
+                                    {
+                                        <span class="eatah-chat-thread-item__preview">@thread.LastMessagePreview</span>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="eatah-chat-thread-item__avatar">
+                                    <Icon Name="profile" Size="14" />
+                                </div>
+                                <div class="eatah-chat-thread-item__info">
+                                    <span class="eatah-chat-thread-item__name">@(thread.DirectPartnerDisplayName ?? "Okänd")</span>
+                                    @if (thread.LastMessagePreview is not null)
+                                    {
+                                        <span class="eatah-chat-thread-item__preview">@thread.LastMessagePreview</span>
+                                    }
+                                </div>
+                            }
+                        </button>
+                    }
+
+                    @if (_isLoading)
+                    {
+                        <div class="eatah-chat-panel__loading">Laddar…</div>
+                    }
+                </div>
+            </div>
+
+            <!-- Active thread view -->
+            <div class="eatah-chat-panel__thread">
+                @if (ChatState.ActiveThread is { } activeThread)
+                {
+                    <div class="eatah-chat-panel__thread-header">
+                        @if (activeThread.Type == "Group")
+                        {
+                            <Icon Name="house" Size="15" CssClass="eatah-chat-panel__thread-icon" />
+                            <span>Hushållet</span>
+                        }
+                        else
+                        {
+                            <Icon Name="profile" Size="15" CssClass="eatah-chat-panel__thread-icon" />
+                            <span>@(activeThread.DirectPartnerDisplayName ?? "Okänd")</span>
+                        }
+                    </div>
+                    <ChatThreadView Thread="activeThread" />
+                }
+                else
+                {
+                    <div class="eatah-chat-panel__empty">Välj en konversation</div>
+                }
+            </div>
+
+        </div>
+    </div>
+}
+
+@code {
+    private List<ChatThreadSummaryResponse> _threads = [];
+    private bool _isLoading = false;
+
+    protected override void OnInitialized()
+    {
+        ChatState.OnChanged += OnChatStateChanged;
+    }
+
+    private async void OnChatStateChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            StateHasChanged();
+            if (ChatState.IsOpen && !_threads.Any())
+                await LoadThreadsAsync();
+        });
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Start SignalR connection when chat popup is first rendered
+        var wsId = Workspace.CurrentId;
+        if (wsId.HasValue)
+        {
+            try
+            {
+                await Hub.StartAsync("https://eatah.onrender.com/hubs/chat");
+            }
+            catch { }
+        }
+    }
+
+    private async Task LoadThreadsAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            _threads = await Api.GetChatThreadsAsync();
+
+            // If no active thread, select the group thread by default
+            if (ChatState.ActiveThread is null && _threads.FirstOrDefault(t => t.Type == "Group") is { } group)
+                ChatState.SetActiveThread(group);
+        }
+        catch { }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void SelectThread(ChatThreadSummaryResponse thread)
+    {
+        ChatState.SetActiveThread(thread);
+    }
+
+    private void CloseIfBackdrop() => ChatState.Close();
+
+    public void Dispose()
+    {
+        ChatState.OnChanged -= OnChatStateChanged;
+    }
+}

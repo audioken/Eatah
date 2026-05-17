@@ -64,6 +64,15 @@ public static class ApiErrorCodes
     public const string PantryItemNotFound = "pantry_item_not_found";
     public const string PantryItemAlreadyExists = "pantry_item_already_exists";
     public const string ShoppingItemNotFound = "shopping_item_not_found";
+
+    // Chat
+    public const string ChatThreadNotFound = "chat_thread_not_found";
+    public const string ChatThreadAccessDenied = "chat_thread_access_denied";
+    public const string ChatMessageNotFound = "chat_message_not_found";
+    public const string ChatMessageNotOwned = "chat_message_not_owned";
+    public const string ChatMessageTooLong = "chat_message_too_long";
+    public const string ChatReactionInvalid = "chat_reaction_invalid";
+    public const string ChatNotBuddies = "chat_not_buddies";
 }
 
 /// <summary>

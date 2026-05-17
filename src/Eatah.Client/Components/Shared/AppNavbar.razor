@@ -1,6 +1,7 @@
 @inject NavigationManager Nav
 @inject ToastService Toasts
 @inject ModalService Modals
+@inject ChatState ChatState
 @implements IDisposable
 
 <nav class="eatah-navbar" aria-label="Huvudnavigering">
@@ -19,14 +20,14 @@
 @code {
     private record NavItem(string Label, string Icon, NavAction Action, string? Route = null);
 
-    private enum NavAction { Navigate, ComingSoon, Profile }
+    private enum NavAction { Navigate, ComingSoon, Profile, Chat }
 
     private readonly List<NavItem> _items = new()
     {
         new("Kost", "vegan", NavAction.ComingSoon), // becomes modal in fas 2
         new("Köplista", "basket", NavAction.Navigate, "/shopping"),
         new("Matplan", "calendar", NavAction.Navigate, "/"),
-        new("Chat", "chat", NavAction.ComingSoon), // becomes modal in fas 8
+        new("Chat", "chat", NavAction.Chat), // opens chat popup
         new("Profil", "profile", NavAction.Profile), // opens profile modal
     };
 
@@ -65,6 +66,9 @@
                 break;
             case NavAction.Profile:
                 Modals.Show<ProfileModal>();
+                break;
+            case NavAction.Chat:
+                ChatState.Open();
                 break;
         }
     }

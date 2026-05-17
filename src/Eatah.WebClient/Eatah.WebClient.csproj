@@ -11,6 +11,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
   </ItemGroup>
 
@@ -21,9 +22,7 @@
   -->
   <ItemGroup>
     <!-- Shared C# code -->
-    <Compile Include="..\Eatah.Client\Services\**\*.cs"
-             Exclude="..\Eatah.Client\Services\MauiUserPreferences.cs;..\Eatah.Client\Services\ApiClientOptions.cs"
-             LinkBase="Services" />
+    <Compile Include="..\Eatah.Client\Services\**\*.cs" Exclude="..\Eatah.Client\Services\MauiUserPreferences.cs;..\Eatah.Client\Services\ApiClientOptions.cs" LinkBase="Services" />
 
     <!-- Shared Razor components -->
     <Content Include="..\Eatah.Client\Components\**\*.razor" LinkBase="Components" />
@@ -51,11 +50,9 @@
   -->
   <Target Name="CopySharedCssToSourceWwwroot" BeforeTargets="Build;ResolveStaticWebAssets">
     <MakeDir Directories="$(MSBuildThisFileDirectory)wwwroot\css" />
-    <Copy
-      SourceFiles="$(MSBuildThisFileDirectory)..\Eatah.Client\wwwroot\css\app.css"
-      DestinationFolder="$(MSBuildThisFileDirectory)wwwroot\css"
-      SkipUnchangedFiles="true"
-    />
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)..\Eatah.Client\wwwroot\css\app.css" DestinationFolder="$(MSBuildThisFileDirectory)wwwroot\css" SkipUnchangedFiles="true" />
+    <MakeDir Directories="$(MSBuildThisFileDirectory)wwwroot\js" />
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)..\Eatah.Client\wwwroot\js\chat.js" DestinationFolder="$(MSBuildThisFileDirectory)wwwroot\js" SkipUnchangedFiles="true" />
   </Target>
 
 </Project>

@@ -8,9 +8,26 @@ public static class ChatEndpoints
     {
         var group = app.MapGroup("/api/chat").WithTags("Chat").RequireAuthorization();
 
+        // List all threads the current user has access to in the current workspace
+        group.MapGet("/threads", async (ChatService svc, ICurrentUser u, CancellationToken ct) =>
+        {
+            if (u.UserId is not Guid uid)
+                return Error.Unauthorized(ErrorCodes.AuthNotAuthenticated, "Not authenticated.").ToHttpResult();
+            return Results.Ok(await svc.GetMyThreadsAsync(uid, ct));
+        });
+
         // GET current workspace's group thread (auto-create if missing)
         group.MapGet("/thread", async (ChatService svc, CancellationToken ct)
             => Results.Ok(await svc.GetOrCreateGroupThreadAsync(ct)));
+
+        // Get or create a direct thread with a buddy in the current workspace
+        group.MapPost("/threads/direct", async (GetOrCreateDirectThreadRequest req, ChatService svc, ICurrentUser u, CancellationToken ct) =>
+        {
+            if (u.UserId is not Guid uid)
+                return Error.Unauthorized(ErrorCodes.AuthNotAuthenticated, "Not authenticated.").ToHttpResult();
+            var result = await svc.GetOrCreateDirectThreadAsync(uid, req.BuddyUserId, ct);
+            return result.ToHttpResult();
+        });
 
         group.MapGet("/threads/{threadId:guid}/messages",
             async (Guid threadId, DateTime? before, int? take, ChatService svc, CancellationToken ct)

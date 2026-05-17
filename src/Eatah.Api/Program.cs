@@ -62,6 +62,8 @@ builder.Services.AddFriendFeature();
 builder.Services.AddPantryFeature();
 builder.Services.AddChatFeature();
 
+builder.Services.AddSignalR();
+
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
@@ -161,6 +163,7 @@ app.MapNotificationEndpoints();
 app.MapFriendEndpoints();
 app.MapPantryEndpoints();
 app.MapChatEndpoints();
+app.MapHub<ChatHub>("/hubs/chat");
 
 app.Run();
 

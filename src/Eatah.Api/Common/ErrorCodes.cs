@@ -74,4 +74,5 @@ public static class ErrorCodes
     public const string ChatMessageNotOwned = "chat_message_not_owned";
     public const string ChatMessageTooLong = "chat_message_too_long";
     public const string ChatReactionInvalid = "chat_reaction_invalid";
+    public const string ChatNotBuddies = "chat_not_buddies";
 }

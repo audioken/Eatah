@@ -59,6 +59,8 @@ public static class MauiProgram
 
 		builder.Services.AddSingleton<AuthState>();
 		builder.Services.AddSingleton<WorkspaceState>();
+		builder.Services.AddSingleton<ChatState>();
+		builder.Services.AddSingleton<ChatHubService>();
 
 		return builder.Build();
 	}

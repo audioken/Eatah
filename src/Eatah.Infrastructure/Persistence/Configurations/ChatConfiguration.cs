@@ -15,7 +15,20 @@ public class ChatThreadConfiguration : IEntityTypeConfiguration<ChatThread>
         b.Property(x => x.Type).HasColumnName("type").HasConversion<string>().HasMaxLength(20);
         b.Property(x => x.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("NOW()");
         b.HasMany(x => x.Messages).WithOne(m => m.Thread!).HasForeignKey(m => m.ThreadId).OnDelete(DeleteBehavior.Cascade);
+        b.HasMany(x => x.Participants).WithOne(p => p.Thread!).HasForeignKey(p => p.ThreadId).OnDelete(DeleteBehavior.Cascade);
         b.HasIndex(x => x.WorkspaceId);
+    }
+}
+
+public class ChatThreadParticipantConfiguration : IEntityTypeConfiguration<ChatThreadParticipant>
+{
+    public void Configure(EntityTypeBuilder<ChatThreadParticipant> b)
+    {
+        b.ToTable("chat_thread_participants");
+        b.HasKey(x => new { x.ThreadId, x.UserId });
+        b.Property(x => x.ThreadId).HasColumnName("thread_id");
+        b.Property(x => x.UserId).HasColumnName("user_id");
+        b.HasIndex(x => x.UserId);
     }
 }
 

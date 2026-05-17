@@ -1,0 +1,306 @@
+@inject ApiClient Api
+@inject AuthState Auth
+@inject ChatHubService Hub
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div class="eatah-chat-thread" @onclick="DismissReactionPicker">
+
+    <!-- Message list (scrollable) -->
+    <div class="eatah-chat-thread__messages" @ref="_messagesEl">
+        @if (_isLoading)
+        {
+            <div class="eatah-chat-thread__loading">Laddar…</div>
+        }
+        else if (!_messages.Any())
+        {
+            <div class="eatah-chat-thread__empty">Inga meddelanden ännu. Säg hej! 👋</div>
+        }
+        else
+        {
+            @foreach (var msg in _messages)
+            {
+                var isMine = msg.AuthorUserId == Auth.CurrentUser?.Id;
+                var bubbleClass = "eatah-chat-bubble" + (isMine ? " eatah-chat-bubble--mine" : " eatah-chat-bubble--theirs");
+                var isDeleted = msg.DeletedAt.HasValue;
+
+                <div class="eatah-chat-bubble-wrapper @(isMine ? "eatah-chat-bubble-wrapper--mine" : "")">
+                    @if (!isMine)
+                    {
+                        <span class="eatah-chat-bubble__author">@msg.AuthorDisplayName</span>
+                    }
+
+                    <div class="@bubbleClass @(isDeleted ? "eatah-chat-bubble--deleted" : "")"
+                         @oncontextmenu="(e) => ShowReactionPicker(msg, e)" @oncontextmenu:preventDefault="true"
+                         @ontouchstart="(e) => OnTouchStart(msg, e)" @ontouchend="OnTouchEnd"
+                         @ontouchcancel="OnTouchEnd">
+                        @if (isDeleted)
+                        {
+                            <span class="eatah-chat-bubble__deleted-text">Raderat meddelande</span>
+                        }
+                        else if (_editingMessageId == msg.Id)
+                        {
+                            <div class="eatah-chat-bubble__edit">
+                                <input class="eatah-chat-bubble__edit-input"
+                                       @bind="_editText" @bind:event="oninput"
+                                       @onkeydown="(e) => OnEditKeyDown(e, msg.Id)" />
+                                <div class="eatah-chat-bubble__edit-actions">
+                                    <button type="button" class="eatah-chat-bubble__edit-save"
+                                            @onclick="() => SubmitEditAsync(msg.Id)">
+                                        <Icon Name="check" Size="12" />
+                                    </button>
+                                    <button type="button" class="eatah-chat-bubble__edit-cancel"
+                                            @onclick="CancelEdit">
+                                        <Icon Name="close" Size="12" />
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <span class="eatah-chat-bubble__text">@msg.Text</span>
+                            @if (msg.EditedAt.HasValue)
+                            {
+                                <span class="eatah-chat-bubble__edited">(redigerat)</span>
+                            }
+                        }
+                    </div>
+
+                    <!-- Reactions row -->
+                    @if (msg.Reactions.Any())
+                    {
+                        <div class="eatah-chat-reactions">
+                            @foreach (var r in msg.Reactions)
+                            {
+                                var hasMyReaction = Auth.CurrentUser?.Id is Guid myId && r.UserIds.Contains(myId);
+                                <button type="button"
+                                        class="eatah-chat-reaction @(hasMyReaction ? "eatah-chat-reaction--mine" : "")"
+                                        @onclick="() => ToggleReactionAsync(msg.Id, r.Emoji)">
+                                    @r.Emoji <span class="eatah-chat-reaction__count">@r.Count</span>
+                                </button>
+                            }
+                        </div>
+                    }
+
+                    <!-- Context menu for own messages -->
+                    @if (_reactionPickerMessageId == msg.Id)
+                    {
+                        <div class="eatah-chat-context-menu">
+                            <ReactionPicker OnPicked="(e) => PickReactionAsync(msg.Id, e)" OnDismiss="DismissReactionPicker" />
+                            @if (isMine && !isDeleted)
+                            {
+                                <button type="button" class="eatah-chat-context-menu__action"
+                                        @onclick="() => StartEdit(msg)">
+                                    <Icon Name="edit" Size="13" /> Redigera
+                                </button>
+                                <button type="button" class="eatah-chat-context-menu__action eatah-chat-context-menu__action--danger"
+                                        @onclick="() => DeleteMessageAsync(msg.Id)">
+                                    <Icon Name="trash" Size="13" /> Radera
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        }
+    </div>
+
+    <!-- Compose bar -->
+    @if (!_isLoading)
+    {
+        <div class="eatah-chat-compose">
+            <input class="eatah-chat-compose__input" placeholder="Skriv ett meddelande…"
+                   @bind="_composeText" @bind:event="oninput"
+                   @onkeydown="OnComposeKeyDown" />
+            <button type="button" class="eatah-chat-compose__send"
+                    disabled="@(string.IsNullOrWhiteSpace(_composeText))"
+                    @onclick="SendMessageAsync">
+                <Icon Name="send" Size="16" />
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ChatThreadSummaryResponse Thread { get; set; } = null!;
+
+    private List<ChatMessageResponse> _messages = [];
+    private bool _isLoading = true;
+    private string _composeText = string.Empty;
+    private Guid? _reactionPickerMessageId;
+    private Guid? _editingMessageId;
+    private string _editText = string.Empty;
+    private ElementReference _messagesEl;
+
+    private CancellationTokenSource? _longPressCts;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _messages.Clear();
+        _isLoading = true;
+        await LoadMessagesAsync();
+        await Hub.JoinThreadAsync(Thread.Id);
+
+        Hub.MessageReceived += OnMessageReceived;
+        Hub.MessageEdited += OnMessageEdited;
+        Hub.MessageDeleted += OnMessageDeleted;
+        Hub.ReactionUpdated += OnReactionUpdated;
+    }
+
+    private async Task LoadMessagesAsync()
+    {
+        try
+        {
+            _messages = await Api.GetChatMessagesAsync(Thread.Id);
+        }
+        catch { }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+            await ScrollToBottomAsync();
+        }
+    }
+
+    private void OnMessageReceived(ChatMessageResponse msg)
+    {
+        if (msg.ThreadId != Thread.Id) return;
+        _messages.RemoveAll(m => m.Id == msg.Id);
+        _messages.Add(msg);
+        InvokeAsync(async () => { StateHasChanged(); await ScrollToBottomAsync(); });
+    }
+
+    private void OnMessageEdited(ChatMessageResponse msg)
+    {
+        if (msg.ThreadId != Thread.Id) return;
+        var idx = _messages.FindIndex(m => m.Id == msg.Id);
+        if (idx >= 0) _messages[idx] = msg;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnMessageDeleted(Guid id)
+    {
+        var idx = _messages.FindIndex(m => m.Id == id);
+        if (idx >= 0)
+        {
+            var existing = _messages[idx];
+            _messages[idx] = existing with { DeletedAt = DateTime.UtcNow, Text = "" };
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void OnReactionUpdated(Guid msgId, IReadOnlyList<ChatReactionGroupResponse> reactions)
+    {
+        var idx = _messages.FindIndex(m => m.Id == msgId);
+        if (idx >= 0)
+            _messages[idx] = _messages[idx] with { Reactions = reactions };
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SendMessageAsync()
+    {
+        var text = _composeText.Trim();
+        if (string.IsNullOrWhiteSpace(text)) return;
+        _composeText = string.Empty;
+        try
+        {
+            var msg = await Api.SendChatMessageAsync(Thread.Id, text);
+            if (msg is not null) OnMessageReceived(msg);
+        }
+        catch { }
+    }
+
+    private async Task OnComposeKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+            await SendMessageAsync();
+    }
+
+    private void ShowReactionPicker(ChatMessageResponse msg, MouseEventArgs _)
+    {
+        _reactionPickerMessageId = _reactionPickerMessageId == msg.Id ? null : msg.Id;
+    }
+
+    private void DismissReactionPicker() => _reactionPickerMessageId = null;
+
+    private async Task PickReactionAsync(Guid messageId, string emoji)
+    {
+        _reactionPickerMessageId = null;
+        await ToggleReactionAsync(messageId, emoji);
+    }
+
+    private async Task ToggleReactionAsync(Guid messageId, string emoji)
+    {
+        try { await Api.ToggleChatReactionAsync(messageId, emoji); }
+        catch { }
+    }
+
+    private void StartEdit(ChatMessageResponse msg)
+    {
+        _editingMessageId = msg.Id;
+        _editText = msg.Text;
+        _reactionPickerMessageId = null;
+    }
+
+    private void CancelEdit()
+    {
+        _editingMessageId = null;
+        _editText = string.Empty;
+    }
+
+    private async Task SubmitEditAsync(Guid messageId)
+    {
+        if (string.IsNullOrWhiteSpace(_editText)) return;
+        try
+        {
+            var updated = await Api.EditChatMessageAsync(messageId, _editText.Trim());
+            if (updated is not null) OnMessageEdited(updated);
+        }
+        catch { }
+        CancelEdit();
+    }
+
+    private async Task OnEditKeyDown(KeyboardEventArgs e, Guid messageId)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey) await SubmitEditAsync(messageId);
+        if (e.Key == "Escape") CancelEdit();
+    }
+
+    private async Task DeleteMessageAsync(Guid messageId)
+    {
+        try { await Api.DeleteChatMessageAsync(messageId); }
+        catch { }
+        _reactionPickerMessageId = null;
+    }
+
+    // Long-press via touch events
+    private void OnTouchStart(ChatMessageResponse msg, TouchEventArgs e)
+    {
+        _longPressCts?.Cancel();
+        _longPressCts = new CancellationTokenSource();
+        var token = _longPressCts.Token;
+        _ = Task.Delay(500, token).ContinueWith(t =>
+        {
+            if (!t.IsCanceled)
+                InvokeAsync(() => { _reactionPickerMessageId = msg.Id; StateHasChanged(); });
+        }, TaskScheduler.Default);
+    }
+
+    private void OnTouchEnd(TouchEventArgs e) => _longPressCts?.Cancel();
+
+    private async Task ScrollToBottomAsync()
+    {
+        try { await JS.InvokeVoidAsync("eatahChat.scrollToBottom", _messagesEl); }
+        catch { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Hub.MessageReceived -= OnMessageReceived;
+        Hub.MessageEdited -= OnMessageEdited;
+        Hub.MessageDeleted -= OnMessageDeleted;
+        Hub.ReactionUpdated -= OnReactionUpdated;
+        await Hub.LeaveThreadAsync(Thread.Id);
+        _longPressCts?.Dispose();
+    }
+}
