@@ -248,7 +248,7 @@ public class ChatService
         return Result.Success();
     }
 
-    public async Task<Result> ToggleReactionAsync(Guid messageId, string emoji, Guid userId, CancellationToken ct)
+    public async Task<Result<List<ChatReactionGroupResponse>>> ToggleReactionAsync(Guid messageId, string emoji, Guid userId, CancellationToken ct)
     {
         if (!AllowedEmojis.Contains(emoji))
             return Error.BadRequest(ErrorCodes.ChatReactionInvalid, "Unsupported emoji.");
@@ -289,7 +289,7 @@ public class ChatService
             .ToList();
         await _hub.Clients.Group($"thread:{msg.ThreadId}").SendAsync("ReactionUpdated",
             new { messageId, reactions = groups }, ct);
-        return Result.Success();
+        return Result<List<ChatReactionGroupResponse>>.Success(groups);
     }
 
     private static ChatMessageResponse MapMessage(ChatMessage m, IReadOnlyDictionary<Guid, string> authors)

@@ -58,10 +58,11 @@ public partial class ApiClient
         await EnsureSuccessAsync(response, ct);
     }
 
-    public async Task ToggleChatReactionAsync(Guid messageId, string emoji, CancellationToken ct = default)
+    public async Task<List<ChatReactionGroupResponse>?> ToggleChatReactionAsync(Guid messageId, string emoji, CancellationToken ct = default)
     {
         var response = await _http.PostAsJsonAsync($"api/chat/messages/{messageId}/reactions",
             new ToggleChatReactionRequest(emoji), ct);
         await EnsureSuccessAsync(response, ct);
+        return await response.Content.ReadFromJsonAsync<List<ChatReactionGroupResponse>>(cancellationToken: ct);
     }
 }

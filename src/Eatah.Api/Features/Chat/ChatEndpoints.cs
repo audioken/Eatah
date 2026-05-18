@@ -63,7 +63,7 @@ public static class ChatEndpoints
             {
                 if (u.UserId is not Guid uid)
                     return Error.Unauthorized(ErrorCodes.AuthNotAuthenticated, "Not authenticated.").ToHttpResult();
-                return (await svc.ToggleReactionAsync(messageId, req.Emoji, uid, ct)).ToNoContentResult();
+                return (await svc.ToggleReactionAsync(messageId, req.Emoji, uid, ct)).ToHttpResult();
             });
     }
 

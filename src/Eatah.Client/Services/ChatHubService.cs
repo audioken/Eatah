@@ -18,6 +18,9 @@ public sealed class ChatHubService : IAsyncDisposable
     public event Action<Guid>? MessageDeleted;
     public event Action<Guid, IReadOnlyList<ChatReactionGroupResponse>>? ReactionUpdated;
 
+    /// <summary>Fired after the hub automatically reconnects. Subscribers should re-join their thread groups.</summary>
+    public event Action? Reconnected;
+
     public HubConnectionState State => _connection?.State ?? HubConnectionState.Disconnected;
 
     public ChatHubService(ITokenStore tokenStore)
@@ -48,16 +51,29 @@ public sealed class ChatHubService : IAsyncDisposable
             _connection.On<Guid>("MessageDeleted", id => MessageDeleted?.Invoke(id));
             _connection.On<ReactionUpdatePayload>("ReactionUpdated", payload =>
                 ReactionUpdated?.Invoke(payload.MessageId, payload.Reactions));
+
+            // Re-join all thread groups after an automatic reconnect.
+            _connection.Reconnected += _ =>
+            {
+                Reconnected?.Invoke();
+                return Task.CompletedTask;
+            };
         }
 
         if (_connection.State == HubConnectionState.Disconnected)
             await _connection.StartAsync(ct);
     }
 
-    public async Task JoinThreadAsync(Guid threadId)
+    public async Task JoinThreadAsync(Guid threadId, CancellationToken ct = default)
     {
-        if (_connection?.State == HubConnectionState.Connected)
-            await _connection.InvokeAsync("JoinThread", threadId.ToString());
+        if (_connection is null) return;
+
+        // Wait up to 10 s for the connection to become ready (handles cold-start races).
+        for (var i = 0; i < 50 && _connection.State != HubConnectionState.Connected; i++)
+            await Task.Delay(200, ct);
+
+        if (_connection.State == HubConnectionState.Connected)
+            await _connection.InvokeAsync("JoinThread", threadId.ToString(), ct);
     }
 
     public async Task LeaveThreadAsync(Guid threadId)
