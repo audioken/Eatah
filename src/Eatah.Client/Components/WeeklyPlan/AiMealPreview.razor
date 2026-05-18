@@ -2,63 +2,66 @@
 
 @if (IsOpen)
 {
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @onclick="HandleBackdrop">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-md flex flex-col" @onclick:stopPropagation="true">
-            <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
-                <h2 class="text-lg font-semibold">AI-förslag för @DayLabel</h2>
-                <button type="button" class="text-slate-400 hover:text-slate-700" @onclick="Close">✕</button>
-            </div>
+    <div class="eatah-modal-backdrop" @onclick="HandleBackdrop">
+        <div class="eatah-modal" @onclick:stopPropagation="true">
+            <div class="eatah-ai-preview">
 
-            <div class="p-5 space-y-4">
-                @if (IsLoading)
-                {
-                    <div class="text-center text-slate-500 py-6">Genererar förslag…</div>
-                }
-                else if (Error is not null)
-                {
-                    <div class="p-3 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm">
-                        @Error
-                    </div>
-                }
-                else if (Meal is not null)
-                {
-                    <div class="p-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-sm">
-                        Den här maträtten är inte sparad till databasen ännu.
-                    </div>
+                <div class="eatah-diet-modal__header">
+                    <h2 class="eatah-diet-modal__title">AI-förslag för @DayLabel</h2>
+                    <button type="button" class="eatah-diet-modal__close" @onclick="Close" aria-label="Stäng">
+                        <Icon Name="close" Size="20" />
+                    </button>
+                </div>
 
-                    <div>
-                        <h3 class="text-xl font-semibold">@Meal.Name</h3>
-                        <div class="mt-1 text-sm text-slate-600 flex items-center gap-3">
-                            <span>@CategoryLabel(Meal.Category)</span>
-                            @if (Meal.CookingTimeMinutes.HasValue)
-                            {
-                                <span>~@Meal.CookingTimeMinutes min</span>
-                            }
+                <div class="eatah-ai-preview__body">
+                    @if (IsLoading)
+                    {
+                        <p class="eatah-modal-notice eatah-modal-notice--loading">Genererar förslag…</p>
+                    }
+                    else if (Error is not null)
+                    {
+                        <p class="eatah-modal-notice eatah-modal-notice--error">@Error</p>
+                    }
+                    else if (Meal is not null)
+                    {
+                        <p class="eatah-modal-notice eatah-modal-notice--warning">
+                            Den här maträtten är inte sparad till databasen ännu.
+                        </p>
+
+                        <div>
+                            <h3 class="eatah-ai-preview__meal-title">@Meal.Name</h3>
+                            <div class="eatah-ai-preview__meal-meta">
+                                <span>@CategoryLabel(Meal.Category)</span>
+                                @if (Meal.CookingTimeMinutes.HasValue)
+                                {
+                                    <span>~@Meal.CookingTimeMinutes min</span>
+                                }
+                            </div>
                         </div>
-                    </div>
 
-                    <div>
-                        <p class="text-xs uppercase tracking-wide text-slate-500 mb-1">Ingredienser</p>
-                        <div class="flex flex-wrap gap-1">
-                            @foreach (var ingredient in Meal.Ingredients)
-                            {
-                                <span class="text-xs px-2 py-0.5 bg-slate-100 text-slate-700 rounded">@ingredient</span>
-                            }
+                        <div>
+                            <p class="eatah-ai-preview__ing-label">Ingredienser</p>
+                            <div class="eatah-ai-preview__ing-chips">
+                                @foreach (var ingredient in Meal.Ingredients)
+                                {
+                                    <span class="eatah-ai-preview__ing-chip">@ingredient</span>
+                                }
+                            </div>
                         </div>
-                    </div>
-                }
-            </div>
+                    }
+                </div>
 
-            <div class="px-5 py-4 border-t border-slate-200 flex items-center justify-end gap-2">
-                <button type="button" class="px-4 py-2 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50"
-                        @onclick="Close">
-                    Avbryt
-                </button>
-                <button type="button"
-                        class="px-4 py-2 rounded-md bg-brand-600 text-white font-semibold hover:bg-brand-700 disabled:opacity-50"
-                        disabled="@(Meal is null || IsLoading)" @onclick="HandleSave">
-                    Spara till databasen
-                </button>
+                <div class="eatah-modal-footer">
+                    <button type="button" class="eatah-modal-footer__btn eatah-modal-footer__btn--ghost"
+                            @onclick="Close">
+                        Avbryt
+                    </button>
+                    <button type="button" class="eatah-modal-footer__btn eatah-modal-footer__btn--primary"
+                            disabled="@(Meal is null || IsLoading)" @onclick="HandleSave">
+                        Spara till databasen
+                    </button>
+                </div>
+
             </div>
         </div>
     </div>

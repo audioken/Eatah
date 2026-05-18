@@ -394,6 +394,11 @@ h1:focus { outline: none; }
     border-radius: 8px;
 }
 
+.eatah-diet-card__icon-cell--excluded {
+    opacity: 0.3;
+    filter: grayscale(1);
+}
+
 .eatah-diet-card__actions {
     display: flex;
     align-items: center;
@@ -2755,4 +2760,349 @@ body.eatah-modal-open {
     cursor: default;
 }
 
+/* ============================================================
+   Modal footer (shared: MealForm, AiMealPreview, etc.)
+   ============================================================ */
+.eatah-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px 18px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    flex-shrink: 0;
+}
+
+.eatah-modal-footer__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 9px 18px;
+    border: none;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.1s;
+}
+
+.eatah-modal-footer__btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.eatah-modal-footer__btn--primary {
+    background: var(--color-brand);
+    color: #fff;
+}
+
+.eatah-modal-footer__btn--ghost {
+    background: rgba(0, 0, 0, 0.07);
+    color: var(--color-text-dark);
+}
+
+/* ============================================================
+   Modal notices / banners
+   ============================================================ */
+.eatah-modal-notice {
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.45;
+    margin: 0;
+}
+
+.eatah-modal-notice--warning {
+    background: rgba(217, 119, 6, 0.12);
+    color: #92400e;
+}
+
+.eatah-modal-notice--error {
+    background: rgba(220, 38, 38, 0.08);
+    color: #991b1b;
+}
+
+.eatah-modal-notice--loading {
+    background: rgba(0, 0, 0, 0.05);
+    color: rgba(0, 0, 0, 0.5);
+    text-align: center;
+    padding: 28px 12px;
+}
+
+/* ============================================================
+   Meal Selector dialog
+   ============================================================ */
+.eatah-meal-selector {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.eatah-meal-selector__search-section {
+    padding: 12px 18px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.eatah-meal-selector__search-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.eatah-meal-selector__search-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: inherit;
+    background: rgba(255, 255, 255, 0.65);
+    color: var(--color-text-dark);
+    box-sizing: border-box;
+}
+
+.eatah-meal-selector__search-input:focus {
+    outline: none;
+    border-color: var(--color-brand);
+    box-shadow: 0 0 0 2px rgba(90, 174, 0, 0.2);
+    background: #fff;
+}
+
+.eatah-meal-selector__add-btn {
+    flex-shrink: 0;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: var(--color-brand);
+    color: #fff;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: opacity 0.1s;
+}
+
+.eatah-meal-selector__add-btn:hover {
+    opacity: 0.85;
+}
+
+.eatah-meal-selector__categories {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.eatah-meal-selector__cat-btn {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid rgba(0, 0, 0, 0.18);
+    background: rgba(255, 255, 255, 0.55);
+    color: var(--color-text-dark);
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.eatah-meal-selector__cat-btn:hover {
+    background: rgba(255, 255, 255, 0.85);
+}
+
+.eatah-meal-selector__cat-btn--active {
+    background: var(--color-brand);
+    color: #fff;
+    border-color: var(--color-brand);
+}
+
+.eatah-meal-selector__list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.eatah-meal-selector__list-empty {
+    padding: 24px 18px;
+    font-size: 14px;
+    color: rgba(0, 0, 0, 0.4);
+    text-align: center;
+}
+
+.eatah-meal-selector__meal-btn {
+    width: 100%;
+    text-align: left;
+    padding: 11px 18px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    transition: background 0.1s;
+    font-family: inherit;
+}
+
+.eatah-meal-selector__meal-btn:hover {
+    background: rgba(255, 255, 255, 0.45);
+}
+
+.eatah-meal-selector__meal-btn:last-child {
+    border-bottom: none;
+}
+
+.eatah-meal-selector__meal-name {
+    display: block;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--color-text-dark);
+}
+
+.eatah-meal-selector__meal-meta {
+    display: block;
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.45);
+    margin-top: 1px;
+}
+
+/* ============================================================
+   AI Meal Preview dialog
+   ============================================================ */
+.eatah-ai-preview {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.eatah-ai-preview__body {
+    overflow-y: auto;
+    flex: 1;
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.eatah-ai-preview__meal-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--color-text-dark);
+    margin: 0 0 4px;
+}
+
+.eatah-ai-preview__meal-meta {
+    font-size: 14px;
+    color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.eatah-ai-preview__ing-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(0, 0, 0, 0.45);
+    margin: 0 0 6px;
+}
+
+.eatah-ai-preview__ing-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.eatah-ai-preview__ing-chip {
+    font-size: 12px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.65);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    color: var(--color-text-dark);
+}
+
+/* ============================================================
+   Ingredient Input (inside MealForm modal)
+   ============================================================ */
+.eatah-ingredient-input__label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(0, 0, 0, 0.5);
+    margin-bottom: 6px;
+}
+
+.eatah-ingredient-input__row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.eatah-ingredient-input__field {
+    flex: 1;
+    padding: 8px 10px;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: inherit;
+    background: rgba(255, 255, 255, 0.65);
+    color: var(--color-text-dark);
+    box-sizing: border-box;
+}
+
+.eatah-ingredient-input__field:focus {
+    outline: none;
+    border-color: var(--color-brand);
+    box-shadow: 0 0 0 2px rgba(90, 174, 0, 0.2);
+    background: #fff;
+}
+
+.eatah-ingredient-input__remove {
+    background: transparent;
+    border: none;
+    padding: 6px;
+    cursor: pointer;
+    color: rgba(0, 0, 0, 0.35);
+    display: inline-flex;
+    flex-shrink: 0;
+    transition: color 0.1s;
+}
+
+.eatah-ingredient-input__remove:hover:not(:disabled) {
+    color: #b91c1c;
+}
+
+.eatah-ingredient-input__remove:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+
+.eatah-ingredient-input__add-btn {
+    background: transparent;
+    border: none;
+    padding: 4px 0;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-brand);
+    cursor: pointer;
+    transition: opacity 0.1s;
+}
+
+.eatah-ingredient-input__add-btn:hover {
+    opacity: 0.75;
+}
 

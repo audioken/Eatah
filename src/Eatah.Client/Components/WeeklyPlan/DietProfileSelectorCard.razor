@@ -43,16 +43,24 @@
         {
             var rule = FindRule(category);
             var actual = FindActual(category);
-            <div class="eatah-diet-card__icon-cell">
+            var isExcluded = rule is { MinPerWeek: 0, MaxPerWeek: 0 };
+            <div class="eatah-diet-card__icon-cell @(isExcluded ? "eatah-diet-card__icon-cell--excluded" : "")">
                 <span class="eatah-category-icon @CategoryClass(category)">
                     <Icon Name="@CategoryIconName(category)" />
                 </span>
                 @if (rule is not null)
                 {
-                    var ok = actual >= rule.MinPerWeek && actual <= rule.MaxPerWeek;
-                    <span class="eatah-pill @(ok ? "eatah-pill--ok" : "eatah-pill--bad") eatah-diet-card__rule-pill">
-                        @($"{rule.MinPerWeek}-{rule.MaxPerWeek}")
-                    </span>
+                    if (isExcluded)
+                    {
+                        <span class="eatah-pill eatah-pill--muted eatah-diet-card__rule-pill">0</span>
+                    }
+                    else
+                    {
+                        var ok = actual >= rule.MinPerWeek && actual <= rule.MaxPerWeek;
+                        <span class="eatah-pill @(ok ? "eatah-pill--ok" : "eatah-pill--bad") eatah-diet-card__rule-pill">
+                            @(rule.MinPerWeek == rule.MaxPerWeek ? $"{rule.MinPerWeek}" : $"{rule.MinPerWeek}-{rule.MaxPerWeek}")
+                        </span>
+                    }
                 }
                 else
                 {

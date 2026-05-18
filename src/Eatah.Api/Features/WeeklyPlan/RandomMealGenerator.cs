@@ -1,4 +1,3 @@
-using Eatah.Api.Features.DietRules;
 using Eatah.Domain.Entities;
 
 namespace Eatah.Api.Features.WeeklyPlan;
@@ -19,14 +18,6 @@ public interface IRandomMealGenerator
 
 public class RandomMealGenerator : IRandomMealGenerator
 {
-    private const int MaxIterations = 100;
-    private readonly IDietRuleEvaluator _evaluator;
-
-    public RandomMealGenerator(IDietRuleEvaluator evaluator)
-    {
-        _evaluator = evaluator;
-    }
-
     public IReadOnlyList<Meal?> Generate(
         IReadOnlyList<Meal> availableMeals,
         IReadOnlyList<DayOfWeek> days,
@@ -36,37 +27,12 @@ public class RandomMealGenerator : IRandomMealGenerator
         ArgumentNullException.ThrowIfNull(days);
 
         if (availableMeals.Count == 0 || days.Count == 0)
-        {
             return new Meal?[days.Count];
-        }
 
         if (profile is null)
-        {
             return PickWithoutRepetition(availableMeals, days.Count, Random.Shared);
-        }
 
-        var iterations = MaxIterations;
-
-        IReadOnlyList<Meal?>? best = null;
-        var bestScore = -1.0;
-
-        for (var i = 0; i < iterations; i++)
-        {
-            var candidate = PickWithoutRepetition(availableMeals, days.Count, Random.Shared);
-            var score = ScoreCandidate(candidate, days, profile);
-
-            if (score > bestScore)
-            {
-                bestScore = score;
-                best = candidate;
-                if (score >= 1.0)
-                {
-                    break;
-                }
-            }
-        }
-
-        return best ?? PickWithoutRepetition(availableMeals, days.Count, Random.Shared);
+        return GenerateWithConstraints(availableMeals, days.Count, profile.Rules);
     }
 
     public Meal? GenerateForDay(
@@ -79,9 +45,7 @@ public class RandomMealGenerator : IRandomMealGenerator
         ArgumentNullException.ThrowIfNull(currentPlan);
 
         if (availableMeals.Count == 0)
-        {
             return null;
-        }
 
         // Avoid picking meals already assigned to other days when possible.
         var assignedMealIds = currentPlan.Days
@@ -91,84 +55,100 @@ public class RandomMealGenerator : IRandomMealGenerator
 
         var candidatePool = availableMeals.Where(m => !assignedMealIds.Contains(m.Id)).ToList();
         if (candidatePool.Count == 0)
-        {
             candidatePool = availableMeals.ToList();
-        }
 
         if (profile is null)
-        {
             return candidatePool[Random.Shared.Next(candidatePool.Count)];
+
+        // Count category usage in the current plan (excluding the target day).
+        var currentCounts = currentPlan.Days
+            .Where(d => d.DayOfWeek != targetDay && d.Meal is not null)
+            .GroupBy(d => d.Meal!.Category)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        // Remove explicitly excluded categories (max == 0) from the candidate pool.
+        var excludedCategories = profile.Rules
+            .Where(r => r.MaxPerWeek == 0)
+            .Select(r => r.Category)
+            .ToHashSet();
+
+        candidatePool = candidatePool.Where(m => !excludedCategories.Contains(m.Category)).ToList();
+        if (candidatePool.Count == 0)
+            return null;
+
+        // Prefer categories that are still below their minimum.
+        var neededCategories = profile.Rules
+            .Where(r => r.MaxPerWeek > 0 && currentCounts.GetValueOrDefault(r.Category, 0) < r.MinPerWeek)
+            .OrderByDescending(r => r.MinPerWeek - currentCounts.GetValueOrDefault(r.Category, 0))
+            .Select(r => r.Category)
+            .ToList();
+
+        foreach (var category in neededCategories)
+        {
+            var matching = candidatePool.Where(m => m.Category == category).ToList();
+            if (matching.Count > 0)
+                return matching[Random.Shared.Next(matching.Count)];
         }
 
-        var iterations = MaxIterations;
-        Meal? best = null;
-        var bestScore = -1.0;
-
-        for (var i = 0; i < iterations; i++)
+        // Otherwise pick any meal that won't exceed its category maximum.
+        var allowed = candidatePool.Where(m =>
         {
-            var candidate = candidatePool[Random.Shared.Next(candidatePool.Count)];
-            var score = ScoreSingleDayCandidate(candidate, currentPlan, targetDay, profile);
-            if (score > bestScore)
+            var rule = profile.Rules.FirstOrDefault(r => r.Category == m.Category);
+            if (rule is null) return true;
+            return currentCounts.GetValueOrDefault(m.Category, 0) < rule.MaxPerWeek;
+        }).ToList();
+
+        if (allowed.Count > 0)
+            return allowed[Random.Shared.Next(allowed.Count)];
+
+        // Fall back to any non-excluded candidate.
+        return candidatePool[Random.Shared.Next(candidatePool.Count)];
+    }
+
+    // Builds a week plan that strictly satisfies the profile rules.
+    // Slots that cannot be filled (not enough meals of a required category) are left null.
+    private static Meal?[] GenerateWithConstraints(
+        IReadOnlyList<Meal> availableMeals,
+        int slotCount,
+        IReadOnlyList<DietRule> rules)
+    {
+        var assigned = new List<Meal?>();
+        var usedIds = new HashSet<Guid>();
+
+        foreach (var rule in rules)
+        {
+            if (assigned.Count >= slotCount) break;
+            if (rule.MaxPerWeek == 0) continue; // explicitly excluded
+
+            var target = rule.MinPerWeek == rule.MaxPerWeek
+                ? rule.MinPerWeek
+                : Random.Shared.Next(rule.MinPerWeek, rule.MaxPerWeek + 1);
+
+            if (target <= 0) continue;
+
+            var categoryMeals = availableMeals
+                .Where(m => m.Category == rule.Category && !usedIds.Contains(m.Id))
+                .ToList();
+            Shuffle(categoryMeals, Random.Shared);
+
+            // Assign as many as available, up to the target and remaining slots.
+            // If fewer meals exist than required, we leave those slots unfilled (null at the end).
+            var toAssign = Math.Min(target, Math.Min(categoryMeals.Count, slotCount - assigned.Count));
+            for (var i = 0; i < toAssign; i++)
             {
-                bestScore = score;
-                best = candidate;
-                if (score >= 1.0)
-                {
-                    break;
-                }
+                assigned.Add(categoryMeals[i]);
+                usedIds.Add(categoryMeals[i].Id);
             }
         }
 
-        return best ?? candidatePool[Random.Shared.Next(candidatePool.Count)];
-    }
+        // Randomize the order of the assigned meals across the days.
+        Shuffle(assigned, Random.Shared);
 
-    private double ScoreSingleDayCandidate(
-        Meal candidate,
-        Eatah.Domain.Entities.WeeklyPlan currentPlan,
-        DayOfWeek targetDay,
-        DietProfile profile)
-    {
-        var virtualDays = currentPlan.Days.Select(d => new DayPlan
-        {
-            Id = Guid.NewGuid(),
-            DayOfWeek = d.DayOfWeek,
-            MealId = d.DayOfWeek == targetDay ? candidate.Id : d.MealId,
-            Meal = d.DayOfWeek == targetDay ? candidate : d.Meal
-        }).ToList();
+        // Pad with nulls so unfilled days are left empty.
+        while (assigned.Count < slotCount)
+            assigned.Add(null);
 
-        var virtualPlan = new Eatah.Domain.Entities.WeeklyPlan
-        {
-            Id = Guid.NewGuid(),
-            Days = virtualDays
-        };
-
-        return _evaluator.Evaluate(virtualPlan, profile).OverallScore;
-    }
-
-    private double ScoreCandidate(
-        IReadOnlyList<Meal?> candidate,
-        IReadOnlyList<DayOfWeek> days,
-        DietProfile profile)
-    {
-        var virtualDays = new List<DayPlan>(candidate.Count);
-        for (var i = 0; i < candidate.Count; i++)
-        {
-            virtualDays.Add(new DayPlan
-            {
-                Id = Guid.NewGuid(),
-                DayOfWeek = days[i],
-                MealId = candidate[i]?.Id,
-                Meal = candidate[i]
-            });
-        }
-
-        var virtualPlan = new Eatah.Domain.Entities.WeeklyPlan
-        {
-            Id = Guid.NewGuid(),
-            Days = virtualDays
-        };
-
-        return _evaluator.Evaluate(virtualPlan, profile).OverallScore;
+        return assigned.ToArray();
     }
 
     private static Meal?[] PickWithoutRepetition(IReadOnlyList<Meal> meals, int count, Random random)
@@ -181,7 +161,6 @@ public class RandomMealGenerator : IRandomMealGenerator
         {
             if (pool.Count == 0)
             {
-                // Refill if fewer meals than slots.
                 pool.AddRange(meals);
                 Shuffle(pool, random);
             }

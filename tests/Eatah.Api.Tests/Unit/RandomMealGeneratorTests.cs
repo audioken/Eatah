@@ -12,7 +12,7 @@ public class RandomMealGeneratorTests
         DayOfWeek.Friday, DayOfWeek.Saturday, DayOfWeek.Sunday
     ];
 
-    private readonly RandomMealGenerator _sut = new(new DietRuleEvaluator());
+    private readonly RandomMealGenerator _sut = new();
 
     [Fact]
     public void Generate_ShouldReturnEmptySlots_WhenNoMealsAvailable()
