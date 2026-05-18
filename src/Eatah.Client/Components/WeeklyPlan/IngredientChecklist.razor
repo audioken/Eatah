@@ -61,6 +61,7 @@
                         }
                         @foreach (var name in PantryIngredients)
                         {
+                            var pantryCount = CheckState.GetSharedMealCount(name);
                             <div
                                 class="flex items-center gap-2 px-2 py-[6px] rounded-[10px] bg-white/25 border border-white/20 mb-1.5">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="@IconPaths.CheckViewBox" fill="#7CD331"
@@ -68,7 +69,11 @@
                                     <path d="@IconPaths.CheckPath" />
                                 </svg>
                                 <span
-                                class="text-dayCardText/55 text-[13px] font-medium line-through leading-snug truncate">@name</span>
+                                class="text-dayCardText/55 text-[13px] font-medium line-through leading-snug min-w-0 flex-1 truncate">@name</span>
+                                @if (pantryCount > 1)
+                                {
+                                    <span class="shrink-0 text-white/50 text-[10px] font-semibold leading-none">(@pantryCount)</span>
+                                }
                             </div>
                         }
                     </div>
@@ -104,6 +109,7 @@
               "bg-white/15 border-white/10";
                             var selectClass = isSelected ? "eatah-checklist-select--active" : "";
                             var textClass = isSelected ? "opacity-100" : onList ? "opacity-80" : "opacity-60";
+                            var missingCount = CheckState.GetSharedMealCount(name);
                             <div class="flex items-center gap-1.5 px-2 py-[6px] rounded-[10px] border mb-1.5 cursor-pointer @rowClass"
                                  @onclick="() => ToggleMissingSelection(name)">
                                 <span class="eatah-checklist-select @selectClass">
@@ -112,7 +118,11 @@
                                         <Icon Name="check" Size="9" />
                                     }
                                 </span>
-                                <span class="text-dayCardText text-[13px] font-medium leading-snug truncate @textClass">@name</span>
+                                <span class="text-dayCardText text-[13px] font-medium leading-snug min-w-0 flex-1 truncate @textClass">@name</span>
+                                @if (missingCount > 1)
+                                {
+                                    <span class="shrink-0 text-white/80 text-[10px] font-semibold leading-none">(@missingCount)</span>
+                                }
                             </div>
                         }
                     </div>
@@ -152,6 +162,7 @@
         if (!IsOpen)
         {
             _selectedMissing.Clear();
+            _loadedFor = null; // force fresh shopping-list fetch on next open
             return;
         }
         if (MealId is not null && MealId != _loadedFor)

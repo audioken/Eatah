@@ -46,9 +46,16 @@
                     {
                         @foreach (var item in PantryState.Items)
                         {
+                            var pantryCount = CheckState.GetSharedMealCount(item.Name);
                             <div class="eatah-shopping-item eatah-shopping-item--pantry">
                                 <div class="eatah-shopping-item__body">
-                                    <span class="eatah-shopping-item__name">@item.Name</span>
+                                    <div class="eatah-shopping-item__name-row">
+                                        <span class="eatah-shopping-item__name">@item.Name</span>
+                                        @if (pantryCount > 1)
+                                        {
+                                            <span class="eatah-shopping-item__count-badge">(@pantryCount)</span>
+                                        }
+                                    </div>
                                     <span class="eatah-shopping-item__meta">Tillagt @FormatDate(item.AddedAt)</span>
                                 </div>
                                 <button type="button" class="eatah-shopping-item__remove" title="Ta bort från skafferiet"
@@ -118,11 +125,13 @@
                                     @if (isExpanded)
                                     {
                                         <div class="eatah-shopping-group__items">
-                                            @foreach (var item in group)
+                                            @foreach (var view in group)
                                             {
+                                                var item = view.Item;
                                                 var isSelected = _selectedShoppingItems.Contains(item.Id);
                                                 var itemSelClass = isSelected ? "eatah-shopping-item--selected" : "";
                                                 var btnSelClass = isSelected ? "eatah-shopping-item__select--active" : "";
+                                                var groupedCount = GetMealCount(item.Notes);
                                                 <div class="eatah-shopping-item eatah-shopping-item--unchecked @itemSelClass">
                                                     <button type="button" class="eatah-shopping-item__select @btnSelClass"
                                                             @onclick="() => ToggleShoppingSelection(item.Id)">
@@ -132,7 +141,13 @@
                                                         }
                                                     </button>
                                                     <div class="eatah-shopping-item__body">
-                                                        <span class="eatah-shopping-item__name">@item.Name</span>
+                                                        <div class="eatah-shopping-item__name-row">
+                                                            <span class="eatah-shopping-item__name">@item.Name</span>
+                                                            @if (groupedCount > 1)
+                                                            {
+                                                                <span class="eatah-shopping-item__count-badge">(@groupedCount)</span>
+                                                            }
+                                                        </div>
                                                     </div>
                                                     <button type="button" class="eatah-shopping-item__remove"
                                                             title="Ta bort"
@@ -153,6 +168,7 @@
                                 var isSelected = _selectedShoppingItems.Contains(item.Id);
                                 var itemSelClass = isSelected ? "eatah-shopping-item--selected" : "";
                                 var btnSelClass = isSelected ? "eatah-shopping-item__select--active" : "";
+                                var flatCount = GetMealCount(item.Notes);
                                 <div class="eatah-shopping-item eatah-shopping-item--unchecked @itemSelClass">
                                     <button type="button" class="eatah-shopping-item__select @btnSelClass"
                                             @onclick="() => ToggleShoppingSelection(item.Id)">
@@ -162,7 +178,13 @@
                                         }
                                     </button>
                                     <div class="eatah-shopping-item__body">
-                                        <span class="eatah-shopping-item__name">@item.Name</span>
+                                        <div class="eatah-shopping-item__name-row">
+                                            <span class="eatah-shopping-item__name">@item.Name</span>
+                                            @if (flatCount > 1)
+                                            {
+                                                <span class="eatah-shopping-item__count-badge">(@flatCount)</span>
+                                            }
+                                        </div>
                                         @if (!string.IsNullOrEmpty(item.Notes))
                                         {
                                             <span class="eatah-shopping-item__notes">@item.Notes</span>
@@ -208,6 +230,60 @@
         </div>
     }
 </div>
+
+@* Coverage confirmation popup for shared ingredients *@
+@if (_coveragePopupOpen)
+{
+    <div class="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 p-4"
+         style="padding-bottom: max(1rem, var(--navbar-height, 64px));" @onclick="() => _coveragePopupOpen = false">
+        <div class="w-full max-w-[420px] rounded-[20px] border border-black/10 font-kanit overflow-hidden"
+             style="background: linear-gradient(135deg, #839B7F 0%, #A8D1AA 91.83%); box-shadow: 0px 8px 24px rgba(0,0,0,0.35);"
+             @onclick:stopPropagation="true">
+
+            <div class="px-5 pt-4 pb-2">
+                <div class="text-white font-medium text-[18px] uppercase tracking-tight leading-tight">
+                    Räcker till fler rätter?
+                </div>
+                <div class="text-white/75 text-[13px] mt-1">
+                    Bocka av vilka rätter ingrediensen räcker till.
+                </div>
+            </div>
+
+            <div class="px-4 pb-2 max-h-[50vh] overflow-y-auto space-y-3">
+                @foreach (var cov in _pendingCoverage)
+                {
+                    <div>
+                        <div class="text-white font-semibold text-[14px] mb-1.5 px-1">@cov.Item.Name</div>
+                        @foreach (var meal in cov.AllMeals)
+                        {
+                            var isCovered = cov.CoveredMeals.Contains(meal);
+                            var rowClass = isCovered ? "bg-white/35 border-white/30" : "bg-white/15 border-white/10";
+                            <label class="flex items-center gap-2.5 px-3 py-2 rounded-[10px] border cursor-pointer mb-1 @rowClass">
+                                <input type="checkbox" class="w-4 h-4 accent-white cursor-pointer flex-shrink-0"
+                                       checked="@isCovered"
+                                       @onchange="@(() => ToggleCoverage(cov, meal))" />
+                                <span class="text-dayCardText text-[13px] font-medium truncate">@meal</span>
+                            </label>
+                        }
+                    </div>
+                }
+            </div>
+
+            <div class="px-4 pb-5 pt-2 flex gap-2">
+                <button type="button"
+                        class="flex-1 py-2.5 rounded-[12px] bg-white/30 hover:bg-white/45 text-white font-semibold text-[13px] uppercase tracking-wide"
+                        @onclick="CoverAllAndConfirmAsync">
+                    Räcker till alla
+                </button>
+                <button type="button"
+                        class="flex-1 py-2.5 rounded-[12px] bg-white/15 hover:bg-white/25 text-white font-medium text-[13px]"
+                        @onclick="ConfirmCoverageAsync">
+                    Spara urval
+                </button>
+            </div>
+        </div>
+    </div>
+}
 
 @* Chat recipient picker dropdown *@
 @if (_showChatDropdown)
@@ -256,10 +332,32 @@
     private char _pendingChatType; // 'i' = Jag köper, 'k' = Kan du köpa
     private List<WorkspaceMemberResponse> _householdMembers = [];
 
-    private IList<IGrouping<string?, ShoppingItemResponse>> UncheckedGroups =>
+    // Multi-meal display: a shopping item with N meal-notes appears as N views (one per group).
+    private record ShoppingItemView(ShoppingItemResponse Item, string? MealGroup);
+
+    // Coverage popup: confirm which meals a shared ingredient covers when moved to pantry.
+    private record PendingCoverage(ShoppingItemResponse Item, List<string> AllMeals)
+    {
+        public HashSet<string> CoveredMeals { get; } = new(AllMeals, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private bool _coveragePopupOpen;
+    private List<PendingCoverage> _pendingCoverage = [];
+
+    private IList<IGrouping<string?, ShoppingItemView>> UncheckedGroups =>
         ShoppingState.Items
             .Where(s => !s.IsChecked)
-            .GroupBy(s => ExtractMealName(s.Notes))
+            .SelectMany(s =>
+            {
+                var meals = ExtractAllMealNames(s.Notes);
+                var views = new List<ShoppingItemView>();
+                if (meals.Count == 0)
+                    views.Add(new ShoppingItemView(s, null));
+                else
+                    views.AddRange(meals.Select(m => new ShoppingItemView(s, m)));
+                return views;
+            })
+            .GroupBy(v => v.MealGroup)
             .OrderBy(g => g.Key is null ? 1 : 0)
             .ThenBy(g => g.Key)
             .ToList();
@@ -386,15 +484,16 @@
             .ToList();
         _selectedShoppingItems.Clear();
 
-        foreach (var item in toMove)
+        var normalItems = toMove.Where(s => GetMealCount(s.Notes) <= 1).ToList();
+        var sharedItems = toMove.Where(s => GetMealCount(s.Notes) > 1).ToList();
+
+        // Move non-shared items directly to pantry
+        foreach (var item in normalItems)
         {
             try
             {
                 PantryItemResponse? pantryItem = null;
-                try
-                {
-                    pantryItem = await Api.AddToPantryAsync(item.IngredientId);
-                }
+                try { pantryItem = await Api.AddToPantryAsync(item.IngredientId); }
                 catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.PantryItemAlreadyExists) { }
 
                 await Api.RemoveFromShoppingListAsync(item.Id);
@@ -406,11 +505,83 @@
                     CheckState.AddPantryName(item.Name);
                 }
             }
-            catch (Exception ex)
-            {
-                _error = ex.Message;
-            }
+            catch (Exception ex) { _error = ex.Message; }
         }
+
+        // Show coverage popup for shared items
+        if (sharedItems.Count > 0)
+        {
+            _pendingCoverage = sharedItems
+                .Select(s => new PendingCoverage(s, ExtractAllMealNames(s.Notes)))
+                .ToList();
+            _coveragePopupOpen = true;
+        }
+    }
+
+    private void ToggleCoverage(PendingCoverage coverage, string meal)
+    {
+        if (!coverage.CoveredMeals.Remove(meal))
+            coverage.CoveredMeals.Add(meal);
+    }
+
+    private async Task CoverAllAndConfirmAsync()
+    {
+        foreach (var cov in _pendingCoverage)
+            foreach (var meal in cov.AllMeals)
+                cov.CoveredMeals.Add(meal);
+        await ConfirmCoverageAsync();
+    }
+
+    private async Task ConfirmCoverageAsync()
+    {
+        _coveragePopupOpen = false;
+        foreach (var coverage in _pendingCoverage)
+        {
+            try
+            {
+                PantryItemResponse? pantryItem = null;
+                try { pantryItem = await Api.AddToPantryAsync(coverage.Item.IngredientId); }
+                catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.PantryItemAlreadyExists) { }
+
+                if (pantryItem is not null)
+                {
+                    PantryState.AddItem(pantryItem);
+                    CheckState.AddPantryName(coverage.Item.Name);
+                }
+
+                var remainingNotes = BuildRemainingNotes(coverage.Item.Notes, coverage.CoveredMeals);
+                if (remainingNotes is null)
+                {
+                    // All meals covered: remove shopping item entirely
+                    await Api.RemoveFromShoppingListAsync(coverage.Item.Id);
+                    ShoppingState.RemoveItem(coverage.Item.Id);
+                }
+                else
+                {
+                    // Some meals remain: update Notes to keep only uncovered meal entries
+                    await Api.AddToShoppingListAsync(coverage.Item.IngredientId, remainingNotes);
+                    ShoppingState.AddOrUpdateItem(coverage.Item with { Notes = remainingNotes });
+                }
+            }
+            catch (Exception ex) { _error = ex.Message; }
+        }
+        _pendingCoverage.Clear();
+    }
+
+    /// <summary>Rebuilds Notes string keeping only the entries NOT in coveredMeals. Returns null if all are covered.</summary>
+    private static string? BuildRemainingNotes(string? originalNotes, HashSet<string> coveredMeals)
+    {
+        if (string.IsNullOrEmpty(originalNotes)) return null;
+        var remaining = originalNotes
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(part =>
+            {
+                var vIdx = part.LastIndexOf(" v");
+                var mealName = vIdx > 0 && int.TryParse(part[(vIdx + 2)..], out _) ? part[..vIdx] : part;
+                return !coveredMeals.Contains(mealName);
+            })
+            .ToList();
+        return remaining.Count > 0 ? string.Join(", ", remaining) : null;
     }
 
     private async Task CheckItemAsync(ShoppingItemResponse item)
@@ -473,7 +644,14 @@
         return $"{days} dagar sen";
     }
 
-    /// <summary>Extract meal name from Notes like "Pasta Carbonara v22" → "Pasta Carbonara".</summary>
+    /// <summary>Count how many meals this ingredient is needed by, from Notes like "Pasta v22, Fisk v22" → 2.</summary>
+    private static int GetMealCount(string? notes)
+    {
+        if (string.IsNullOrEmpty(notes)) return 0;
+        return notes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Length;
+    }
+
+    /// <summary>Extract the first meal name from Notes like "Pasta Carbonara v22, Fisk v22" → "Pasta Carbonara".</summary>
     private static string? ExtractMealName(string? notes)
     {
         if (string.IsNullOrEmpty(notes)) return null;
@@ -482,6 +660,21 @@
         if (vIdx > 0 && vIdx < first.Length - 2 && int.TryParse(first[(vIdx + 2)..], out _))
             return first[..vIdx];
         return first;
+    }
+
+    /// <summary>Extract ALL meal names from Notes like "Pasta Carbonara v22, Fisk v22" → ["Pasta Carbonara", "Fisk"].</summary>
+    private static List<string> ExtractAllMealNames(string? notes)
+    {
+        if (string.IsNullOrEmpty(notes)) return [];
+        return notes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(part =>
+            {
+                var vIdx = part.LastIndexOf(" v");
+                return vIdx > 0 && int.TryParse(part[(vIdx + 2)..], out _) ? part[..vIdx] : part;
+            })
+            .Where(n => !string.IsNullOrEmpty(n))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     private void ToggleGroup(string key)
@@ -495,7 +688,11 @@
     {
         foreach (var key in ShoppingState.Items
             .Where(s => !s.IsChecked)
-            .Select(s => ExtractMealName(s.Notes) ?? "Övrigt")
+            .SelectMany(s =>
+            {
+                var meals = ExtractAllMealNames(s.Notes);
+                return meals.Count > 0 ? meals : ["\u00d6vrigt"];
+            })
             .Distinct(StringComparer.OrdinalIgnoreCase))
         {
             _expandedGroups.Add(key);

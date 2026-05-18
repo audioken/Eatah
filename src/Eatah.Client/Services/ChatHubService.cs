@@ -32,13 +32,12 @@ public sealed class ChatHubService : IAsyncDisposable
     {
         if (_connection is null)
         {
-            var token = _tokenStore.Token;
-
             _connection = new HubConnectionBuilder()
                 .WithUrl(hubUrl, opts =>
                 {
-                    if (!string.IsNullOrEmpty(token))
-                        opts.AccessTokenProvider = () => Task.FromResult<string?>(token);
+                    // Always read the token dynamically so a token set after the connection
+                    // object is built (e.g. after first login) is picked up on connect/reconnect.
+                    opts.AccessTokenProvider = () => Task.FromResult<string?>(_tokenStore.Token);
 #pragma warning disable CA1416
                     opts.UseDefaultCredentials = true;
 #pragma warning restore CA1416

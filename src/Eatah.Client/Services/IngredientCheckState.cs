@@ -10,6 +10,8 @@ public class IngredientCheckState
     private readonly Dictionary<Guid, IReadOnlyList<string>> _ingredients = new();
     private readonly Dictionary<Guid, HashSet<string>> _checked = new();
     private HashSet<string> _pantryNames = new(StringComparer.OrdinalIgnoreCase);
+    // Meal IDs that are currently active in the viewed weekly plan.
+    private HashSet<Guid> _activeMealIds = new();
 
     public event Action? OnChange;
 
@@ -95,4 +97,23 @@ public class IngredientCheckState
         var set = GetChecked(mealId);
         return ings.All(set.Contains);
     }
+
+    /// <summary>
+    /// Updates which meal IDs are active in the currently viewed weekly plan.
+    /// Call this whenever the plan is loaded or mutated.
+    /// </summary>
+    public void SetActiveMeals(IEnumerable<Guid> mealIds)
+    {
+        _activeMealIds = new HashSet<Guid>(mealIds);
+        OnChange?.Invoke();
+    }
+
+    /// <summary>
+    /// Returns how many distinct active meals in the current weekly plan contain
+    /// the given ingredient name. Returns 0 if not yet known (ingredients not loaded).
+    /// </summary>
+    public int GetSharedMealCount(string ingredientName) =>
+        _ingredients
+            .Where(kv => _activeMealIds.Contains(kv.Key))
+            .Count(kv => kv.Value.Any(n => string.Equals(n, ingredientName, StringComparison.OrdinalIgnoreCase)));
 }

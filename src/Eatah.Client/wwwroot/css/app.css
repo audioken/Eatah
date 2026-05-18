@@ -1427,6 +1427,24 @@ body.eatah-modal-open {
     opacity: 0.55;
 }
 
+.eatah-shopping-item__name-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+}
+.eatah-shopping-item__name-row > .eatah-shopping-item__name {
+    flex: 1;
+    min-width: 0;
+}
+.eatah-shopping-item__count-badge {
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1;
+}
+
 /* Check circle (unchecked state) */
 .eatah-shopping-item__check {
     flex-shrink: 0;

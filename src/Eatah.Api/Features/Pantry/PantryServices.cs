@@ -244,16 +244,23 @@ public class ShoppingListService
             _ => 6
         };
 
+        // Group by ingredient name to collect ALL meals that need each ingredient.
+        // (DistinctBy would have kept only the first meal, hiding ingredients from other groups.)
         var ingredientsToSync = plan.Days
             .Where(d => d.Meal is not null
                 && (fromDayInclusive is null || DayIndex(d.DayOfWeek) >= DayIndex(fromDayInclusive.Value)))
             .SelectMany(d => d.Meal!.Ingredients.Select(i => new { Name = i.Name.Trim(), MealName = d.Meal!.Name }))
-            .DistinctBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+            .GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(g => new
+            {
+                Name = g.Key,
+                MealNames = g.Select(x => x.MealName).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
+            })
             .ToList();
 
         // Phase 1: Resolve IngredientMaster IDs and build the "needed" set
         var neededIngredientIds = new HashSet<Guid>();
-        var ingredientsWithMaster = new List<(string MealName, IngredientMaster Master)>();
+        var ingredientsWithMaster = new List<(List<string> MealNames, IngredientMaster Master)>();
 
         foreach (var item in ingredientsToSync)
         {
@@ -272,7 +279,7 @@ public class ShoppingListService
             if (!pantryIngIds.Contains(master.Id))
             {
                 neededIngredientIds.Add(master.Id);
-                ingredientsWithMaster.Add((item.MealName, master));
+                ingredientsWithMaster.Add((item.MealNames, master));
             }
         }
 
@@ -285,15 +292,16 @@ public class ShoppingListService
             existingShoppingByIngId.Remove(stale.IngredientId);
         }
 
-        // Phase 3: Add or update shopping items for needed ingredients
-        foreach (var (mealName, master) in ingredientsWithMaster)
+        // Phase 3: Add or update shopping items for needed ingredients.
+        // Notes are always replaced with the current plan's full meal list (not accumulated)
+        // so that shared ingredients show under every meal group on the client.
+        foreach (var (mealNames, master) in ingredientsWithMaster)
         {
-            var note = $"{mealName} {weekLabel}";
+            var note = string.Join(", ", mealNames.Select(m => $"{m} {weekLabel}"));
 
             if (existingShoppingByIngId.TryGetValue(master.Id, out var existingShop))
             {
-                if (existingShop.Notes is null || !existingShop.Notes.Contains(mealName))
-                    existingShop.Notes = existingShop.Notes is null ? note : $"{existingShop.Notes}, {mealName} {weekLabel}";
+                existingShop.Notes = note;
                 if (existingShop.IsChecked)
                 {
                     existingShop.IsChecked = false;

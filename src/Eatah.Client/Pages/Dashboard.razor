@@ -138,6 +138,7 @@
 			_plan = await planTask;
 			_meals = await mealsTask;
 			CheckState.SetPantryItems((await pantryTask).Select(p => p.Name));
+			RefreshActiveMeals();
 		}
 		catch (Exception ex)
 		{
@@ -148,6 +149,15 @@
 			_isLoading = false;
 			UpdateHeader();
 		}
+	}
+
+	private void RefreshActiveMeals()
+	{
+		if (_plan is null) return;
+		CheckState.SetActiveMeals(
+			_plan.Days
+				.Where(d => d.Meal is not null)
+				.Select(d => d.Meal!.Id));
 	}
 
 	private async Task NavigateWeekAsync(int delta)
@@ -197,6 +207,7 @@
 			if (updated is not null)
 			{
 				_plan = updated;
+				RefreshActiveMeals();
 				ShoppingSync.TriggerSync();
 			}
 		}
@@ -223,6 +234,7 @@
 			if (updated is not null)
 			{
 				_plan = updated;
+				RefreshActiveMeals();
 				ShoppingSync.TriggerSync();
 			}
 		}
@@ -272,6 +284,7 @@
 			if (updated is not null)
 			{
 				_plan = updated;
+				RefreshActiveMeals();
 				ShoppingSync.TriggerSync();
 			}
 		}

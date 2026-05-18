@@ -98,6 +98,19 @@ public static class AuthServiceExtensions
                 };
                 opts.Events = new JwtBearerEvents
                 {
+                    // SignalR sends the JWT as ?access_token=... on WebSocket upgrade requests
+                    // (the Authorization header can't be set during a WebSocket handshake).
+                    // Without this handler the JWT middleware never sees the token and returns 401.
+                    OnMessageReceived = ctx =>
+                    {
+                        var token = ctx.Request.Query["access_token"];
+                        if (!string.IsNullOrEmpty(token) &&
+                            ctx.Request.Path.StartsWithSegments("/hubs"))
+                        {
+                            ctx.Token = token;
+                        }
+                        return Task.CompletedTask;
+                    },
                     OnChallenge = ctx =>
                     {
                         ctx.HandleResponse();
