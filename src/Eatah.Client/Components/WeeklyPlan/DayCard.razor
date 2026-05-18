@@ -49,14 +49,18 @@
 
 	@* Sliding card surface *@
 	<div class="relative h-full w-full rounded-[15px] border border-black/10 font-kanit overflow-hidden cursor-pointer touch-pan-y"
-		 style="transform: translateX(@OffsetCss); transition: @(_dragging ? "none" : "transform .25s ease"); background: linear-gradient(90deg, #839B7F 0%, #A8D1AA 91.83%); box-shadow: 0px 4px 4px rgba(0,0,0,0.25);"
+		 style="transform: translateX(@OffsetCss); transition: @(_dragging ? "none" : "transform .25s ease"); background: @CardBackground; box-shadow: @CardShadow;"
 		 @onpointerdown="OnPointerDown" @onpointermove="OnPointerMove" @onpointerup="OnPointerUp"
 		 @onpointercancel="OnPointerUp" @onclick="HandleClick">
 
 		@* Day + meal *@
 		<div class="absolute left-[15px] top-[8px] right-[70px]">
-			<div class="text-white font-medium leading-[1.2] text-[24px] uppercase tracking-tight truncate">
-				@DayLabel
+			<div class="flex items-center gap-2">
+				<span class="text-white font-medium leading-[1.2] text-[24px] uppercase tracking-tight truncate">@DayLabel</span>
+				@if (IsToday)
+				{
+					<span class="shrink-0 text-[10px] font-bold leading-none px-[7px] py-[3px] rounded-full bg-white/40 text-white uppercase tracking-[0.12em]">idag</span>
+				}
 			</div>
 			<div class="text-dayCardText font-medium text-[16px] leading-[2.25] truncate">
 				@(Day.Meal?.Name ?? "Ingen maträtt vald")
@@ -204,6 +208,16 @@
 	{
 		CheckState.OnChange -= StateHasChanged;
 	}
+
+	private bool IsToday => Day.DayOfWeek == DateTime.Today.DayOfWeek;
+
+	private string CardBackground => IsToday
+		? "linear-gradient(90deg, #896124 0%, #D4A843 91.83%)"
+		: "linear-gradient(90deg, #839B7F 0%, #A8D1AA 91.83%)";
+
+	private string CardShadow => IsToday
+		? "0px 4px 12px rgba(212,168,67,0.45), 0px 4px 4px rgba(0,0,0,0.25)"
+		: "0px 4px 4px rgba(0,0,0,0.25)";
 
 	private string DayLabel => Day.DayOfWeek switch
 	{

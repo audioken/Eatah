@@ -1,4 +1,5 @@
 ﻿@page "/"
+@using System.Globalization
 @inject ApiClient Api
 @inject HeaderState Header
 @inject WorkspaceState Workspaces
@@ -7,6 +8,20 @@
 @implements IDisposable
 
 <div class="max-w-6xl mx-auto">
+	<div class="flex items-center justify-between mb-4 px-1">
+		<button class="p-2 rounded-lg text-slate-500 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+				@onclick="() => NavigateWeekAsync(-1)"
+				disabled="@(_weekOffset <= -1 || _isLoading)">
+			<Icon Name="chevron-left" Size="18" />
+		</button>
+		<span class="text-sm font-semibold text-slate-700">Vecka @_viewedWeekNumber</span>
+		<button class="p-2 rounded-lg text-slate-500 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+				@onclick="() => NavigateWeekAsync(1)"
+				disabled="@(_weekOffset >= 1 || _isLoading)">
+			<Icon Name="chevron-right" Size="18" />
+		</button>
+	</div>
+
 	@if (_error is not null)
 	{
 		<div class="mb-4 p-3 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm">
@@ -51,6 +66,17 @@
 	private bool _selectorOpen;
 	private bool _isLoading = true;
 	private string? _error;
+	private int _weekOffset = 0; // -1 = förra veckan, 0 = denna vecka, +1 = nästa vecka
+
+	private int _viewedWeekNumber
+	{
+		get
+		{
+			if (_plan is not null) return _plan.WeekNumber;
+			var target = DateTime.UtcNow.Date.AddDays(_weekOffset * 7);
+			return ISOWeek.GetWeekOfYear(target);
+		}
+	}
 
 	private DayPlanResponse? _aiTargetDay;
 	private AiGeneratedMealResponse? _aiMeal;
@@ -94,8 +120,7 @@
 
 	private void UpdateHeader()
 	{
-		var weekText = _plan is null ? "Veckoplan" : $"Vecka {_plan.WeekNumber}";
-		Header.Set(center: builder => builder.AddContent(0, weekText));
+		Header.Set(center: builder => builder.AddContent(0, "Matplan"));
 	}
 
 	private async Task LoadAsync()
@@ -104,7 +129,9 @@
 		_error = null;
 		try
 		{
-			var planTask = Api.GetCurrentWeeklyPlanAsync();
+			var target = DateTime.UtcNow.Date.AddDays(_weekOffset * 7);
+			var (year, week) = (ISOWeek.GetYear(target), ISOWeek.GetWeekOfYear(target));
+			var planTask = Api.GetWeeklyPlanByWeekAsync(year, week);
 			var mealsTask = Api.GetMealsAsync();
 			var pantryTask = Api.GetPantryAsync();
 			await Task.WhenAll(planTask, mealsTask, pantryTask);
@@ -120,6 +147,28 @@
 		{
 			_isLoading = false;
 			UpdateHeader();
+		}
+	}
+
+	private async Task NavigateWeekAsync(int delta)
+	{
+		_weekOffset = Math.Clamp(_weekOffset + delta, -1, 1);
+		_isLoading = true;
+		_plan = null;
+		_error = null;
+		try
+		{
+			var target = DateTime.UtcNow.Date.AddDays(_weekOffset * 7);
+			var (year, week) = (ISOWeek.GetYear(target), ISOWeek.GetWeekOfYear(target));
+			_plan = await Api.GetWeeklyPlanByWeekAsync(year, week);
+		}
+		catch (Exception ex)
+		{
+			_error = $"Kunde inte ladda veckoplanen: {ex.Message}";
+		}
+		finally
+		{
+			_isLoading = false;
 		}
 	}
 

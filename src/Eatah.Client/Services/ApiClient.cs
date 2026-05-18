@@ -61,6 +61,13 @@ public partial class ApiClient
         return await response.Content.ReadFromJsonAsync<WeeklyPlanResponse>(cancellationToken: cancellationToken);
     }
 
+    public async Task<WeeklyPlanResponse?> GetWeeklyPlanByWeekAsync(int year, int weekNumber, CancellationToken cancellationToken = default)
+    {
+        var response = await _http.GetAsync($"api/weeklyplans/by-week?year={year}&weekNumber={weekNumber}", cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<WeeklyPlanResponse>(cancellationToken: cancellationToken);
+    }
+
     public async Task<WeeklyPlanResponse?> AssignMealAsync(
         Guid planId,
         DayOfWeek day,

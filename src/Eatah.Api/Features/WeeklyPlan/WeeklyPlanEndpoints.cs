@@ -11,6 +11,7 @@ public static class WeeklyPlanEndpoints
             .RequireAuthorization();
 
         group.MapGet("/current", GetCurrentWeeklyPlan.Handle).WithName(nameof(GetCurrentWeeklyPlan));
+        group.MapGet("/by-week", GetWeeklyPlanByWeek.Handle).WithName(nameof(GetWeeklyPlanByWeek));
         group.MapPost("/", CreateWeeklyPlan.Handle).WithName(nameof(CreateWeeklyPlan));
         group.MapPut("/{id:guid}/days/{dayOfWeek}", AssignMealToDay.Handle).WithName(nameof(AssignMealToDay));
         group.MapDelete("/{id:guid}/days/{dayOfWeek}", ClearMealFromDay.Handle).WithName(nameof(ClearMealFromDay));
