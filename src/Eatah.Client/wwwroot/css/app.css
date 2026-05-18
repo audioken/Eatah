@@ -2257,6 +2257,48 @@ body.eatah-modal-open {
     padding: 0 6px;
 }
 
+/* Message grouping – continuation messages sit closer together */
+.eatah-chat-bubble-wrapper--group-start {
+    margin-top: 8px;
+}
+
+/* Bubbles that continue a group: flatten the top corner on the message side */
+.eatah-chat-bubble--mine.eatah-chat-bubble--continuation {
+    border-top-right-radius: 4px;
+}
+.eatah-chat-bubble--theirs.eatah-chat-bubble--continuation {
+    border-top-left-radius: 4px;
+}
+
+/* Bubbles that are followed by another in the same group: restore the bottom corner */
+.eatah-chat-bubble--mine.eatah-chat-bubble--continues {
+    border-bottom-right-radius: 14px;
+}
+.eatah-chat-bubble--theirs.eatah-chat-bubble--continues {
+    border-bottom-left-radius: 14px;
+}
+
+/* Date separator */
+.eatah-chat-date-separator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 10px 0 6px;
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.eatah-chat-date-separator::before,
+.eatah-chat-date-separator::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+}
+
 /* Reactions row */
 .eatah-chat-reactions {
     display: flex;

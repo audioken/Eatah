@@ -18,14 +18,34 @@
         }
         else
         {
-            @foreach (var msg in _messages)
+            @for (int i = 0; i < _messages.Count; i++)
             {
+                var msg = _messages[i];
                 var isMine = msg.AuthorUserId == Auth.CurrentUser?.Id;
-                var bubbleClass = "eatah-chat-bubble" + (isMine ? " eatah-chat-bubble--mine" : " eatah-chat-bubble--theirs");
                 var isDeleted = msg.DeletedAt.HasValue;
+                var isGroupStart = IsGroupStart(i);
+                var isGroupEnd = IsGroupEnd(i);
+                var isContinuation = !isGroupStart;
+                var continues = !isGroupEnd;
 
-                <div class="eatah-chat-bubble-wrapper @(isMine ? "eatah-chat-bubble-wrapper--mine" : "")">
-                    @if (!isMine)
+                var bubbleClass = "eatah-chat-bubble"
+                    + (isMine ? " eatah-chat-bubble--mine" : " eatah-chat-bubble--theirs")
+                    + (isContinuation ? " eatah-chat-bubble--continuation" : "")
+                    + (continues ? " eatah-chat-bubble--continues" : "");
+
+                var wrapperClass = "eatah-chat-bubble-wrapper"
+                    + (isMine ? " eatah-chat-bubble-wrapper--mine" : "")
+                    + (isGroupStart && i > 0 ? " eatah-chat-bubble-wrapper--group-start" : "");
+
+                @if (IsNewDay(i))
+                {
+                    <div class="eatah-chat-date-separator">
+                        <span>@FormatDate(msg.CreatedAt)</span>
+                    </div>
+                }
+
+                <div class="@wrapperClass">
+                    @if (!isMine && isGroupStart)
                     {
                         <span class="eatah-chat-bubble__author">@msg.AuthorDisplayName</span>
                     }
@@ -62,6 +82,11 @@
                             }
                         }
                     </div>
+
+                    @if (isGroupEnd)
+                    {
+                        <span class="eatah-chat-bubble__timestamp">@FormatTime(msg.CreatedAt)</span>
+                    }
 
                     <!-- Reactions row -->
                     @if (msg.Reactions.Any())
@@ -248,6 +273,50 @@
     }
 
     private void DismissReactionPicker() => _reactionPickerMessageId = null;
+
+    // ── Grouping helpers ──────────────────────────────────────────────────────
+
+    private static readonly TimeSpan GroupThreshold = TimeSpan.FromMinutes(5);
+
+    private bool IsGroupStart(int index)
+    {
+        if (index == 0) return true;
+        var prev = _messages[index - 1];
+        var curr = _messages[index];
+        return prev.AuthorUserId != curr.AuthorUserId
+            || (curr.CreatedAt - prev.CreatedAt) > GroupThreshold;
+    }
+
+    private bool IsGroupEnd(int index)
+    {
+        if (index == _messages.Count - 1) return true;
+        var next = _messages[index + 1];
+        var curr = _messages[index];
+        return next.AuthorUserId != curr.AuthorUserId
+            || (next.CreatedAt - curr.CreatedAt) > GroupThreshold;
+    }
+
+    private bool IsNewDay(int index)
+    {
+        if (index == 0) return true;
+        var prev = _messages[index - 1].CreatedAt.ToLocalTime().Date;
+        var curr = _messages[index].CreatedAt.ToLocalTime().Date;
+        return prev != curr;
+    }
+
+    private static string FormatTime(DateTime dt)
+        => dt.ToLocalTime().ToString("HH:mm");
+
+    private static string FormatDate(DateTime dt)
+    {
+        var local = dt.ToLocalTime().Date;
+        var today = DateTime.Now.Date;
+        if (local == today) return "Idag";
+        if (local == today.AddDays(-1)) return "Igår";
+        return local.Year == today.Year
+            ? local.ToString("d MMMM", System.Globalization.CultureInfo.GetCultureInfo("sv-SE"))
+            : local.ToString("d MMMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("sv-SE"));
+    }
 
     private async Task PickReactionAsync(Guid messageId, string emoji)
     {
