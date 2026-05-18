@@ -43,7 +43,7 @@
 			<DietProfileSelectorCard Plan="_plan" OnRandomize="RandomizeAsync" />
 		</div>
 
-		<WeekView Days="_plan.Days" OnDaySelected="OpenSelector" OnDayCleared="ClearDayAsync"
+		<WeekView Days="_plan.Days" WeekOffset="_weekOffset" OnDaySelected="OpenSelector" OnDayCleared="ClearDayAsync"
 				  OnDayRandomDb="RandomizeDayDbAsync" OnDayRandomAi="StartAiForDayAsync" />
 	}
 </div>

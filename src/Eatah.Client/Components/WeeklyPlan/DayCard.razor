@@ -4,7 +4,7 @@
 @inject ApiClient Api
 @inject IngredientCheckState CheckState
 
-<div class="relative w-full max-w-[420px] h-[80px] select-none">
+<div class="relative w-full max-w-[420px] h-[80px] select-none @(IsPast ? "opacity-55" : "")">
 
 	@* Action layer behind the card *@
 	<div class="absolute inset-0 flex items-center justify-between px-1 pointer-events-none">
@@ -56,10 +56,12 @@
 		@* Day + meal *@
 		<div class="absolute left-[15px] top-[8px] right-[70px]">
 			<div class="flex items-center gap-2">
-				<span class="text-white font-medium leading-[1.2] text-[24px] uppercase tracking-tight truncate">@DayLabel</span>
+				<span
+				class="text-white font-medium leading-[1.2] text-[24px] uppercase tracking-tight truncate">@DayLabel</span>
 				@if (IsToday)
 				{
-					<span class="shrink-0 text-[10px] font-bold leading-none px-[7px] py-[3px] rounded-full bg-white/40 text-white uppercase tracking-[0.12em]">idag</span>
+					<span
+					class="shrink-0 text-[10px] font-bold leading-none px-[7px] py-[3px] rounded-full bg-white/40 text-white uppercase tracking-[0.12em]">idag</span>
 				}
 			</div>
 			<div class="text-dayCardText font-medium text-[16px] leading-[2.25] truncate">
@@ -75,40 +77,43 @@
 			}
 		</div>
 
-		@* Checklist tile bottom-right *@
-		<button type="button"
-				class="absolute right-[8px] bottom-[8px] inline-flex items-center justify-center w-[45px] h-[34px] rounded-[15px] bg-[#BCBCAC] hover:brightness-95 transition disabled:opacity-50"
-				style="filter: drop-shadow(0px 4px 4px rgba(0,0,0,0.25));"
-				title="@(Day.Meal is not null ? "Ingredienschecklista" : "Ingen maträtt")" disabled="@(Day.Meal is null)"
-				@onclick:stopPropagation="true" @onclick="OpenChecklist">
-			<svg xmlns="http://www.w3.org/2000/svg" viewBox="@IconPaths.ListViewBox" fill="white"
-				 class="w-[18px] h-[18px]">
-				<path d="@IconPaths.ListPath" />
-			</svg>
+		@* Checklist tile bottom-right – hidden for past days *@
+		@if (!IsPast)
+		{
+			<button type="button"
+					class="absolute right-[8px] bottom-[8px] inline-flex items-center justify-center w-[45px] h-[34px] rounded-[15px] bg-[#BCBCAC] hover:brightness-95 transition disabled:opacity-50"
+					style="filter: drop-shadow(0px 4px 4px rgba(0,0,0,0.25));"
+					title="@(Day.Meal is not null ? "Ingredienschecklista" : "Ingen maträtt")" disabled="@(Day.Meal is null)"
+					@onclick:stopPropagation="true" @onclick="OpenChecklist">
+				<svg xmlns="http://www.w3.org/2000/svg" viewBox="@IconPaths.ListViewBox" fill="white"
+					 class="w-[18px] h-[18px]">
+					<path d="@IconPaths.ListPath" />
+				</svg>
 
-			@if (Day.Meal is not null)
-			{
-				if (AllIngredientsChecked)
+				@if (Day.Meal is not null)
 				{
-					<span
-						class="absolute -top-1 -right-1 inline-flex items-center justify-center w-[15px] h-[15px] rounded-full bg-[#7CD331]">
-						<svg xmlns="http://www.w3.org/2000/svg" viewBox="@IconPaths.CheckViewBox" fill="white" class="w-2 h-2">
-							<path d="@IconPaths.CheckPath" />
-						</svg>
-					</span>
+					if (AllIngredientsChecked)
+					{
+						<span
+							class="absolute -top-1 -right-1 inline-flex items-center justify-center w-[15px] h-[15px] rounded-full bg-[#7CD331]">
+							<svg xmlns="http://www.w3.org/2000/svg" viewBox="@IconPaths.CheckViewBox" fill="white" class="w-2 h-2">
+								<path d="@IconPaths.CheckPath" />
+							</svg>
+						</span>
+					}
+					else
+					{
+						<span
+						class="absolute -top-1 -right-1 inline-flex items-center justify-center w-[15px] h-[15px] rounded-full bg-[#F24E4E] text-white text-[10px] leading-none font-bold">!</span>
+					}
 				}
 				else
 				{
 					<span
-					class="absolute -top-1 -right-1 inline-flex items-center justify-center w-[15px] h-[15px] rounded-full bg-[#F24E4E] text-white text-[10px] leading-none font-bold">!</span>
+					class="absolute -top-1 -right-1 inline-flex items-center justify-center w-[15px] h-[15px] rounded-full bg-[#8D8D83] text-white text-[10px] leading-none font-bold">?</span>
 				}
-			}
-			else
-			{
-				<span
-				class="absolute -top-1 -right-1 inline-flex items-center justify-center w-[15px] h-[15px] rounded-full bg-[#8D8D83] text-white text-[10px] leading-none font-bold">?</span>
-			}
-		</button>
+			</button>
+		}
 	</div>
 </div>
 
@@ -117,6 +122,7 @@
 
 @code {
 	[Parameter, EditorRequired] public DayPlanResponse Day { get; set; } = default!;
+	[Parameter] public int WeekOffset { get; set; } = 0;
 	[Parameter] public EventCallback<DayPlanResponse> OnSelect { get; set; }
 	[Parameter] public EventCallback<DayPlanResponse> OnClear { get; set; }
 	[Parameter] public EventCallback<DayPlanResponse> OnRandomDb { get; set; }
@@ -209,7 +215,18 @@
 		CheckState.OnChange -= StateHasChanged;
 	}
 
-	private bool IsToday => Day.DayOfWeek == DateTime.Today.DayOfWeek;
+	private static readonly DayOfWeek[] WeekDayOrder =
+	[
+		DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday,
+		DayOfWeek.Friday, DayOfWeek.Saturday, DayOfWeek.Sunday
+	];
+
+	private static int DayIndex(DayOfWeek d) => Array.IndexOf(WeekDayOrder, d);
+
+	private bool IsToday => WeekOffset == 0 && Day.DayOfWeek == DateTime.Today.DayOfWeek;
+
+	private bool IsPast => WeekOffset < 0
+		|| (WeekOffset == 0 && DayIndex(Day.DayOfWeek) < DayIndex(DateTime.Today.DayOfWeek));
 
 	private string CardBackground => IsToday
 		? "linear-gradient(90deg, #896124 0%, #D4A843 91.83%)"

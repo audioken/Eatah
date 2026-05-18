@@ -206,7 +206,7 @@ public class ShoppingListService
     /// are no longer needed. Manually-added items (Notes == null) are never removed.
     /// Returns the full updated list.
     /// </summary>
-    public async Task<Result<List<ShoppingItemResponse>>> SyncFromWeeklyPlanAsync(Guid planId, CancellationToken ct)
+    public async Task<Result<List<ShoppingItemResponse>>> SyncFromWeeklyPlanAsync(Guid planId, CancellationToken ct, DayOfWeek? fromDayInclusive = null)
     {
         var wsId = _ws.RequireCurrent();
 
@@ -232,9 +232,21 @@ public class ShoppingListService
             .Where(s => s.WorkspaceId == wsId)
             .ToDictionaryAsync(s => s.IngredientId, ct);
 
-        // Collect unique ingredient names with their source meal
+        // Collect unique ingredient names with their source meal, skipping past days when requested
+        static int DayIndex(DayOfWeek d) => d switch
+        {
+            DayOfWeek.Monday => 0,
+            DayOfWeek.Tuesday => 1,
+            DayOfWeek.Wednesday => 2,
+            DayOfWeek.Thursday => 3,
+            DayOfWeek.Friday => 4,
+            DayOfWeek.Saturday => 5,
+            _ => 6
+        };
+
         var ingredientsToSync = plan.Days
-            .Where(d => d.Meal is not null)
+            .Where(d => d.Meal is not null
+                && (fromDayInclusive is null || DayIndex(d.DayOfWeek) >= DayIndex(fromDayInclusive.Value)))
             .SelectMany(d => d.Meal!.Ingredients.Select(i => new { Name = i.Name.Trim(), MealName = d.Meal!.Name }))
             .DistinctBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -328,6 +340,6 @@ public class ShoppingListService
         if (planId is null)
             return Result<List<ShoppingItemResponse>>.Success(await GetAllAsync(ct));
 
-        return await SyncFromWeeklyPlanAsync(planId.Value, ct);
+        return await SyncFromWeeklyPlanAsync(planId.Value, ct, fromDayInclusive: DateTime.UtcNow.DayOfWeek);
     }
 }
