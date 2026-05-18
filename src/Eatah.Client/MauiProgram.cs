@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Components.WebView.Maui;
+using Microsoft.Extensions.Logging;
 using Eatah.Client.Services;
 
 namespace Eatah.Client;
@@ -60,7 +61,10 @@ public static class MauiProgram
 		builder.Services.AddSingleton<AuthState>();
 		builder.Services.AddSingleton<WorkspaceState>();
 		builder.Services.AddSingleton<ChatState>();
-		builder.Services.AddSingleton<ChatHubService>();
+		builder.Services.AddSingleton<ChatHubService>(sp => new ChatHubService(
+			sp.GetRequiredService<ITokenStore>(),
+			ApiClientOptions.GetBaseAddress(),
+			sp.GetRequiredService<ILoggerFactory>()));
 
 		return builder.Build();
 	}

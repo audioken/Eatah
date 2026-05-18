@@ -163,7 +163,7 @@ app.MapNotificationEndpoints();
 app.MapFriendEndpoints();
 app.MapPantryEndpoints();
 app.MapChatEndpoints();
-app.MapHub<ChatHub>("/hubs/chat");
+app.MapHub<ChatHub>("/hubs/chat").RequireAuthorization();
 
 app.Run();
 

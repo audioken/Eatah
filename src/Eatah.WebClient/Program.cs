@@ -19,7 +19,10 @@ builder.Services.AddSingleton<HeaderState>();
 builder.Services.AddSingleton<AuthState>();
 builder.Services.AddSingleton<WorkspaceState>();
 builder.Services.AddSingleton<ChatState>();
-builder.Services.AddSingleton<ChatHubService>();
+builder.Services.AddSingleton<ChatHubService>(sp => new ChatHubService(
+    sp.GetRequiredService<ITokenStore>(),
+    WebApiClientOptions.GetBaseAddress(builder.HostEnvironment.BaseAddress),
+    sp.GetRequiredService<ILoggerFactory>()));
 builder.Services.AddSingleton<ISafeAreaInsetsProvider, DefaultSafeAreaInsetsProvider>();
 builder.Services.AddSingleton<IUserPreferences, LocalStorageUserPreferences>();
 builder.Services.AddTransient<LoadingHttpMessageHandler>();

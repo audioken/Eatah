@@ -3,7 +3,8 @@
 @inject ChatHubService Hub
 @inject AuthState Auth
 @inject WorkspaceState Workspace
-@implements IDisposable
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
 @if (ChatState.IsOpen)
 {
@@ -97,6 +98,8 @@
 @code {
     private List<ChatThreadSummaryResponse> _threads = [];
     private bool _isLoading = false;
+    private DotNetObjectReference<ChatPopup>? _selfRef;
+    private bool _visibilityRegistered;
 
     protected override void OnInitialized()
     {
@@ -124,16 +127,35 @@
         await EnsureHubStartedAsync();
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_visibilityRegistered)
+        {
+            _visibilityRegistered = true;
+            _selfRef = DotNetObjectReference.Create(this);
+            try { await JS.InvokeVoidAsync("eatahChat.registerVisibility", _selfRef); }
+            catch { /* ignore — JS may not be loaded yet in some hosts */ }
+        }
+    }
+
+    /// <summary>
+    /// Called from JS when the app/tab regains visibility, focus or network.
+    /// On iOS Safari (PWA) the WebSocket is killed in the background; we proactively
+    /// reconnect and rejoin the active thread so live messages keep flowing.
+    /// </summary>
+    [JSInvokable]
+    public async Task OnAppResumed(string reason)
+    {
+        if (!Workspace.CurrentId.HasValue) return;
+        await Hub.EnsureConnectedAsync();
+        // ChatThreadView handles its own rejoin via Hub.Reconnected event,
+        // but ensure the connection is at least alive even when no thread is open.
+    }
+
     private async Task EnsureHubStartedAsync()
     {
         if (Workspace.CurrentId.HasValue)
-        {
-            try
-            {
-                await Hub.StartAsync("https://eatah.onrender.com/hubs/chat");
-            }
-            catch { }
-        }
+            await Hub.EnsureConnectedAsync();
     }
 
     private async Task LoadThreadsAsync()
@@ -162,9 +184,15 @@
 
     private void CloseIfBackdrop() => ChatState.Close();
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         ChatState.OnChanged -= OnChatStateChanged;
         Workspace.OnChange -= OnWorkspaceChanged;
+        if (_visibilityRegistered)
+        {
+            try { await JS.InvokeVoidAsync("eatahChat.unregisterVisibility"); }
+            catch { }
+        }
+        _selfRef?.Dispose();
     }
 }
