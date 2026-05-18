@@ -42,6 +42,7 @@ public static class AiServiceExtensions
         services.AddScoped<IAiClient>(sp => new FallbackAiClient(
             sp.GetRequiredService<GeminiClient>(),
             sp.GetRequiredService<AnthropicClient>(),
+            sp.GetRequiredService<IOptions<AiSettings>>(),
             sp.GetRequiredService<ILogger<FallbackAiClient>>()));
 
         services.AddScoped<AiDietRuleGenerator>();

@@ -68,6 +68,14 @@ public class DietRuleService
                 .ToList());
     }
 
+    public async Task<Result> DeleteAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var deleted = await _profileRepository.DeleteAsync(id, cancellationToken);
+        return deleted
+            ? Result.Success()
+            : DietProfileErrors.NotFound(id);
+    }
+
     internal static DietProfileResponse ToResponse(DietProfile profile)
     {
         return new DietProfileResponse(

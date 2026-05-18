@@ -10,6 +10,7 @@ public static class DietRuleEndpoints
 
         profiles.MapGet("/", GetAllDietProfiles.Handle).WithName(nameof(GetAllDietProfiles));
         profiles.MapGet("/{id:guid}", GetDietProfileById.Handle).WithName(nameof(GetDietProfileById));
+        profiles.MapDelete("/{id:guid}", DeleteDietProfile.Handle).WithName(nameof(DeleteDietProfile));
 
         app.MapPost("/api/weeklyplans/{id:guid}/evaluate", EvaluateWeeklyPlan.Handle)
             .WithTags("WeeklyPlans")

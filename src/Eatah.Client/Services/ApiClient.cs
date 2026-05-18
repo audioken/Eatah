@@ -158,6 +158,12 @@ public partial class ApiClient
         return await response.Content.ReadFromJsonAsync<DietProfileResponse>(cancellationToken: cancellationToken);
     }
 
+    public async Task DeleteDietProfileAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var response = await _http.DeleteAsync($"api/dietprofiles/{id}", cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
     /// <summary>
     /// Throws an <see cref="ApiException"/> carrying the parsed <see cref="ApiErrorResponse"/>
     /// when the response is non-success. Falls back to a generic error if the body is not ProblemDetails.

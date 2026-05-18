@@ -20,11 +20,11 @@
 @code {
     private record NavItem(string Label, string Icon, NavAction Action, string? Route = null);
 
-    private enum NavAction { Navigate, ComingSoon, Profile, Chat }
+    private enum NavAction { Navigate, ComingSoon, Profile, Chat, DietProfiles }
 
     private readonly List<NavItem> _items = new()
     {
-        new("Kost", "vegan", NavAction.ComingSoon), // becomes modal in fas 2
+        new("Kost", "vegan", NavAction.DietProfiles),
         new("Köplista", "basket", NavAction.Navigate, "/shopping"),
         new("Matplan", "calendar", NavAction.Navigate, "/"),
         new("Chat", "chat", NavAction.Chat), // opens chat popup
@@ -66,6 +66,9 @@
                 break;
             case NavAction.Profile:
                 Modals.Show<ProfileModal>();
+                break;
+            case NavAction.DietProfiles:
+                Modals.Show<DietProfilesModal>();
                 break;
             case NavAction.Chat:
                 ChatState.Open();

@@ -1263,6 +1263,244 @@ body.eatah-modal-open {
 }
 
 /* ============================================================
+   Diet Profiles Modal (Phase Kost)
+   ============================================================ */
+.eatah-diet-modal {
+    display: flex;
+    flex-direction: column;
+    max-height: 90dvh;
+}
+
+.eatah-diet-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px 14px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    flex-shrink: 0;
+}
+
+.eatah-diet-modal__title {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0;
+    color: var(--color-text-dark);
+}
+
+.eatah-diet-modal__close {
+    background: transparent;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    color: rgba(0, 0, 0, 0.5);
+    display: inline-flex;
+}
+
+.eatah-diet-modal__body {
+    overflow-y: auto;
+    flex: 1;
+    padding: 0 18px 24px;
+}
+
+.eatah-diet-modal__section {
+    padding: 16px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.eatah-diet-modal__section--list {
+    border-bottom: none;
+}
+
+.eatah-diet-modal__description {
+    font-size: 13px;
+    color: rgba(0, 0, 0, 0.6);
+    margin: 0 0 14px;
+    line-height: 1.5;
+}
+
+.eatah-diet-modal__field {
+    margin-bottom: 10px;
+}
+
+.eatah-diet-modal__label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(0, 0, 0, 0.5);
+    margin-bottom: 4px;
+}
+
+.eatah-diet-modal__input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: inherit;
+    background: #fff;
+    color: var(--color-text-dark);
+    box-sizing: border-box;
+    resize: none;
+}
+
+.eatah-diet-modal__input:focus {
+    outline: none;
+    border-color: var(--color-brand);
+    box-shadow: 0 0 0 2px rgba(90, 174, 0, 0.2);
+}
+
+.eatah-diet-modal__input--textarea {
+    resize: vertical;
+}
+
+.eatah-diet-modal__error {
+    font-size: 12px;
+    color: #b91c1c;
+    margin: 0 0 8px;
+}
+
+.eatah-diet-modal__generate-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 16px;
+    background: var(--color-brand);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    justify-content: center;
+    transition: opacity 0.1s;
+}
+
+.eatah-diet-modal__generate-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.eatah-diet-modal__generate-icon {
+    flex-shrink: 0;
+}
+
+.eatah-diet-modal__empty {
+    font-size: 13px;
+    color: rgba(0, 0, 0, 0.45);
+    margin: 0;
+    padding: 4px 0;
+}
+
+.eatah-diet-modal__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.eatah-diet-modal__list-item {
+    border-radius: 10px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.6);
+}
+
+.eatah-diet-modal__item-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.eatah-diet-modal__item-toggle {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: transparent;
+    border: none;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--color-text-dark);
+    cursor: pointer;
+    padding: 10px 12px;
+    text-align: left;
+    gap: 8px;
+    min-width: 0;
+}
+
+.eatah-diet-modal__item-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.eatah-diet-modal__item-chevron {
+    flex-shrink: 0;
+    color: rgba(0, 0, 0, 0.4);
+}
+
+.eatah-diet-modal__item-delete {
+    background: transparent;
+    border: none;
+    padding: 10px 10px 10px 4px;
+    cursor: pointer;
+    color: rgba(0, 0, 0, 0.3);
+    display: inline-flex;
+    flex-shrink: 0;
+    transition: color 0.1s;
+}
+
+.eatah-diet-modal__item-delete:hover {
+    color: #b91c1c;
+}
+
+.eatah-diet-modal__rules {
+    list-style: none;
+    margin: 0;
+    padding: 0 12px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.eatah-diet-modal__rule {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    gap: 0 8px;
+    font-size: 13px;
+}
+
+.eatah-diet-modal__rule-cat {
+    grid-column: 1;
+    grid-row: 1;
+    font-weight: 600;
+    color: var(--color-text-dark);
+}
+
+.eatah-diet-modal__rule-range {
+    grid-column: 2;
+    grid-row: 1;
+    color: rgba(0, 0, 0, 0.55);
+    white-space: nowrap;
+}
+
+.eatah-diet-modal__rule-desc {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    color: rgba(0, 0, 0, 0.55);
+    line-height: 1.4;
+}
+
+/* ============================================================
    Shopping page (Phase 7)
    ============================================================ */
 .eatah-shopping-page {

@@ -11,6 +11,7 @@ public interface IDietProfileRepository
     Task<DietProfile?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
     Task<bool> ExistsByNameAsync(string name, CancellationToken cancellationToken);
     Task AddAsync(DietProfile profile, CancellationToken cancellationToken);
+    Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken);
 }
 
 public class DietProfileRepository : IDietProfileRepository
@@ -59,5 +60,15 @@ public class DietProfileRepository : IDietProfileRepository
         profile.WorkspaceId ??= _workspace.RequireCurrent();
         await _context.DietProfiles.AddAsync(profile, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>Deletes a workspace-owned profile. System profiles (WorkspaceId null) cannot be deleted.</summary>
+    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var wsId = _workspace.RequireCurrent();
+        var deleted = await _context.DietProfiles
+            .Where(p => p.Id == id && p.WorkspaceId == wsId)
+            .ExecuteDeleteAsync(cancellationToken);
+        return deleted > 0;
     }
 }
