@@ -132,8 +132,11 @@ public sealed class ChatHubService : IAsyncDisposable
                 // Read the token dynamically so a token set after the connection
                 // is built (e.g. after first login) is picked up on connect/reconnect.
                 opts.AccessTokenProvider = () => Task.FromResult<string?>(_tokenStore.Token);
+                // UseDefaultCredentials sends the Windows/cookie credential automatically.
+                // It is only supported on MAUI/desktop — browser (WASM) throws PlatformNotSupportedException.
 #pragma warning disable CA1416
-                opts.UseDefaultCredentials = true;
+                try { opts.UseDefaultCredentials = true; }
+                catch (PlatformNotSupportedException) { /* browser/WASM — not supported, ignored */ }
 #pragma warning restore CA1416
             })
             .WithAutomaticReconnect(ReconnectDelays)
