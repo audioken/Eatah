@@ -39,10 +39,15 @@ public class WeeklyPlanService
     public async Task<WeeklyPlanResponse> GetCurrentAsync(CancellationToken cancellationToken)
     {
         var (year, week) = GetCurrentIsoWeek();
-        var plan = await _repository.GetByYearWeekAsync(year, week, cancellationToken);
+        return await GetOrCreateByWeekAsync(year, week, cancellationToken);
+    }
+
+    public async Task<WeeklyPlanResponse> GetOrCreateByWeekAsync(int year, int weekNumber, CancellationToken cancellationToken)
+    {
+        var plan = await _repository.GetByYearWeekAsync(year, weekNumber, cancellationToken);
         if (plan is null)
         {
-            plan = BuildEmptyPlan(year, week);
+            plan = BuildEmptyPlan(year, weekNumber);
             await _repository.AddAsync(plan, cancellationToken);
         }
 
