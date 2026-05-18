@@ -578,8 +578,7 @@
         _pendingCoverage.Clear();
     }
 
-    /// <summary>Rebuilds Notes string keeping only the entries NOT in coveredMeals. Returns null if all are
-    covered.</summary>
+    /// <summary>Rebuilds Notes keeping only entries NOT in coveredMeals. Returns null if all are covered.</summary>
     private static string? BuildRemainingNotes(string? originalNotes, HashSet<string> coveredMeals)
     {
         if (string.IsNullOrEmpty(originalNotes)) return null;
@@ -673,8 +672,7 @@
         return first;
     }
 
-    /// <summary>Extract ALL meal names from Notes like "Pasta Carbonara v22, Fisk v22" → ["Pasta Carbonara",
-"Fisk"].</summary>
+    /// <summary>Extracts all meal names from Notes, e.g. "Pasta v22, Fisk v22" → ["Pasta", "Fisk"].</summary>
     private static List<string> ExtractAllMealNames(string? notes)
     {
         if (string.IsNullOrEmpty(notes)) return [];
