@@ -67,6 +67,16 @@ public sealed class ChatHubService : IAsyncDisposable
     {
         if (_connection is null) return;
 
+        // If the initial StartAsync failed (e.g. Render.com cold start), the connection
+        // stays Disconnected and WithAutomaticReconnect() won't retry it — that only
+        // kicks in after a successful connection drops. Try to re-start here so opening a
+        // thread can recover from an earlier failed connect attempt.
+        if (_connection.State == HubConnectionState.Disconnected)
+        {
+            try { await _connection.StartAsync(ct); }
+            catch { /* ignored — the wait below will bail out if still not connected */ }
+        }
+
         // Wait up to 10 s for the connection to become ready (handles cold-start races).
         for (var i = 0; i < 50 && _connection.State != HubConnectionState.Connected; i++)
             await Task.Delay(200, ct);

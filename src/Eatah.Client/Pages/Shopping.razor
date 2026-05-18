@@ -115,10 +115,9 @@
                                 var groupKey = group.Key ?? "Övrigt";
                                 var isExpanded = _expandedGroups.Contains(groupKey);
                                 <div class="eatah-shopping-group">
-                                    <button type="button" class="eatah-shopping-group__header"
-                                            @onclick="() => ToggleGroup(groupKey)">
-                                        <Icon Name="@(isExpanded ? "angle-down-solid" : "angle-right-solid")"
-                                              Size="10" CssClass="eatah-shopping-group__chevron" />
+                                    <button type="button" class="eatah-shopping-group__header" @onclick="() => ToggleGroup(groupKey)">
+                                        <Icon Name="@(isExpanded ? "angle-down-solid" : "angle-right-solid")" Size="10"
+                                              CssClass="eatah-shopping-group__chevron" />
                                         <span class="eatah-shopping-group__name">@groupKey</span>
                                         <span class="eatah-shopping-group__count">@group.Count()</span>
                                     </button>
@@ -149,8 +148,7 @@
                                                             }
                                                         </div>
                                                     </div>
-                                                    <button type="button" class="eatah-shopping-item__remove"
-                                                            title="Ta bort"
+                                                    <button type="button" class="eatah-shopping-item__remove" title="Ta bort"
                                                             @onclick="() => RemoveFromShoppingAsync(item)">
                                                         <Icon Name="close" Size="12" />
                                                     </button>
@@ -260,8 +258,7 @@
                             var rowClass = isCovered ? "bg-white/35 border-white/30" : "bg-white/15 border-white/10";
                             <label class="flex items-center gap-2.5 px-3 py-2 rounded-[10px] border cursor-pointer mb-1 @rowClass">
                                 <input type="checkbox" class="w-4 h-4 accent-white cursor-pointer flex-shrink-0"
-                                       checked="@isCovered"
-                                       @onchange="@(() => ToggleCoverage(cov, meal))" />
+                                       checked="@isCovered" @onchange="@(() => ToggleCoverage(cov, meal))" />
                                 <span class="text-dayCardText text-[13px] font-medium truncate">@meal</span>
                             </label>
                         }
@@ -293,8 +290,7 @@
             <div class="eatah-chat-recipient-picker__title">Skicka till&hellip;</div>
 
             @* Household group chat *@
-            <button type="button" class="eatah-chat-recipient-item"
-                    @onclick="SendToGroupAsync">
+            <button type="button" class="eatah-chat-recipient-item" @onclick="SendToGroupAsync">
                 <div class="eatah-chat-recipient-item__avatar eatah-chat-recipient-item__avatar--group">
                     <Icon Name="house" Size="14" />
                 </div>
@@ -305,8 +301,7 @@
             @foreach (var member in _householdMembers)
             {
                 var m = member;
-                <button type="button" class="eatah-chat-recipient-item"
-                        @onclick="() => SendToMemberAsync(m)">
+                <button type="button" class="eatah-chat-recipient-item" @onclick="() => SendToMemberAsync(m)">
                     <div class="eatah-chat-recipient-item__avatar">
                         <Icon Name="profile" Size="14" />
                     </div>
@@ -422,6 +417,15 @@
 
     private async Task AddToPantryAsync(IngredientResponse ing)
     {
+        // If this ingredient is on the shopping list with multiple meal notes, ask which meals it covers.
+        var shoppingItem = ShoppingState.Items.FirstOrDefault(s => s.IngredientId == ing.Id && !s.IsChecked);
+        if (shoppingItem is not null && GetMealCount(shoppingItem.Notes) > 1)
+        {
+            _pendingCoverage = [new PendingCoverage(shoppingItem, ExtractAllMealNames(shoppingItem.Notes))];
+            _coveragePopupOpen = true;
+            return;
+        }
+
         try
         {
             var item = await Api.AddToPantryAsync(ing.Id);
@@ -429,6 +433,12 @@
             {
                 PantryState.AddItem(item);
                 CheckState.AddPantryName(ing.Name);
+                // Remove from shopping list if it was queued there
+                if (shoppingItem is not null)
+                {
+                    await Api.RemoveFromShoppingListAsync(shoppingItem.Id);
+                    ShoppingState.RemoveItem(shoppingItem.Id);
+                }
             }
         }
         catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.PantryItemAlreadyExists)
@@ -568,7 +578,8 @@
         _pendingCoverage.Clear();
     }
 
-    /// <summary>Rebuilds Notes string keeping only the entries NOT in coveredMeals. Returns null if all are covered.</summary>
+    /// <summary>Rebuilds Notes string keeping only the entries NOT in coveredMeals. Returns null if all are
+    covered.</summary>
     private static string? BuildRemainingNotes(string? originalNotes, HashSet<string> coveredMeals)
     {
         if (string.IsNullOrEmpty(originalNotes)) return null;
@@ -662,7 +673,8 @@
         return first;
     }
 
-    /// <summary>Extract ALL meal names from Notes like "Pasta Carbonara v22, Fisk v22" → ["Pasta Carbonara", "Fisk"].</summary>
+    /// <summary>Extract ALL meal names from Notes like "Pasta Carbonara v22, Fisk v22" → ["Pasta Carbonara",
+"Fisk"].</summary>
     private static List<string> ExtractAllMealNames(string? notes)
     {
         if (string.IsNullOrEmpty(notes)) return [];

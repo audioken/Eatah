@@ -27,6 +27,15 @@ public class WorkspaceResolutionMiddleware
         IWorkspaceContext workspaceContext,
         EatahDbContext db)
     {
+        // SignalR hub connections don't send X-Eatah-Workspace and don't need workspace
+        // context — hub methods (JoinThread, LeaveThread) operate on thread IDs, not workspaces.
+        // Skipping here avoids an unnecessary DB round-trip on every WebSocket/SSE/LongPolling request.
+        if (context.Request.Path.StartsWithSegments("/hubs"))
+        {
+            await _next(context);
+            return;
+        }
+
         var userId = currentUser.UserId;
         if (userId is null)
         {
