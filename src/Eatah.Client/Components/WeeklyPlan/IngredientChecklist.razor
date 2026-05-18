@@ -8,8 +8,8 @@
 
 @if (IsOpen)
 {
-    <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4"
-         style="padding-bottom: max(1rem, var(--navbar-height, 64px));" @onclick="HandleClose">
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+         style="padding-top: max(1rem, var(--header-height, 56px)); padding-bottom: max(1rem, var(--navbar-height, 82px));" @onclick="HandleClose">
         <div class="w-full max-w-[420px] rounded-[20px] border border-black/10 font-kanit overflow-hidden"
              style="background: linear-gradient(135deg, #839B7F 0%, #A8D1AA 91.83%); box-shadow: 0px 8px 24px rgba(0,0,0,0.35);"
              @onclick:stopPropagation="true">
@@ -137,8 +137,8 @@
 @* Coverage popup – rendered on top of the ingredient modal (z-70 > modal z-50) *@
 @if (_coveragePopupOpen)
 {
-    <div class="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-black/50 p-4"
-         style="padding-bottom: max(1rem, var(--navbar-height, 64px));" @onclick="() => _coveragePopupOpen = false">
+    <div class="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4"
+         style="padding-top: max(1rem, var(--header-height, 56px)); padding-bottom: max(1rem, var(--navbar-height, 82px));" @onclick="() => _coveragePopupOpen = false">
         <div class="w-full max-w-[420px] rounded-[20px] border border-black/10 font-kanit overflow-hidden"
              style="background: linear-gradient(135deg, #839B7F 0%, #A8D1AA 91.83%); box-shadow: 0px 8px 24px rgba(0,0,0,0.35);"
              @onclick:stopPropagation="true">

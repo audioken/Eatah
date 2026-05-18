@@ -1,9 +1,10 @@
 @namespace Eatah.Client.Components.WeeklyPlan
 
-<div class="flex flex-col items-center xl:items-start xl:grid xl:grid-cols-2 gap-3 pb-6">
+<div class="flex flex-col gap-3 pb-6">
 	@foreach (var day in OrderedDays)
 	{
-		<DayCard Day="day" WeekOffset="WeekOffset" OnSelect="OnDaySelected" OnClear="OnDayCleared"
+		<DayCard Day="day" WeekOffset="WeekOffset" IsRandomizing="@(RandomizingDay == day.DayOfWeek)"
+				 OnSelect="OnDaySelected" OnClear="OnDayCleared"
 				 OnRandomDb="OnDayRandomDb" OnRandomAi="OnDayRandomAi" />
 	}
 </div>
@@ -22,6 +23,7 @@
 
 	[Parameter, EditorRequired] public IReadOnlyList<DayPlanResponse> Days { get; set; } = [];
 	[Parameter] public int WeekOffset { get; set; } = 0;
+	[Parameter] public DayOfWeek? RandomizingDay { get; set; }
 	[Parameter] public EventCallback<DayPlanResponse> OnDaySelected { get; set; }
 	[Parameter] public EventCallback<DayPlanResponse> OnDayCleared { get; set; }
 	[Parameter] public EventCallback<DayPlanResponse> OnDayRandomDb { get; set; }

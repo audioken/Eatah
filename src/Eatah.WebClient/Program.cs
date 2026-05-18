@@ -10,6 +10,7 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 
 builder.Services.AddSingleton<LoadingState>();
 builder.Services.AddSingleton<IngredientCheckState>();
+builder.Services.AddSingleton<DietProfileState>();
 builder.Services.AddSingleton<PantryStateService>();
 builder.Services.AddSingleton<ShoppingStateService>();
 builder.Services.AddSingleton<ShoppingSyncService>();

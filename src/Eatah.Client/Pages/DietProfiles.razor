@@ -2,6 +2,7 @@
 @using Eatah.Client.Services
 @using Eatah.Client.Services.Contracts
 @inject ApiClient Api
+@inject DietProfileState ProfileState
 
 <div class="max-w-5xl mx-auto p-4 space-y-6">
 	<div>
@@ -122,6 +123,7 @@
 				_name = string.Empty;
 				_description = string.Empty;
 				await LoadProfilesAsync();
+				ProfileState.NotifyChanged();
 			}
 		}
 		catch (Exception ex)

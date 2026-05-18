@@ -109,6 +109,16 @@ public class IngredientCheckState
     }
 
     /// <summary>
+    /// Returns the number of ingredients for the given meal that are not in the pantry
+    /// (i.e. still need to be purchased). Returns 0 when ingredients are not yet loaded.
+    /// </summary>
+    public int GetMissingCount(Guid mealId)
+    {
+        if (!_ingredients.TryGetValue(mealId, out var ings)) return 0;
+        return ings.Count(n => !_pantryNames.Contains(n));
+    }
+
+    /// <summary>
     /// Returns how many distinct active meals in the current weekly plan contain
     /// the given ingredient name. Returns 0 if not yet known (ingredients not loaded).
     /// </summary>

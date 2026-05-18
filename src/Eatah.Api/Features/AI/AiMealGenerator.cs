@@ -22,6 +22,7 @@ public class AiMealGenerator
         - category: en av de fyra kategorierna.
         - cookingTimeMinutes: ungefärlig total tillagningstid i minuter (1-600), eller null.
         - ingredients: huvudingredienser, 2-12 stycken, korta svenska namn (utan mängder).
+          Lista INTE vanliga basvaror och kryddor som salt, peppar, olja, olivolja, vatten, socker – dessa förutsätts alltid finnas hemma.
         """;
 
     private static readonly JsonSerializerOptions SerializerOptions = new()

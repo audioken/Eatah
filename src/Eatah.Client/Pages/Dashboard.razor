@@ -7,16 +7,16 @@
 @inject ShoppingSyncService ShoppingSync
 @implements IDisposable
 
-<div class="max-w-6xl mx-auto">
+<div class="max-w-[1000px] mx-auto">
 	<div class="flex items-center justify-between mb-4 px-1">
 		<button
-			class="p-2 rounded-lg text-slate-500 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+			class="p-2 rounded-lg text-white/80 hover:bg-white/15 active:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
 			@onclick="() => NavigateWeekAsync(-1)" disabled="@(_weekOffset <= -1 || _isLoading)">
 			<Icon Name="chevron-left" Size="18" />
 		</button>
-		<span class="text-sm font-semibold text-slate-700">Vecka @_viewedWeekNumber</span>
+		<span class="text-sm font-semibold text-white">Vecka @_viewedWeekNumber</span>
 		<button
-			class="p-2 rounded-lg text-slate-500 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+			class="p-2 rounded-lg text-white/80 hover:bg-white/15 active:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
 			@onclick="() => NavigateWeekAsync(1)" disabled="@(_weekOffset >= 1 || _isLoading)">
 			<Icon Name="chevron-right" Size="18" />
 		</button>
@@ -43,7 +43,7 @@
 			<DietProfileSelectorCard Plan="_plan" OnRandomize="RandomizeAsync" />
 		</div>
 
-		<WeekView Days="_plan.Days" WeekOffset="_weekOffset" OnDaySelected="OpenSelector" OnDayCleared="ClearDayAsync"
+		<WeekView Days="_plan.Days" WeekOffset="_weekOffset" RandomizingDay="_randomizingDay" OnDaySelected="OpenSelector" OnDayCleared="ClearDayAsync"
 				  OnDayRandomDb="RandomizeDayDbAsync" OnDayRandomAi="StartAiForDayAsync" />
 	}
 </div>
@@ -84,6 +84,7 @@
 	private bool _aiLoading;
 	private string? _aiError;
 	private bool _aiSaveFormOpen;
+	private DayOfWeek? _randomizingDay;
 
 	private string AiTargetDayLabel => _aiTargetDay?.DayOfWeek switch
 	{
@@ -280,6 +281,8 @@
 		}
 
 		_error = null;
+		_randomizingDay = day.DayOfWeek;
+		StateHasChanged();
 		try
 		{
 			var updated = await Api.RandomizeDayAsync(_plan.Id, day.DayOfWeek, profileId: null);
@@ -297,6 +300,10 @@
 		catch (Exception ex)
 		{
 			_error = $"Kunde inte slumpa dagen: {ex.Message}";
+		}
+		finally
+		{
+			_randomizingDay = null;
 		}
 	}
 

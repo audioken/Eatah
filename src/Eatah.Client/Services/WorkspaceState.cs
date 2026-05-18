@@ -41,11 +41,12 @@ public sealed class WorkspaceState
         try
         {
             _workspaces = await _api.GetWorkspacesAsync(ct);
-            // Default to personal workspace if current is not set or no longer valid
+            // Default to household workspace if available, otherwise fall back to personal
             if (_currentWorkspaceId is null || !_workspaces.Any(w => w.Id == _currentWorkspaceId))
             {
+                var household = _workspaces.FirstOrDefault(w => w.Type == WorkspaceType.Household);
                 var personal = _workspaces.FirstOrDefault(w => w.Type == WorkspaceType.Personal);
-                _currentWorkspaceId = personal?.Id;
+                _currentWorkspaceId = (household ?? personal)?.Id;
             }
         }
         catch
