@@ -20,9 +20,11 @@ builder.Services.AddSingleton<HeaderState>();
 builder.Services.AddSingleton<AuthState>();
 builder.Services.AddSingleton<WorkspaceState>();
 builder.Services.AddSingleton<ChatState>();
+var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "https://eatah.onrender.com/";
+
 builder.Services.AddSingleton<ChatHubService>(sp => new ChatHubService(
     sp.GetRequiredService<ITokenStore>(),
-    WebApiClientOptions.GetBaseAddress(builder.HostEnvironment.BaseAddress),
+    WebApiClientOptions.GetBaseAddress(apiBaseUrl),
     sp.GetRequiredService<ILoggerFactory>()));
 builder.Services.AddSingleton<ISafeAreaInsetsProvider, DefaultSafeAreaInsetsProvider>();
 builder.Services.AddSingleton<IUserPreferences, LocalStorageUserPreferences>();
@@ -35,7 +37,7 @@ builder.Services.AddTransient<TokenAuthorizationHandler>();
 
 builder.Services.AddHttpClient<ApiClient>(client =>
     {
-        client.BaseAddress = WebApiClientOptions.GetBaseAddress(builder.HostEnvironment.BaseAddress);
+        client.BaseAddress = WebApiClientOptions.GetBaseAddress(apiBaseUrl);
     })
     .AddHttpMessageHandler<TokenAuthorizationHandler>()
     .AddHttpMessageHandler<WorkspaceHeaderHandler>()

@@ -93,18 +93,21 @@ public class RandomMealGenerator : IRandomMealGenerator
         }
 
         // Otherwise pick any meal that won't exceed its category maximum.
+        // If the profile has no rule for a category, that category is not allowed
+        // either — the profile must explicitly opt categories in.
         var allowed = candidatePool.Where(m =>
         {
             var rule = profile.Rules.FirstOrDefault(r => r.Category == m.Category);
-            if (rule is null) return true;
+            if (rule is null) return false;
             return currentCounts.GetValueOrDefault(m.Category, 0) < rule.MaxPerWeek;
         }).ToList();
 
         if (allowed.Count > 0)
             return allowed[Random.Shared.Next(allowed.Count)];
 
-        // Fall back to any non-excluded candidate.
-        return candidatePool[Random.Shared.Next(candidatePool.Count)];
+        // Strict mode: no candidate fits the profile. Leave the slot empty rather
+        // than violating the rules.
+        return null;
     }
 
     // Builds a week plan that strictly satisfies the profile rules.
