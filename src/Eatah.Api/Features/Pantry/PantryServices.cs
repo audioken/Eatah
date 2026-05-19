@@ -244,23 +244,25 @@ public class ShoppingListService
             _ => 6
         };
 
-        // Group by ingredient name to collect ALL meals that need each ingredient.
-        // (DistinctBy would have kept only the first meal, hiding ingredients from other groups.)
+        // Group by ingredient name to collect ALL meals that need each ingredient, preserving day-of-week.
+        // Day index is embedded in notes ("MealName v22d0") for client-side day-based grouping.
         var ingredientsToSync = plan.Days
             .Where(d => d.Meal is not null
                 && (fromDayInclusive is null || DayIndex(d.DayOfWeek) >= DayIndex(fromDayInclusive.Value)))
-            .SelectMany(d => d.Meal!.Ingredients.Select(i => new { Name = i.Name.Trim(), MealName = d.Meal!.Name }))
+            .SelectMany(d => d.Meal!.Ingredients.Select(i => new { Name = i.Name.Trim(), MealName = d.Meal!.Name, Day = DayIndex(d.DayOfWeek) }))
             .GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
             .Select(g => new
             {
                 Name = g.Key,
-                MealNames = g.Select(x => x.MealName).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
+                MealEntries = g.GroupBy(x => x.MealName, StringComparer.OrdinalIgnoreCase)
+                               .Select(mg => (MealName: mg.Key, Day: mg.Min(x => x.Day)))
+                               .ToList()
             })
             .ToList();
 
         // Phase 1: Resolve IngredientMaster IDs and build the "needed" set
         var neededIngredientIds = new HashSet<Guid>();
-        var ingredientsWithMaster = new List<(List<string> MealNames, IngredientMaster Master)>();
+        var ingredientsWithMaster = new List<(List<(string MealName, int Day)> MealEntries, IngredientMaster Master)>();
 
         foreach (var item in ingredientsToSync)
         {
@@ -279,29 +281,45 @@ public class ShoppingListService
             if (!pantryIngIds.Contains(master.Id))
             {
                 neededIngredientIds.Add(master.Id);
-                ingredientsWithMaster.Add((item.MealNames, master));
+                ingredientsWithMaster.Add((item.MealEntries, master));
             }
         }
 
-        // Phase 2: Remove stale plan-derived items (have Notes, no longer needed by current plan)
-        foreach (var stale in existingShoppingByIngId.Values
-            .Where(s => s.Notes != null && !neededIngredientIds.Contains(s.IngredientId))
+        // Phase 2: Remove stale week-N entries only. Items with entries from OTHER weeks keep
+        // those entries intact (multi-week sync support). If all entries are stale the item is removed.
+        foreach (var existing in existingShoppingByIngId.Values
+            .Where(s => s.Notes is not null && s.Notes.Contains($" {weekLabel}") && !neededIngredientIds.Contains(s.IngredientId))
             .ToList())
         {
-            _db.ShoppingItems.Remove(stale);
-            existingShoppingByIngId.Remove(stale.IngredientId);
+            var remainingEntries = existing.Notes!
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(part => !part.Contains($" {weekLabel}"))
+                .ToList();
+
+            if (remainingEntries.Count == 0)
+            {
+                _db.ShoppingItems.Remove(existing);
+                existingShoppingByIngId.Remove(existing.IngredientId);
+            }
+            else
+            {
+                existing.Notes = string.Join(", ", remainingEntries);
+            }
         }
 
         // Phase 3: Add or update shopping items for needed ingredients.
-        // Notes are always replaced with the current plan's full meal list (not accumulated)
-        // so that shared ingredients show under every meal group on the client.
-        foreach (var (mealNames, master) in ingredientsWithMaster)
+        // Notes are merged per week: other-week entries are preserved, this week's entries are replaced.
+        // Day index is embedded in the note suffix ("MealName v22d0") for client-side day grouping.
+        foreach (var (mealEntries, master) in ingredientsWithMaster)
         {
-            var note = string.Join(", ", mealNames.Select(m => $"{m} {weekLabel}"));
+            var newNoteEntries = mealEntries.Select(e => $"{e.MealName} {weekLabel}d{e.Day}");
 
             if (existingShoppingByIngId.TryGetValue(master.Id, out var existingShop))
             {
-                existingShop.Notes = note;
+                var otherWeekEntries = existingShop.Notes is null ? [] :
+                    existingShop.Notes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        .Where(part => !part.Contains($" {weekLabel}"));
+                existingShop.Notes = string.Join(", ", otherWeekEntries.Concat(newNoteEntries));
                 if (existingShop.IsChecked)
                 {
                     existingShop.IsChecked = false;
@@ -317,7 +335,7 @@ public class ShoppingListService
                     IngredientId = master.Id,
                     IsChecked = false,
                     AddedAt = DateTime.UtcNow,
-                    Notes = note
+                    Notes = string.Join(", ", newNoteEntries)
                 };
                 _db.ShoppingItems.Add(newItem);
                 existingShoppingByIngId[master.Id] = newItem;
@@ -329,25 +347,47 @@ public class ShoppingListService
     }
 
     /// <summary>
-    /// Syncs the shopping list with the current ISO week's plan.
-    /// If no plan exists for the current week, returns the list unchanged.
+    /// Syncs the shopping list with the current AND next ISO week's plan.
+    /// Items from both weeks are merged in a single list (max 2 weeks visible).
+    /// If no plan exists for a week, that week's entries are left unchanged.
     /// </summary>
     public async Task<Result<List<ShoppingItemResponse>>> SyncFromCurrentWeeklyPlanAsync(CancellationToken ct)
     {
         var wsId = _ws.RequireCurrent();
         var today = DateTime.UtcNow.Date;
-        var week = ISOWeek.GetWeekOfYear(today);
-        var year = ISOWeek.GetYear(today);
+        var currentWeek = ISOWeek.GetWeekOfYear(today);
+        var currentYear = ISOWeek.GetYear(today);
 
-        var planId = await _db.WeeklyPlans
+        var nextWeekDate = today.AddDays(7);
+        var nextWeek = ISOWeek.GetWeekOfYear(nextWeekDate);
+        var nextYear = ISOWeek.GetYear(nextWeekDate);
+
+        // Sync current week (from today onward)
+        var currentPlanId = await _db.WeeklyPlans
             .AsNoTracking()
-            .Where(p => p.WorkspaceId == wsId && p.Year == year && p.WeekNumber == week)
+            .Where(p => p.WorkspaceId == wsId && p.Year == currentYear && p.WeekNumber == currentWeek)
             .Select(p => (Guid?)p.Id)
             .FirstOrDefaultAsync(ct);
 
-        if (planId is null)
-            return Result<List<ShoppingItemResponse>>.Success(await GetAllAsync(ct));
+        if (currentPlanId.HasValue)
+        {
+            var result = await SyncFromWeeklyPlanAsync(currentPlanId.Value, ct, fromDayInclusive: today.DayOfWeek);
+            if (!result.IsSuccess) return result;
+        }
 
-        return await SyncFromWeeklyPlanAsync(planId.Value, ct, fromDayInclusive: DateTime.UtcNow.DayOfWeek);
+        // Sync next week (all days)
+        var nextPlanId = await _db.WeeklyPlans
+            .AsNoTracking()
+            .Where(p => p.WorkspaceId == wsId && p.Year == nextYear && p.WeekNumber == nextWeek)
+            .Select(p => (Guid?)p.Id)
+            .FirstOrDefaultAsync(ct);
+
+        if (nextPlanId.HasValue)
+        {
+            var result = await SyncFromWeeklyPlanAsync(nextPlanId.Value, ct);
+            if (!result.IsSuccess) return result;
+        }
+
+        return await GetAllAsync(ct);
     }
 }

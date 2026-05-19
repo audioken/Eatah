@@ -1816,6 +1816,70 @@ body.eatah-modal-open {
     color: rgba(255, 255, 255, 0.9);
 }
 
+/* Week section in shopping list (Denna veckan / Nästa vecka) */
+.eatah-shopping-week {
+    margin-bottom: 6px;
+}
+
+.eatah-shopping-week__header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.14);
+    border: none;
+    padding: 7px 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    text-align: left;
+    color: #fff;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    transition: background 0.12s;
+}
+
+.eatah-shopping-week__header:hover {
+    background: rgba(255, 255, 255, 0.22);
+}
+
+.eatah-shopping-week__chevron {
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
+.eatah-shopping-week__label {
+    flex: 1;
+}
+
+.eatah-shopping-week__count {
+    background: rgba(255, 255, 255, 0.25);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 999px;
+    flex-shrink: 0;
+}
+
+.eatah-shopping-week__body {
+    padding-left: 4px;
+}
+
+/* Day badge inside a meal group header */
+.eatah-shopping-group__day {
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.65);
+    background: rgba(255, 255, 255, 0.12);
+    padding: 1px 5px;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
 /* Meal group in shopping list */
 .eatah-shopping-group {
     margin-bottom: 4px;

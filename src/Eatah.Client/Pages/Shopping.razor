@@ -107,93 +107,77 @@
                     }
                     else
                     {
-                        @* Unchecked items – grouped by meal if Notes contains a meal name *@
-                        @if (UseGroups)
+                        @* Unchecked items grouped by week (Denna veckan / Nästa vecka) then by meal *@
+                        @foreach (var weekGroup in WeekGroups)
                         {
-                            @foreach (var group in UncheckedGroups)
-                            {
-                                var groupKey = group.Key ?? "Övrigt";
-                                var isExpanded = _expandedGroups.Contains(groupKey);
-                                <div class="eatah-shopping-group">
-                                    <button type="button" class="eatah-shopping-group__header" @onclick="() => ToggleGroup(groupKey)">
-                                        <Icon Name="@(isExpanded ? "angle-down-solid" : "angle-right-solid")" Size="10"
-                                              CssClass="eatah-shopping-group__chevron" />
-                                        <span class="eatah-shopping-group__name">@groupKey</span>
-                                        <span class="eatah-shopping-group__count">@group.Count()</span>
-                                    </button>
-                                    @if (isExpanded)
-                                    {
-                                        <div class="eatah-shopping-group__items">
-                                            @foreach (var view in group)
-                                            {
-                                                var item = view.Item;
-                                                var isSelected = _selectedShoppingItems.Contains(item.Id);
-                                                var itemSelClass = isSelected ? "eatah-shopping-item--selected" : "";
-                                                var btnSelClass = isSelected ? "eatah-shopping-item__select--active" : "";
-                                                var groupedCount = GetMealCount(item.Notes);
-                                                <div class="eatah-shopping-item eatah-shopping-item--unchecked @itemSelClass">
-                                                    <button type="button" class="eatah-shopping-item__select @btnSelClass"
-                                                            @onclick="() => ToggleShoppingSelection(item.Id)">
-                                                        @if (isSelected)
+                            var weekKey = weekGroup.WeekKey;
+                            var weekExpanded = _expandedWeeks.Contains(weekKey);
+                            var weekPendingCount = weekGroup.MealGroups.Sum(m => m.Views.Count);
+                            <div class="eatah-shopping-week">
+                                <button type="button" class="eatah-shopping-week__header" @onclick="() => ToggleWeek(weekKey)">
+                                    <Icon Name="@(weekExpanded ? "angle-down-solid" : "angle-right-solid")" Size="10"
+                                          CssClass="eatah-shopping-week__chevron" />
+                                    <span class="eatah-shopping-week__label">@weekGroup.Label</span>
+                                    <span class="eatah-shopping-week__count">@weekPendingCount</span>
+                                </button>
+                                @if (weekExpanded)
+                                {
+                                    <div class="eatah-shopping-week__body">
+                                        @foreach (var mealGroup in weekGroup.MealGroups)
+                                        {
+                                            var groupKey = GetMealGroupKey(mealGroup.MealName, weekKey);
+                                            var isExpanded = _expandedGroups.Contains(groupKey);
+                                            <div class="eatah-shopping-group">
+                                                <button type="button" class="eatah-shopping-group__header" @onclick="() => ToggleGroup(groupKey)">
+                                                    <Icon Name="@(isExpanded ? "angle-down-solid" : "angle-right-solid")" Size="10"
+                                                          CssClass="eatah-shopping-group__chevron" />
+                                                    <span class="eatah-shopping-group__name">@mealGroup.MealName</span>
+                                                    @if (mealGroup.DayIndex.HasValue)
+                                                    {
+                                                        <span class="eatah-shopping-group__day">@GetDayName(mealGroup.DayIndex.Value)</span>
+                                                    }
+                                                    <span class="eatah-shopping-group__count">@mealGroup.Views.Count</span>
+                                                </button>
+                                                @if (isExpanded)
+                                                {
+                                                    <div class="eatah-shopping-group__items">
+                                                        @foreach (var view in mealGroup.Views)
                                                         {
-                                                            <Icon Name="check" Size="10" />
+                                                            var item = view.Item;
+                                                            var isSelected = _selectedShoppingItems.Contains(item.Id);
+                                                            var itemSelClass = isSelected ? "eatah-shopping-item--selected" : "";
+                                                            var btnSelClass = isSelected ? "eatah-shopping-item__select--active" : "";
+                                                            var groupedCount = GetMealCount(item.Notes);
+                                                            <div class="eatah-shopping-item eatah-shopping-item--unchecked @itemSelClass">
+                                                                <button type="button" class="eatah-shopping-item__select @btnSelClass"
+                                                                        @onclick="() => ToggleShoppingSelection(item.Id)">
+                                                                    @if (isSelected)
+                                                                    {
+                                                                        <Icon Name="check" Size="10" />
+                                                                    }
+                                                                </button>
+                                                                <div class="eatah-shopping-item__body">
+                                                                    <div class="eatah-shopping-item__name-row">
+                                                                        <span class="eatah-shopping-item__name">@item.Name</span>
+                                                                        @if (groupedCount > 1)
+                                                                        {
+                                                                            <span class="eatah-shopping-item__count-badge">(@groupedCount)</span>
+                                                                        }
+                                                                    </div>
+                                                                </div>
+                                                                <button type="button" class="eatah-shopping-item__remove" title="Ta bort"
+                                                                        @onclick="() => RemoveFromShoppingAsync(item)">
+                                                                    <Icon Name="close" Size="12" />
+                                                                </button>
+                                                            </div>
                                                         }
-                                                    </button>
-                                                    <div class="eatah-shopping-item__body">
-                                                        <div class="eatah-shopping-item__name-row">
-                                                            <span class="eatah-shopping-item__name">@item.Name</span>
-                                                            @if (groupedCount > 1)
-                                                            {
-                                                                <span class="eatah-shopping-item__count-badge">(@groupedCount)</span>
-                                                            }
-                                                        </div>
                                                     </div>
-                                                    <button type="button" class="eatah-shopping-item__remove" title="Ta bort"
-                                                            @onclick="() => RemoveFromShoppingAsync(item)">
-                                                        <Icon Name="close" Size="12" />
-                                                    </button>
-                                                </div>
-                                            }
-                                        </div>
-                                    }
-                                </div>
-                            }
-                        }
-                        else
-                        {
-                            @foreach (var item in ShoppingState.Items.Where(s => !s.IsChecked))
-                            {
-                                var isSelected = _selectedShoppingItems.Contains(item.Id);
-                                var itemSelClass = isSelected ? "eatah-shopping-item--selected" : "";
-                                var btnSelClass = isSelected ? "eatah-shopping-item__select--active" : "";
-                                var flatCount = GetMealCount(item.Notes);
-                                <div class="eatah-shopping-item eatah-shopping-item--unchecked @itemSelClass">
-                                    <button type="button" class="eatah-shopping-item__select @btnSelClass"
-                                            @onclick="() => ToggleShoppingSelection(item.Id)">
-                                        @if (isSelected)
-                                        {
-                                            <Icon Name="check" Size="10" />
-                                        }
-                                    </button>
-                                    <div class="eatah-shopping-item__body">
-                                        <div class="eatah-shopping-item__name-row">
-                                            <span class="eatah-shopping-item__name">@item.Name</span>
-                                            @if (flatCount > 1)
-                                            {
-                                                <span class="eatah-shopping-item__count-badge">(@flatCount)</span>
-                                            }
-                                        </div>
-                                        @if (!string.IsNullOrEmpty(item.Notes))
-                                        {
-                                            <span class="eatah-shopping-item__notes">@item.Notes</span>
+                                                }
+                                            </div>
                                         }
                                     </div>
-                                    <button type="button" class="eatah-shopping-item__remove" title="Ta bort"
-                                            @onclick="() => RemoveFromShoppingAsync(item)">
-                                        <Icon Name="close" Size="12" />
-                                    </button>
-                                </div>
-                            }
+                                }
+                            </div>
                         }
 
                         <!-- Checked items (grayed out) -->
@@ -317,9 +301,12 @@
     </div>
 }
 
+@using System.Globalization
+
 @code {
     private HashSet<Guid> _selectedShoppingItems = [];
     private HashSet<string> _expandedGroups = new(StringComparer.OrdinalIgnoreCase);
+    private HashSet<string> _expandedWeeks = new(StringComparer.OrdinalIgnoreCase);
 
     // Chat recipient picker state
     private bool _showChatDropdown;
@@ -327,8 +314,10 @@
     private char _pendingChatType; // 'i' = Jag köper, 'k' = Kan du köpa
     private List<WorkspaceMemberResponse> _householdMembers = [];
 
-    // Multi-meal display: a shopping item with N meal-notes appears as N views (one per group).
-    private record ShoppingItemView(ShoppingItemResponse Item, string? MealGroup);
+    // A single parsed entry from Notes: "Pasta Carbonara v22d0" → (item, "Pasta Carbonara", 22, 0)
+    private record NoteEntry(ShoppingItemResponse Item, string MealName, int? WeekNumber, int? DayIndex);
+    private record MealGroupView(string MealName, int? DayIndex, List<NoteEntry> Views);
+    private record WeekGroupView(string WeekKey, string Label, List<MealGroupView> MealGroups);
 
     // Coverage popup: confirm which meals a shared ingredient covers when moved to pantry.
     private record PendingCoverage(ShoppingItemResponse Item, List<string> AllMeals)
@@ -339,32 +328,118 @@
     private bool _coveragePopupOpen;
     private List<PendingCoverage> _pendingCoverage = [];
 
-    private IList<IGrouping<string?, ShoppingItemView>> UncheckedGroups =>
-        ShoppingState.Items
-            .Where(s => !s.IsChecked)
-            .SelectMany(s =>
-            {
-                var meals = ExtractAllMealNames(s.Notes);
-                var views = new List<ShoppingItemView>();
-                if (meals.Count == 0)
-                    views.Add(new ShoppingItemView(s, null));
-                else
-                    views.AddRange(meals.Select(m => new ShoppingItemView(s, m)));
-                return views;
-            })
-            .GroupBy(v => v.MealGroup)
-            .OrderBy(g => g.Key is null ? 1 : 0)
-            .ThenBy(g => g.Key)
-            .ToList();
-
-    private bool UseGroups
+    private IList<WeekGroupView> WeekGroups
     {
         get
         {
-            var g = UncheckedGroups;
-            return g.Count > 1 || g.Any(x => x.Key != null);
+            var today = DateTime.Today;
+            var currentWeek = ISOWeek.GetWeekOfYear(today);
+            var nextWeek = ISOWeek.GetWeekOfYear(today.AddDays(7));
+
+            var entries = ShoppingState.Items
+                .Where(s => !s.IsChecked)
+                .SelectMany(s =>
+                {
+                    if (string.IsNullOrEmpty(s.Notes))
+                        return (IEnumerable<NoteEntry>)[new NoteEntry(s, "Övrigt", null, null)];
+                    return s.Notes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        .Select(part =>
+                        {
+                            var (meal, week, day) = ParseNoteEntry(part);
+                            return new NoteEntry(s, meal, week, day);
+                        });
+                })
+                .ToList();
+
+            return entries
+                .GroupBy(e => e.WeekNumber)
+                .Select(weekG =>
+                {
+                    var weekNum = weekG.Key;
+                    var weekKey = weekNum.HasValue ? $"v{weekNum}" : "null";
+                    var label = weekNum switch
+                    {
+                        var w when w == currentWeek => "Denna veckan",
+                        var w when w == nextWeek    => "Nästa vecka",
+                        null                        => "Övrigt",
+                        _                           => $"Vecka {weekNum}"
+                    };
+                    var mealGroups = weekG
+                        .GroupBy(e => e.MealName, StringComparer.OrdinalIgnoreCase)
+                        .Select(mealG =>
+                        {
+                            var minDay = mealG.Min(e => e.DayIndex);
+                            var views = mealG.DistinctBy(e => e.Item.Id).ToList();
+                            return new MealGroupView(mealG.Key, minDay, views);
+                        })
+                        .OrderBy(m => m.DayIndex ?? 99)
+                        .ThenBy(m => m.MealName)
+                        .ToList();
+                    return new WeekGroupView(weekKey, label, mealGroups);
+                })
+                .OrderBy(w => w.WeekKey switch
+                {
+                    var k when k == $"v{currentWeek}" => 0,
+                    var k when k == $"v{nextWeek}"    => 1,
+                    "null"                            => 2,
+                    _                                 => 3
+                })
+                .ToList();
         }
     }
+
+    private static string GetMealGroupKey(string mealName, string weekKey) => $"{mealName}|{weekKey}";
+
+    private void ToggleWeek(string weekKey)
+    {
+        if (!_expandedWeeks.Remove(weekKey))
+            _expandedWeeks.Add(weekKey);
+    }
+
+    private static string GetDayName(int dayIdx) => dayIdx switch
+    {
+        0 => "Mån",
+        1 => "Tis",
+        2 => "Ons",
+        3 => "Tor",
+        4 => "Fre",
+        5 => "Lör",
+        _ => "Sön"
+    };
+
+    private static int GetDayIndexFromDate(DateTime date) => date.DayOfWeek switch
+    {
+        DayOfWeek.Monday    => 0,
+        DayOfWeek.Tuesday   => 1,
+        DayOfWeek.Wednesday => 2,
+        DayOfWeek.Thursday  => 3,
+        DayOfWeek.Friday    => 4,
+        DayOfWeek.Saturday  => 5,
+        _                   => 6
+    };
+
+    private static int WeekDaySortKey(int week, int day, int currentWeek, int todayDayIdx)
+    {
+        var weekOffset = (week - currentWeek) * 7;
+        var dayOffset = day - todayDayIdx;
+        if (dayOffset < 0) dayOffset += 7;
+        return weekOffset + dayOffset;
+    }
+
+    private static (string MealName, int? Week, int? Day) ParseNoteEntry(string part)
+    {
+        var vIdx = part.LastIndexOf(" v");
+        if (vIdx <= 0) return (part.Trim(), null, null);
+        var mealName = part[..vIdx].Trim();
+        var suffix = part[(vIdx + 2)..].Trim();
+        var dIdx = suffix.IndexOf('d');
+        if (dIdx > 0 && int.TryParse(suffix[..dIdx], out var week) && int.TryParse(suffix[(dIdx + 1)..], out var day))
+            return (mealName, week, day);
+        if (int.TryParse(suffix, out week))
+            return (mealName, week, null);
+        return (part.Trim(), null, null);
+    }
+
     private bool _isLoading = true;
     private string? _error;
 
@@ -586,8 +661,7 @@
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Where(part =>
             {
-                var vIdx = part.LastIndexOf(" v");
-                var mealName = vIdx > 0 && int.TryParse(part[(vIdx + 2)..], out _) ? part[..vIdx] : part;
+                var (mealName, _, _) = ParseNoteEntry(part);
                 return !coveredMeals.Contains(mealName);
             })
             .ToList();
@@ -661,26 +735,23 @@
         return notes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Length;
     }
 
-    /// <summary>Extract the first meal name from Notes like "Pasta Carbonara v22, Fisk v22" → "Pasta Carbonara".</summary>
+    /// <summary>Extract the first meal name from Notes. Handles both "Pasta v22" and "Pasta v22d0" format.</summary>
     private static string? ExtractMealName(string? notes)
     {
         if (string.IsNullOrEmpty(notes)) return null;
-        var first = notes.Split(',')[0].Trim();
-        var vIdx = first.LastIndexOf(" v");
-        if (vIdx > 0 && vIdx < first.Length - 2 && int.TryParse(first[(vIdx + 2)..], out _))
-            return first[..vIdx];
-        return first;
+        var (mealName, _, _) = ParseNoteEntry(notes.Split(',')[0].Trim());
+        return string.IsNullOrEmpty(mealName) ? null : mealName;
     }
 
-    /// <summary>Extracts all meal names from Notes, e.g. "Pasta v22, Fisk v22" → ["Pasta", "Fisk"].</summary>
+    /// <summary>Extracts all meal names from Notes. Works with both old ("Pasta v22") and new ("Pasta v22d0") format.</summary>
     private static List<string> ExtractAllMealNames(string? notes)
     {
         if (string.IsNullOrEmpty(notes)) return [];
         return notes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(part =>
             {
-                var vIdx = part.LastIndexOf(" v");
-                return vIdx > 0 && int.TryParse(part[(vIdx + 2)..], out _) ? part[..vIdx] : part;
+                var (mealName, _, _) = ParseNoteEntry(part);
+                return mealName;
             })
             .Where(n => !string.IsNullOrEmpty(n))
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -693,19 +764,71 @@
             _expandedGroups.Add(key);
     }
 
-    /// <summary>Ensures all meal groups are expanded by default (new groups only; preserves manual collapse).</summary>
+    /// <summary>
+    /// Auto-expand: find the earliest upcoming day (today + tomorrow first) that has unchecked
+    /// items and expand that week section + its meal groups. Falls back to the next N days with
+    /// pending items if today/tomorrow are all bought.
+    /// </summary>
     private void ReinitGroups()
     {
-        foreach (var key in ShoppingState.Items
+        _expandedWeeks.Clear();
+        _expandedGroups.Clear();
+
+        var today = DateTime.Today;
+        var todayDayIdx = GetDayIndexFromDate(today);
+        var tomorrowDate = today.AddDays(1);
+        var todayWeek = ISOWeek.GetWeekOfYear(today);
+        var todayPair = (Week: todayWeek, Day: todayDayIdx);
+        var tomorrowPair = (Week: ISOWeek.GetWeekOfYear(tomorrowDate), Day: GetDayIndexFromDate(tomorrowDate));
+
+        // Collect all unchecked items with day info parsed from notes
+        var pendingByDay = ShoppingState.Items
             .Where(s => !s.IsChecked)
             .SelectMany(s =>
             {
-                var meals = ExtractAllMealNames(s.Notes);
-                return meals.Count > 0 ? meals : ["\u00d6vrigt"];
+                if (string.IsNullOrEmpty(s.Notes)) return [];
+                return s.Notes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Select(part =>
+                    {
+                        var (meal, week, day) = ParseNoteEntry(part);
+                        return (Week: week, Day: day, MealName: meal);
+                    })
+                    .Where(x => x.Week.HasValue && x.Day.HasValue)
+                    .Select(x => (Week: x.Week!.Value, Day: x.Day!.Value, x.MealName));
             })
-            .Distinct(StringComparer.OrdinalIgnoreCase))
+            .ToList();
+
+        // Try today and tomorrow first
+        var focusPairs = pendingByDay
+            .Select(x => (x.Week, x.Day))
+            .Where(p => (p.Week == todayPair.Week && p.Day == todayPair.Day) ||
+                        (p.Week == tomorrowPair.Week && p.Day == tomorrowPair.Day))
+            .Distinct()
+            .ToList();
+
+        if (!focusPairs.Any())
         {
-            _expandedGroups.Add(key);
+            // Today+tomorrow are empty or all bought – find the next 2 days with pending items
+            focusPairs = pendingByDay
+                .Select(x => (x.Week, x.Day))
+                .Distinct()
+                .OrderBy(p => WeekDaySortKey(p.Week, p.Day, todayPair.Week, todayPair.Day))
+                .Take(2)
+                .ToList();
+        }
+
+        foreach (var (week, day) in focusPairs)
+        {
+            var weekKey = $"v{week}";
+            _expandedWeeks.Add(weekKey);
+
+            foreach (var meal in pendingByDay
+                .Where(x => x.Week == week && x.Day == day)
+                .Select(x => x.MealName)
+                .Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                _expandedGroups.Add(GetMealGroupKey(meal, weekKey));
+            }
         }
     }
 
