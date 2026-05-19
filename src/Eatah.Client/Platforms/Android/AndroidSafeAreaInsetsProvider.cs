@@ -19,6 +19,8 @@ public sealed class AndroidSafeAreaInsetsProvider : ISafeAreaInsetsProvider
             if (windowInsets is not null)
             {
                 var bars = windowInsets.GetInsets(WindowInsetsCompat.Type.SystemBars());
+                if (bars is null)
+                    return Task.FromResult((0.0, 0.0));
                 var density = decorView.Resources?.DisplayMetrics?.Density ?? 1f;
                 return Task.FromResult(((double)(bars.Top / density), (double)(bars.Bottom / density)));
             }

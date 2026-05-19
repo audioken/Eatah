@@ -20,16 +20,22 @@ public class MainActivity : MauiAppCompatActivity
             WindowCompat.SetDecorFitsSystemWindows(Window, false);
 
             // Transparent bars so the app background shows through.
-            Window.SetStatusBarColor(Android.Graphics.Color.Transparent);
-            Window.SetNavigationBarColor(Android.Graphics.Color.Transparent);
+            // Android 35+ enforces edge-to-edge with transparent bars by default.
+            if (!OperatingSystem.IsAndroidVersionAtLeast(35))
+            {
+                Window.SetStatusBarColor(Android.Graphics.Color.Transparent);
+                Window.SetNavigationBarColor(Android.Graphics.Color.Transparent);
+            }
 
             var controller = WindowCompat.GetInsetsController(Window, Window.DecorView);
+            if (controller is not null)
+            {
+                // White status-bar icons (battery, wifi, clock) for the dark sidebar header.
+                controller.AppearanceLightStatusBars = false;
 
-            // White status-bar icons (battery, wifi, clock) for the dark sidebar header.
-            controller.AppearanceLightStatusBars = false;
-
-            // Dark navigation-bar icons for the light main content background.
-            controller.AppearanceLightNavigationBars = true;
+                // Dark navigation-bar icons for the light main content background.
+                controller.AppearanceLightNavigationBars = true;
+            }
         }
     }
 }

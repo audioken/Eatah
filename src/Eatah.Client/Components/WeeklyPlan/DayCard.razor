@@ -64,11 +64,13 @@
 					class="shrink-0 text-[10px] font-bold leading-none px-[7px] py-[3px] rounded-full bg-white/40 text-white uppercase tracking-[0.12em]">idag</span>
 				}
 			</div>
-			<div class="flex items-center gap-2 text-dayCardText font-medium text-[16px] min-w-0" style="line-height: 2.25;">
+			<div class="flex items-center gap-2 text-dayCardText font-medium text-[16px] min-w-0"
+				 style="line-height: 2.25;">
 				<span class="truncate min-w-0">@(Day.Meal?.Name ?? "Ingen maträtt vald")</span>
 				@if (IsRandomizing)
 				{
-					<span class="shrink-0 inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+					<span
+					class="shrink-0 inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
 				}
 			</div>
 		</div>
@@ -97,24 +99,24 @@
 				@if (Day.Meal is not null)
 				{
 					if (AllIngredientsChecked)
-{
-<span
-class="absolute -top-1 -right-1 inline-flex items-center justify-center w-[15px] h-[15px] rounded-full bg-[#7CD331]">
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="@IconPaths.CheckViewBox" fill="white" class="w-2 h-2">
-<path d="@IconPaths.CheckPath" />
-</svg>
-</span>
-}
-else if (!CheckState.HasIngredients(Day.Meal.Id))
-{
-<span
-class="absolute -top-1 -right-1 inline-flex items-center justify-center w-[15px] h-[15px] rounded-full bg-[#8D8D83] text-white text-[10px] leading-none font-bold">?</span>
-}
-else
-{
-<span
-class="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[15px] h-[15px] px-[2px] rounded-full bg-[#F24E4E] text-white text-[9px] leading-none font-bold">@MissingCount</span>
-}
+					{
+						<span
+							class="absolute -top-1 -right-1 inline-flex items-center justify-center w-[15px] h-[15px] rounded-full bg-[#7CD331]">
+							<svg xmlns="http://www.w3.org/2000/svg" viewBox="@IconPaths.CheckViewBox" fill="white" class="w-2 h-2">
+								<path d="@IconPaths.CheckPath" />
+							</svg>
+						</span>
+					}
+					else if (!CheckState.HasIngredients(Day.Meal.Id))
+					{
+						<span
+						class="absolute -top-1 -right-1 inline-flex items-center justify-center w-[15px] h-[15px] rounded-full bg-[#8D8D83] text-white text-[10px] leading-none font-bold">?</span>
+					}
+					else
+					{
+						<span
+						class="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[15px] h-[15px] px-[2px] rounded-full bg-[#F24E4E] text-white text-[9px] leading-none font-bold">@MissingCount</span>
+					}
 				}
 				else
 				{
