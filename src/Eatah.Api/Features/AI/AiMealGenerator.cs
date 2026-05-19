@@ -122,6 +122,7 @@ public class AiMealGenerator
         if (profile is null || profile.Rules.Count == 0)
             return null;
 
+        var rulesByCategory = profile.Rules.ToDictionary(r => r.Category);
         var currentCounts = new Dictionary<MealCategory, int>();
         if (plan is not null)
         {
@@ -129,6 +130,9 @@ public class AiMealGenerator
             {
                 if (targetDay.HasValue && day.DayOfWeek == targetDay.Value) continue;
                 if (day.Meal is null) continue;
+                // Skip meals whose category isn't allowed by the current profile so
+                // a profile switch mid-week doesn't eat into the new budget.
+                if (!rulesByCategory.TryGetValue(day.Meal.Category, out var rule) || rule.MaxPerWeek <= 0) continue;
                 currentCounts[day.Meal.Category] = currentCounts.GetValueOrDefault(day.Meal.Category, 0) + 1;
             }
         }

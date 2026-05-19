@@ -23,17 +23,20 @@ public class WeeklyPlanService
     private readonly IMealRepository _mealRepository;
     private readonly IDietProfileRepository _profileRepository;
     private readonly IRandomMealGenerator _generator;
+    private readonly ILogger<WeeklyPlanService> _logger;
 
     public WeeklyPlanService(
         IWeeklyPlanRepository repository,
         IMealRepository mealRepository,
         IDietProfileRepository profileRepository,
-        IRandomMealGenerator generator)
+        IRandomMealGenerator generator,
+        ILogger<WeeklyPlanService> logger)
     {
         _repository = repository;
         _mealRepository = mealRepository;
         _profileRepository = profileRepository;
         _generator = generator;
+        _logger = logger;
     }
 
     public async Task<WeeklyPlanResponse> GetCurrentAsync(CancellationToken cancellationToken)
@@ -163,13 +166,20 @@ public class WeeklyPlanService
         }
 
         // Count meals already assigned to past days so the generator can respect
-        // the diet profile budget for the whole week.
+        // the diet profile budget for the whole week. Past meals whose category isn't
+        // allowed by the current profile (excluded or unknown) are ignored — otherwise
+        // switching profile mid-week would let the past eat into the new budget.
         var mealLookup = meals.ToDictionary(m => m.Id);
+        var rulesByCategory = profile?.Rules.ToDictionary(r => r.Category);
         var preAssignedCounts = new Dictionary<MealCategory, int>();
         foreach (var pastDay in pastDays)
         {
-            if (pastDay.MealId is Guid pastMealId && mealLookup.TryGetValue(pastMealId, out var pastMeal))
-                preAssignedCounts[pastMeal.Category] = preAssignedCounts.GetValueOrDefault(pastMeal.Category, 0) + 1;
+            if (pastDay.MealId is not Guid pastMealId) continue;
+            if (!mealLookup.TryGetValue(pastMealId, out var pastMeal)) continue;
+            if (rulesByCategory is not null &&
+                (!rulesByCategory.TryGetValue(pastMeal.Category, out var rule) || rule.MaxPerWeek <= 0))
+                continue;
+            preAssignedCounts[pastMeal.Category] = preAssignedCounts.GetValueOrDefault(pastMeal.Category, 0) + 1;
         }
 
         var futureDayOrder = futureDays.Select(d => d.DayOfWeek).ToList();
@@ -220,6 +230,15 @@ public class WeeklyPlanService
         }
 
         var chosen = _generator.GenerateForDay(meals, plan, dayOfWeek, profile);
+
+        _logger.LogInformation(
+            "RandomizeDay plan={PlanId} day={Day} profile={Profile} otherDays=[{Other}] -> chosen={Chosen} ({Category})",
+            planId,
+            dayOfWeek,
+            profile is null ? "<none>" : $"{profile.Name} [{string.Join(",", profile.Rules.Select(r => $"{r.Category}:{r.MinPerWeek}-{r.MaxPerWeek}"))}]",
+            string.Join(", ", plan.Days.Where(d => d.DayOfWeek != dayOfWeek && d.Meal is not null).Select(d => $"{d.DayOfWeek}:{d.Meal!.Category}")),
+            chosen?.Name ?? "<null>",
+            chosen?.Category.ToString() ?? "-");
 
         // Only update the FK (see RandomizeAsync for rationale).
         day.MealId = chosen?.Id;

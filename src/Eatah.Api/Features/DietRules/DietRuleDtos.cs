@@ -2,6 +2,15 @@ using Eatah.Domain.Entities;
 
 namespace Eatah.Api.Features.DietRules;
 
+public record CreateDietRuleRequest(
+    MealCategory Category,
+    int MinPerWeek,
+    int MaxPerWeek);
+
+public record CreateDietProfileRequest(
+    string Name,
+    List<CreateDietRuleRequest> Rules);
+
 public record DietRuleResponse(
     Guid Id,
     MealCategory Category,

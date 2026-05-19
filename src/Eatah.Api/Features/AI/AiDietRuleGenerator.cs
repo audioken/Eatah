@@ -21,10 +21,26 @@ public class AiDietRuleGenerator
           ]
         }
         Krav:
-        - minPerWeek <= maxPerWeek
-        - En regel per kategori (Meat, Poultry, Fish, Vegetarian, Vegan)
-        - Meat = rött och processat kött; Poultry = fågel (kyckling, kalkon m.m.).
-        - Beskrivningar ska vara på svenska, högst 500 tecken.
+        - Inkludera ALLTID en regel för samtliga fem kategorier: Meat, Poultry, Fish, Vegetarian, Vegan.
+        - minPerWeek <= maxPerWeek, båda i intervallet 0–7.
+        - Meat = rött och processat kött; Poultry = fågel (kyckling, kalkon m.m.); Fish = fisk och skaldjur.
+        - Vegetarian = vegetarisk (utan kött/fisk/fågel); Vegan = veganskt (inga animaliska produkter).
+
+        Tolkning av antal i användarens text:
+        - "X–Y" eller "X-Y" (intervall) → minPerWeek=X, maxPerWeek=Y. VIKTIGT: sätt ALDRIG min till 0 om användaren anger ett intervall som börjar på ett positivt tal.
+        - "X ggr" eller bara "X" (enstaka tal) → minPerWeek=X, maxPerWeek=X.
+        - "0" eller "inga" → minPerWeek=0, maxPerWeek=0.
+
+        Tolkning av köttkategorier:
+        - "kött" i vardagligt tal avser Meat, Poultry OCH Fish. Skriv 0 på alla tre om användaren säger "0 kött" eller "inget kött".
+        - "rött kött" avser enbart Meat.
+        - "fågel" avser enbart Poultry.
+        - "fisk" avser enbart Fish.
+
+        Exempel: "3–4 vegetariska, 3–4 veganska, 0 kött" →
+          Vegetarian: min=3, max=4 | Vegan: min=3, max=4 | Meat: min=0, max=0 | Poultry: min=0, max=0 | Fish: min=0, max=0
+
+        Beskrivningar ska vara på svenska, högst 500 tecken.
         """;
 
     private static readonly JsonSerializerOptions SerializerOptions = new()

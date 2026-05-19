@@ -5,6 +5,7 @@
 @inject WorkspaceState Workspaces
 @inject IngredientCheckState CheckState
 @inject ShoppingSyncService ShoppingSync
+@inject Eatah.Client.Services.DietProfileState ProfileState
 @implements IDisposable
 
 <div class="max-w-[1000px] mx-auto">
@@ -285,7 +286,7 @@
 		StateHasChanged();
 		try
 		{
-			var updated = await Api.RandomizeDayAsync(_plan.Id, day.DayOfWeek, profileId: null);
+			var updated = await Api.RandomizeDayAsync(_plan.Id, day.DayOfWeek, profileId: ProfileState.SelectedProfileId);
 			if (updated is not null)
 			{
 				_plan = updated;
@@ -323,7 +324,7 @@
 		{
 			var request = new GenerateMealRequest(
 				Category: null,
-				DietProfileId: null,
+				DietProfileId: ProfileState.SelectedProfileId,
 				WeeklyPlanId: _plan.Id,
 				TargetDay: day.DayOfWeek);
 			_aiMeal = await Api.GenerateAiMealAsync(request);

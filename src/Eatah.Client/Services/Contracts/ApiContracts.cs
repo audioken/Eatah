@@ -86,6 +86,15 @@ public record GenerateDietProfileRequest(
     string Name,
     string? Description);
 
+public record CreateDietRuleRequest(
+    MealCategory Category,
+    int MinPerWeek,
+    int MaxPerWeek);
+
+public record CreateDietProfileRequest(
+    string Name,
+    List<CreateDietRuleRequest> Rules);
+
 // ---- Workspaces ----
 
 public enum WorkspaceType { Personal = 0, Household = 1 }

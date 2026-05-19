@@ -1,3 +1,5 @@
+using FluentValidation;
+
 namespace Eatah.Api.Features.DietRules;
 
 public static class DietRuleEndpoints
@@ -10,6 +12,7 @@ public static class DietRuleEndpoints
 
         profiles.MapGet("/", GetAllDietProfiles.Handle).WithName(nameof(GetAllDietProfiles));
         profiles.MapGet("/{id:guid}", GetDietProfileById.Handle).WithName(nameof(GetDietProfileById));
+        profiles.MapPost("/", CreateDietProfile.Handle).WithName(nameof(CreateDietProfile));
         profiles.MapDelete("/{id:guid}", DeleteDietProfile.Handle).WithName(nameof(DeleteDietProfile));
 
         app.MapPost("/api/weeklyplans/{id:guid}/evaluate", EvaluateWeeklyPlan.Handle)
@@ -28,6 +31,7 @@ public static class DietRuleServiceExtensions
         services.AddScoped<IDietProfileRepository, DietProfileRepository>();
         services.AddScoped<IDietRuleEvaluator, DietRuleEvaluator>();
         services.AddScoped<DietRuleService>();
+        services.AddScoped<IValidator<CreateDietProfileRequest>, CreateDietProfileValidator>();
         return services;
     }
 }

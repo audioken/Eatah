@@ -14,12 +14,29 @@
 
     <div class="eatah-diet-modal__body">
 
-        @* ── Generate section ── *@
+        @* ── Create section ── *@
         <section class="eatah-diet-modal__section">
-            <p class="eatah-diet-modal__description">
-                Skapa en personlig kostprofil med hjälp av AI. Ge den ett namn och beskriv ditt mål
-                – t.ex. viktnedgång, mer växtbaserat eller balanserad kost – så genereras reglerna åt dig.
-            </p>
+
+            @* Mode toggle *@
+            <div class="eatah-diet-modal__mode-row">
+                <span class="eatah-diet-modal__mode-label @(!_manualMode ? "eatah-diet-modal__mode-label--active" : "")">
+                    <Icon Name="dice" Size="13" CssClass="eatah-diet-modal__mode-icon" />AI
+                </span>
+                <label class="eatah-diet-modal__switch" aria-label="Byt till manuellt läge">
+                    <input type="checkbox" @bind="_manualMode" />
+                    <span class="eatah-diet-modal__switch-track"></span>
+                </label>
+                <span class="eatah-diet-modal__mode-label @(_manualMode ? "eatah-diet-modal__mode-label--active" : "")">
+                    Manuellt
+                </span>
+            </div>
+
+            @if (!_manualMode)
+            {
+                <p class="eatah-diet-modal__description">
+                    Ge profilen ett namn och beskriv ditt mål – t.ex. viktnedgång eller mer växtbaserat – så genereras reglerna av AI.
+                </p>
+            }
 
             <div class="eatah-diet-modal__field">
                 <label class="eatah-diet-modal__label" for="diet-name">Namn</label>
@@ -27,22 +44,71 @@
                        placeholder="t.ex. LCHF" />
             </div>
 
-            <div class="eatah-diet-modal__field">
-                <label class="eatah-diet-modal__label" for="diet-desc">Beskrivning / mål</label>
-                <textarea id="diet-desc" class="eatah-diet-modal__input eatah-diet-modal__input--textarea" rows="2"
-                          @bind="_description" @bind:event="oninput"
-                          placeholder="t.ex. Fokus på viktnedgång och lågt kolhydratintag"></textarea>
-            </div>
+            @if (!_manualMode)
+            {
+                <div class="eatah-diet-modal__field">
+                    <label class="eatah-diet-modal__label" for="diet-desc">Beskrivning / mål</label>
+                    <textarea id="diet-desc" class="eatah-diet-modal__input eatah-diet-modal__input--textarea" rows="2"
+                              @bind="_description" @bind:event="oninput"
+                              placeholder="t.ex. Fokus på viktnedgång och lågt kolhydratintag"></textarea>
+                </div>
+            }
+            else
+            {
+                @* Manual rule editor *@
+                <div class="eatah-diet-modal__manual-rules">
+                    @foreach (var category in AllCategories)
+                    {
+                        var min = _manualRules[category].Min;
+                        var max = _manualRules[category].Max;
+                        <div class="eatah-diet-modal__manual-row">
+                            <span class="eatah-diet-modal__manual-cat">@CategoryLabel(category)</span>
+                            <div class="eatah-diet-modal__manual-controls">
+                                <span class="eatah-diet-modal__stepper-label">Min</span>
+                                <div class="eatah-diet-modal__stepper">
+                                    <button type="button" class="eatah-diet-modal__stepper-btn"
+                                            @onclick="() => AdjustMin(category, -1)"
+                                            disabled="@(min <= 0)">−</button>
+                                    <span class="eatah-diet-modal__stepper-val">@min</span>
+                                    <button type="button" class="eatah-diet-modal__stepper-btn"
+                                            @onclick="() => AdjustMin(category, +1)"
+                                            disabled="@(min >= 7)">+</button>
+                                </div>
+                                <span class="eatah-diet-modal__stepper-label eatah-diet-modal__stepper-label--max">Max</span>
+                                <div class="eatah-diet-modal__stepper">
+                                    <button type="button" class="eatah-diet-modal__stepper-btn"
+                                            @onclick="() => AdjustMax(category, -1)"
+                                            disabled="@(max <= 0)">−</button>
+                                    <span class="eatah-diet-modal__stepper-val">@max</span>
+                                    <button type="button" class="eatah-diet-modal__stepper-btn"
+                                            @onclick="() => AdjustMax(category, +1)"
+                                            disabled="@(max >= 7)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
 
             @if (_error is not null)
             {
                 <p class="eatah-diet-modal__error">@_error</p>
             }
 
-            <button class="eatah-diet-modal__generate-btn" @onclick="GenerateAsync"
+            <button class="eatah-diet-modal__generate-btn" @onclick="SubmitAsync"
                     disabled="@(_busy || string.IsNullOrWhiteSpace(_name))">
-                <Icon Name="dice" Size="16" CssClass="eatah-diet-modal__generate-icon" />
-                @(_busy ? "Genererar..." : "Generera profil")
+                @if (!_manualMode)
+                {
+                    <Icon Name="dice" Size="16" CssClass="eatah-diet-modal__generate-icon" />
+                }
+                @if (_busy)
+                {
+                    @(_manualMode ? "Sparar..." : "Genererar...")
+                }
+                else
+                {
+                    @(_manualMode ? "Spara profil" : "Generera profil")
+                }
             </button>
         </section>
 
@@ -54,7 +120,7 @@
             }
             else if (_profiles.Count == 0)
             {
-                <p class="eatah-diet-modal__empty">Inga profiler ännu. Generera din första ovan!</p>
+                <p class="eatah-diet-modal__empty">Inga profiler ännu. Skapa din första ovan!</p>
             }
             else
             {
@@ -100,14 +166,23 @@
 </div>
 
 @code {
+    private static readonly MealCategory[] AllCategories =
+        [MealCategory.Meat, MealCategory.Poultry, MealCategory.Fish, MealCategory.Vegetarian, MealCategory.Vegan];
+
+    private sealed class RuleValues { public int Min; public int Max; }
+
     [CascadingParameter] private ModalInstance? ModalInstance { get; set; }
 
     private List<DietProfileResponse>? _profiles;
     private string _name = string.Empty;
     private string _description = string.Empty;
+    private bool _manualMode;
     private bool _busy;
     private string? _error;
     private Guid? _expandedId;
+
+    private readonly Dictionary<MealCategory, RuleValues> _manualRules =
+        AllCategories.ToDictionary(c => c, _ => new RuleValues { Min = 0, Max = 0 });
 
     protected override async Task OnInitializedAsync()
     {
@@ -119,6 +194,20 @@
     private void ToggleExpand(Guid id)
     {
         _expandedId = _expandedId == id ? null : id;
+    }
+
+    private void AdjustMin(MealCategory category, int delta)
+    {
+        var rule = _manualRules[category];
+        rule.Min = Math.Clamp(rule.Min + delta, 0, 7);
+        if (rule.Max < rule.Min) rule.Max = rule.Min;
+    }
+
+    private void AdjustMax(MealCategory category, int delta)
+    {
+        var rule = _manualRules[category];
+        rule.Max = Math.Clamp(rule.Max + delta, 0, 7);
+        if (rule.Min > rule.Max) rule.Min = rule.Max;
     }
 
     private static string CategoryLabel(MealCategory c) => c switch
@@ -143,6 +232,8 @@
         }
     }
 
+    private Task SubmitAsync() => _manualMode ? CreateManualAsync() : GenerateAsync();
+
     private async Task GenerateAsync()
     {
         if (string.IsNullOrWhiteSpace(_name) || _busy) return;
@@ -161,6 +252,40 @@
                 await LoadAsync();
                 ProfileState.NotifyChanged();
                 Toasts.Show($"Kostprofil \"{generated.Name}\" skapad!");
+            }
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Error?.Detail ?? ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task CreateManualAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_name) || _busy) return;
+
+        _busy = true;
+        _error = null;
+        try
+        {
+            var rules = AllCategories
+                .Select(c => new CreateDietRuleRequest(c, _manualRules[c].Min, _manualRules[c].Max))
+                .ToList();
+
+            var request = new CreateDietProfileRequest(_name.Trim(), rules);
+            var created = await Api.CreateDietProfileAsync(request);
+            if (created is not null)
+            {
+                _name = string.Empty;
+                foreach (var v in _manualRules.Values) { v.Min = 0; v.Max = 0; }
+                _expandedId = created.Id;
+                await LoadAsync();
+                ProfileState.NotifyChanged();
+                Toasts.Show($"Kostprofil \"{created.Name}\" skapad!");
             }
         }
         catch (ApiException ex)

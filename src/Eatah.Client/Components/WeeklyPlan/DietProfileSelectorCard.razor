@@ -140,6 +140,7 @@
             var savedId = LoadSavedProfileId();
             _selectedProfileId =
                 (savedId is { } id && _profiles.Any(p => p.Id == id)) ? id : _profiles.FirstOrDefault()?.Id;
+            ProfileState.SetSelectedProfileId(_selectedProfileId);
             await EvaluateAsync();
         }
         catch
@@ -170,6 +171,7 @@
         if (Guid.TryParse(e.Value?.ToString(), out var id))
         {
             _selectedProfileId = id;
+            ProfileState.SetSelectedProfileId(id);
             SaveSelectedProfileId(id);
             await EvaluateAsync();
         }

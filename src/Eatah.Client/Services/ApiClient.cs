@@ -158,6 +158,15 @@ public partial class ApiClient
         return await response.Content.ReadFromJsonAsync<DietProfileResponse>(cancellationToken: cancellationToken);
     }
 
+    public async Task<DietProfileResponse?> CreateDietProfileAsync(
+        CreateDietProfileRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _http.PostAsJsonAsync("api/dietprofiles", request, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<DietProfileResponse>(cancellationToken: cancellationToken);
+    }
+
     public async Task DeleteDietProfileAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var response = await _http.DeleteAsync($"api/dietprofiles/{id}", cancellationToken);

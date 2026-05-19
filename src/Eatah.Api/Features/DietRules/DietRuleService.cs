@@ -68,6 +68,28 @@ public class DietRuleService
                 .ToList());
     }
 
+    public async Task<Result<DietProfileResponse>> CreateAsync(
+        CreateDietProfileRequest request,
+        CancellationToken cancellationToken)
+    {
+        var profile = new Domain.Entities.DietProfile
+        {
+            Id = Guid.NewGuid(),
+            Name = request.Name.Trim(),
+            Rules = request.Rules.Select(r => new Domain.Entities.DietRule
+            {
+                Id = Guid.NewGuid(),
+                Category = r.Category,
+                MinPerWeek = r.MinPerWeek,
+                MaxPerWeek = r.MaxPerWeek,
+                Description = string.Empty
+            }).ToList()
+        };
+
+        await _profileRepository.AddAsync(profile, cancellationToken);
+        return ToResponse(profile);
+    }
+
     public async Task<Result> DeleteAsync(Guid id, CancellationToken cancellationToken)
     {
         var deleted = await _profileRepository.DeleteAsync(id, cancellationToken);

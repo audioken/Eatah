@@ -49,65 +49,69 @@ public class RandomMealGenerator : IRandomMealGenerator
         if (availableMeals.Count == 0)
             return null;
 
-        // Avoid picking meals already assigned to other days when possible.
         var assignedMealIds = currentPlan.Days
             .Where(d => d.DayOfWeek != targetDay && d.MealId.HasValue)
             .Select(d => d.MealId!.Value)
             .ToHashSet();
 
-        var candidatePool = availableMeals.Where(m => !assignedMealIds.Contains(m.Id)).ToList();
-        if (candidatePool.Count == 0)
-            candidatePool = availableMeals.ToList();
+        if (profile is null || profile.Rules.Count == 0)
+        {
+            // No profile: prefer meals not already used this week, fall back to any meal.
+            var unused = availableMeals.Where(m => !assignedMealIds.Contains(m.Id)).ToList();
+            var pool = unused.Count > 0 ? unused : availableMeals.ToList();
+            return pool[Random.Shared.Next(pool.Count)];
+        }
 
-        if (profile is null)
-            return candidatePool[Random.Shared.Next(candidatePool.Count)];
+        // Only count categories that the current profile knows about and allows.
+        // This way, if the user switched profile mid-week, meals on past days whose
+        // category isn't in the new profile don't eat into the new budget.
+        var rulesByCategory = profile.Rules.ToDictionary(r => r.Category);
+        var currentCounts = new Dictionary<MealCategory, int>();
+        foreach (var day in currentPlan.Days)
+        {
+            if (day.DayOfWeek == targetDay || day.Meal is null) continue;
+            if (!rulesByCategory.TryGetValue(day.Meal.Category, out var rule) || rule.MaxPerWeek <= 0) continue;
+            currentCounts[day.Meal.Category] = currentCounts.GetValueOrDefault(day.Meal.Category, 0) + 1;
+        }
 
-        // Count category usage in the current plan (excluding the target day).
-        var currentCounts = currentPlan.Days
-            .Where(d => d.DayOfWeek != targetDay && d.Meal is not null)
-            .GroupBy(d => d.Meal!.Category)
-            .ToDictionary(g => g.Key, g => g.Count());
+        var allowedRules = profile.Rules
+            .Where(r => r.MaxPerWeek > 0 && currentCounts.GetValueOrDefault(r.Category, 0) < r.MaxPerWeek)
+            .ToList();
+        if (allowedRules.Count == 0)
+            return null;
 
-        // Remove explicitly excluded categories (max == 0) from the candidate pool.
-        var excludedCategories = profile.Rules
-            .Where(r => r.MaxPerWeek == 0)
+        // Prefer categories still below their minimum; otherwise any allowed category.
+        var neededRules = allowedRules
+            .Where(r => currentCounts.GetValueOrDefault(r.Category, 0) < r.MinPerWeek)
+            .OrderByDescending(r => r.MinPerWeek - currentCounts.GetValueOrDefault(r.Category, 0))
+            .ToList();
+
+        var preferredCategories = (neededRules.Count > 0 ? neededRules : allowedRules)
             .Select(r => r.Category)
             .ToHashSet();
 
-        candidatePool = candidatePool.Where(m => !excludedCategories.Contains(m.Category)).ToList();
-        if (candidatePool.Count == 0)
-            return null;
+        // Pick within the preferred categories first; if no meals exist there, widen
+        // to any allowed category. Within the chosen pool we prefer meals not already
+        // used this week, but always fall back to repetition before returning null —
+        // as long as meals exist in an allowed category, we must return one.
+        var meal = PickFromCategories(availableMeals, preferredCategories, assignedMealIds);
+        if (meal is not null) return meal;
 
-        // Prefer categories that are still below their minimum.
-        var neededCategories = profile.Rules
-            .Where(r => r.MaxPerWeek > 0 && currentCounts.GetValueOrDefault(r.Category, 0) < r.MinPerWeek)
-            .OrderByDescending(r => r.MinPerWeek - currentCounts.GetValueOrDefault(r.Category, 0))
-            .Select(r => r.Category)
-            .ToList();
+        var anyAllowedCategories = allowedRules.Select(r => r.Category).ToHashSet();
+        return PickFromCategories(availableMeals, anyAllowedCategories, assignedMealIds);
+    }
 
-        foreach (var category in neededCategories)
-        {
-            var matching = candidatePool.Where(m => m.Category == category).ToList();
-            if (matching.Count > 0)
-                return matching[Random.Shared.Next(matching.Count)];
-        }
+    private static Meal? PickFromCategories(
+        IReadOnlyList<Meal> availableMeals,
+        IReadOnlySet<MealCategory> categories,
+        IReadOnlySet<Guid> assignedMealIds)
+    {
+        var candidates = availableMeals.Where(m => categories.Contains(m.Category)).ToList();
+        if (candidates.Count == 0) return null;
 
-        // Otherwise pick any meal that won't exceed its category maximum.
-        // If the profile has no rule for a category, that category is not allowed
-        // either — the profile must explicitly opt categories in.
-        var allowed = candidatePool.Where(m =>
-        {
-            var rule = profile.Rules.FirstOrDefault(r => r.Category == m.Category);
-            if (rule is null) return false;
-            return currentCounts.GetValueOrDefault(m.Category, 0) < rule.MaxPerWeek;
-        }).ToList();
-
-        if (allowed.Count > 0)
-            return allowed[Random.Shared.Next(allowed.Count)];
-
-        // Strict mode: no candidate fits the profile. Leave the slot empty rather
-        // than violating the rules.
-        return null;
+        var unused = candidates.Where(m => !assignedMealIds.Contains(m.Id)).ToList();
+        var pool = unused.Count > 0 ? unused : candidates;
+        return pool[Random.Shared.Next(pool.Count)];
     }
 
     // Builds a week plan that strictly satisfies the profile rules.
