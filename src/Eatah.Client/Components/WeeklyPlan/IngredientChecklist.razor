@@ -5,6 +5,7 @@
 @inject IngredientCheckState CheckState
 @inject PantryStateService PantryState
 @inject ShoppingStateService ShoppingState
+@inject ShoppingSyncService ShoppingSync
 
 @if (IsOpen)
 {
@@ -62,7 +63,8 @@
                         }
                         @foreach (var name in PantryIngredients)
                         {
-                            var pantryCount = CheckState.GetSharedMealCount(name);
+                            var (pantryCovered, pantryTotal) = CheckState.GetCoverageFraction(name);
+                            var sharedCount = pantryTotal > 0 ? pantryTotal : CheckState.GetSharedMealCount(name);
                             <div
                                 class="flex items-center gap-2 px-2 py-[6px] rounded-[10px] bg-white/25 border border-white/20 mb-1.5">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="@IconPaths.CheckViewBox" fill="#7CD331"
@@ -71,9 +73,17 @@
                                 </svg>
                                 <span
                                 class="text-dayCardText/55 text-[13px] font-medium line-through leading-snug min-w-0 flex-1 truncate">@name</span>
-                                @if (pantryCount > 1)
+                                @if (pantryTotal > 1 && pantryCovered < pantryTotal)
                                 {
-                                    <span class="shrink-0 text-white/50 text-[10px] font-semibold leading-none">(@pantryCount)</span>
+                                    <span class="shrink-0 text-[#F2A20C] text-[10px] font-semibold leading-none">@pantryCovered/@pantryTotal</span>
+                                }
+                                else if (pantryTotal > 1)
+                                {
+                                    <span class="shrink-0 text-white/50 text-[10px] font-semibold leading-none">@pantryTotal/@pantryTotal</span>
+                                }
+                                else if (sharedCount > 1)
+                                {
+                                    <span class="shrink-0 text-white/50 text-[10px] font-semibold leading-none">(@sharedCount)</span>
                                 }
                             </div>
                         }
@@ -110,7 +120,7 @@
               "bg-white/15 border-white/10";
                             var selectClass = isSelected ? "eatah-checklist-select--active" : "";
                             var textClass = isSelected ? "opacity-100" : onList ? "opacity-80" : "opacity-60";
-                            var missingCount = CheckState.GetSharedMealCount(name);
+                            var missingCount = CheckState.GetUncoveredMealCount(name);
                             <div class="flex items-center gap-1.5 px-2 py-[6px] rounded-[10px] border mb-1.5 cursor-pointer @rowClass"
                                  @onclick="() => ToggleMissingSelection(name)">
                                 <span class="eatah-checklist-select @selectClass">
@@ -161,12 +171,12 @@
                         <div class="text-white font-semibold text-[14px] mb-1.5 px-1">@cov.IngredientName</div>
                         @foreach (var meal in cov.AllMeals)
                         {
-                            var isCovered = cov.CoveredMeals.Contains(meal);
+                            var isCovered = cov.CoveredMeals.Contains(meal.Name);
                             var rowClass = isCovered ? "bg-white/35 border-white/30" : "bg-white/15 border-white/10";
                             <label class="flex items-center gap-2.5 px-3 py-2 rounded-[10px] border cursor-pointer mb-1 @rowClass">
                                 <input type="checkbox" class="w-4 h-4 accent-white cursor-pointer flex-shrink-0"
-                                       checked="@isCovered" @onchange="@(() => ToggleCoverage(cov, meal))" />
-                                <span class="text-dayCardText text-[13px] font-medium truncate">@meal</span>
+                                       checked="@isCovered" @onchange="@(() => ToggleCoverage(cov, meal.Name))" />
+                                <span class="text-dayCardText text-[13px] font-medium truncate">@meal.Name</span>
                             </label>
                         }
                     </div>
@@ -189,6 +199,51 @@
     </div>
 }
 
+@* Pending-coverage prompt – asks per ingredient whether pantry stock covers THIS meal *@
+@if (_pendingMealCoverage.Count > 0 && _pendingMealCoverageMealId is not null && IsOpen)
+{
+    <div class="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4"
+         style="padding-top: max(1rem, var(--header-height, 56px)); padding-bottom: max(1rem, var(--navbar-height, 82px));">
+        <div class="w-full max-w-[420px] rounded-[20px] border border-black/10 font-kanit overflow-hidden"
+             style="background: linear-gradient(135deg, #839B7F 0%, #A8D1AA 91.83%); box-shadow: 0px 8px 24px rgba(0,0,0,0.35);">
+            <div class="px-5 pt-4 pb-2">
+                <div class="text-white font-medium text-[18px] uppercase tracking-tight leading-tight">
+                    Räcker skafferiet?
+                </div>
+                @if (!string.IsNullOrWhiteSpace(MealName))
+                {
+                    <div class="text-dayCardText font-medium text-[13px] leading-tight mt-1">@MealName</div>
+                }
+            </div>
+            <div class="px-4 pb-2 max-h-[55vh] overflow-y-auto space-y-2">
+                @foreach (var ing in _pendingMealCoverage.ToList())
+                {
+                    <div class="px-3 py-2.5 rounded-[12px] bg-white/15 border border-white/20">
+                        <div class="text-white text-[14px] mb-2">
+                            Det finns <span class="font-semibold">@ing</span> i skafferiet – räcker den till denna rätten?
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="button"
+                                    class="flex-1 py-2 rounded-[10px] bg-white/30 hover:bg-white/45 text-white font-semibold text-[13px] uppercase tracking-wide"
+                                    @onclick="() => AnswerPendingAsync(ing, true)">Ja</button>
+                            <button type="button"
+                                    class="flex-1 py-2 rounded-[10px] bg-white/15 hover:bg-white/25 text-white font-medium text-[13px]"
+                                    @onclick="() => AnswerPendingAsync(ing, false)">Nej</button>
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="px-4 pb-5 pt-2">
+                <button type="button"
+                        class="w-full py-2.5 rounded-[12px] bg-white/10 hover:bg-white/20 text-white/80 font-medium text-[12px]"
+                        @onclick="() => { _pendingMealCoverage = []; _pendingMealCoverageMealId = null; }">
+                    Hoppa över
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     [Parameter] public bool IsOpen { get; set; }
     [Parameter] public Guid? MealId { get; set; }
@@ -200,14 +255,19 @@
     private HashSet<string> _selectedMissing = new(StringComparer.OrdinalIgnoreCase);
     private HashSet<string> _shoppingNames = new(StringComparer.OrdinalIgnoreCase);
 
-    // Coverage popup state
-    private record ChecklistPendingCoverage(ShoppingItemResponse ShoppingItem, string IngredientName, Guid IngredientId,
-List<string> AllMeals)
+    // Coverage popup state — AllMeals carries name + optional MealId for coverage persistence.
+    // ShoppingItem is nullable: the popup also fires when no shopping row exists (e.g. the
+    // ingredient is already in pantry but still uncovered for multiple meals).
+    private record MealRef(string Name, Guid? MealId);
+    private record ChecklistPendingCoverage(ShoppingItemResponse? ShoppingItem, string IngredientName, Guid IngredientId,
+List<MealRef> AllMeals)
     {
-        public HashSet<string> CoveredMeals { get; } = new(AllMeals, StringComparer.OrdinalIgnoreCase);
+        public HashSet<string> CoveredMeals { get; } = new(AllMeals.Select(m => m.Name), StringComparer.OrdinalIgnoreCase);
     }
     private bool _coveragePopupOpen;
     private List<ChecklistPendingCoverage> _pendingCoverage = [];
+    private List<string> _pendingMealCoverage = [];
+    private Guid? _pendingMealCoverageMealId;
     private bool _isLoading;
     private Guid? _loadedFor;
 
@@ -227,7 +287,7 @@ List<string> AllMeals)
         return ShoppingState.Items.Any(s =>
             !s.IsChecked &&
             string.Equals(s.Name, ingredientName, StringComparison.OrdinalIgnoreCase) &&
-            ExtractAllMealNames(s.Notes).Contains(MealName, StringComparer.OrdinalIgnoreCase));
+            ExtractAllMealRefs(s.Notes).Any(m => string.Equals(m.Name, MealName, StringComparison.OrdinalIgnoreCase)));
     }
 
     protected override void OnInitialized()
@@ -276,6 +336,20 @@ List<string> AllMeals)
             _shoppingNames = shopping.Select(s => s.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             _loadedFor = mealId;
+
+            // If pantry stocks haven't been confirmed for this meal yet, ask the user
+            // before showing the regular checklist. Builds a synthetic pending list per ingredient.
+            var pending = CheckState.GetPendingCoverageIngredients(mealId).ToList();
+            if (pending.Count > 0)
+            {
+                _pendingMealCoverage = pending;
+                _pendingMealCoverageMealId = mealId;
+            }
+            else
+            {
+                _pendingMealCoverage = [];
+                _pendingMealCoverageMealId = null;
+            }
         }
         catch
         {
@@ -288,6 +362,38 @@ List<string> AllMeals)
     }
 
     private Task HandleClose() => OnClose.InvokeAsync();
+
+    private async Task AnswerPendingAsync(string ingredientName, bool covers)
+    {
+        if (_pendingMealCoverageMealId is not { } mealId) return;
+
+        if (!CheckState.TryGetPantryIngredientId(ingredientName, out var ingredientId))
+        {
+            // Fallback: resolve via catalog if local map is missing the entry.
+            var matches = await Api.SearchIngredientsAsync(ingredientName);
+            var master = matches.FirstOrDefault(i => string.Equals(i.Name, ingredientName, StringComparison.OrdinalIgnoreCase));
+            if (master is null) { _pendingMealCoverage.Remove(ingredientName); return; }
+            ingredientId = master.Id;
+        }
+
+        try
+        {
+            await Api.SetPantryCoverageAsync(ingredientId, mealId, covers);
+            CheckState.MarkCoverage(ingredientName, mealId, covers);
+            // Resync so the shopping list reflects the new coverage decision.
+            ShoppingSync.TriggerSync();
+        }
+        catch
+        {
+            // Swallow; user can retry by reopening.
+        }
+        finally
+        {
+            _pendingMealCoverage.Remove(ingredientName);
+            if (_pendingMealCoverage.Count == 0)
+                _pendingMealCoverageMealId = null;
+        }
+    }
 
     private void ToggleMissingSelection(string name)
     {
@@ -321,8 +427,20 @@ List<string> AllMeals)
         foreach (var (name, ingId) in resolved)
         {
             var shoppingItem = ShoppingState.Items.FirstOrDefault(s => s.IngredientId == ingId && !s.IsChecked);
-            if (shoppingItem is not null && GetMealCount(shoppingItem.Notes) > 1)
-                sharedPending.Add(new ChecklistPendingCoverage(shoppingItem, name, ingId, ExtractAllMealNames(shoppingItem.Notes)));
+
+            // Only ask about meals that aren't already marked as covered. If 0 or 1 meals
+            // remain uncovered, just auto-mark (handled in normalItems below).
+            var uncoveredMeals = CheckState.GetUncoveredActiveMealsForIngredient(name)
+                .Select(m => new MealRef(m.Name, m.Id))
+                .ToList();
+
+            // Fallback when the plan isn't loaded — use shopping notes (which only carry uncovered
+            // meals since covered ones get pruned from notes during partial-coverage flows).
+            if (uncoveredMeals.Count == 0 && shoppingItem is not null)
+                uncoveredMeals = ExtractAllMealRefs(shoppingItem.Notes);
+
+            if (uncoveredMeals.Count > 1)
+                sharedPending.Add(new ChecklistPendingCoverage(shoppingItem, name, ingId, uncoveredMeals));
             else
                 normalItems.Add((name, ingId));
         }
@@ -342,6 +460,20 @@ List<string> AllMeals)
                 // ingredient was already in pantry (partial-coverage scenario where a
                 // previous move covered another meal but this meal remained).
                 CheckState.AddPantryName(name);
+
+                // User explicitly added this from THIS meal's checklist — record coverage=true
+                // for the current meal (overrides any prior "declined" answer). Without this the
+                // next sync would re-add the shopping row because the meal still counts as uncovered.
+                if (MealId is { } mealId)
+                {
+                    try
+                    {
+                        await Api.SetPantryCoverageAsync(ingId, mealId, true);
+                        CheckState.MarkCoverage(name, mealId, true);
+                    }
+                    catch { /* best-effort */ }
+                }
+
                 var shoppingItem = ShoppingState.Items.FirstOrDefault(s => s.IngredientId == ingId);
                 if (shoppingItem is not null)
                 {
@@ -354,6 +486,9 @@ List<string> AllMeals)
                 _selectedMissing.Add(name);
             }
         }
+
+        if (normalItems.Count > 0)
+            ShoppingSync.TriggerSync();
 
         if (sharedPending.Count > 0)
         {
@@ -372,7 +507,7 @@ List<string> AllMeals)
     {
         foreach (var cov in _pendingCoverage)
             foreach (var meal in cov.AllMeals)
-                cov.CoveredMeals.Add(meal);
+                cov.CoveredMeals.Add(meal.Name);
         await ConfirmCoverageAsync();
     }
 
@@ -393,16 +528,32 @@ List<string> AllMeals)
                     CheckState.AddPantryName(coverage.IngredientName);
                 }
 
-                var remainingNotes = BuildRemainingNotes(coverage.ShoppingItem.Notes, coverage.CoveredMeals);
-                if (remainingNotes is null)
+                // Persist coverage answers per meal so the per-meal pending question won't be asked again.
+                foreach (var meal in coverage.AllMeals)
                 {
-                    await Api.RemoveFromShoppingListAsync(coverage.ShoppingItem.Id);
-                    ShoppingState.RemoveItem(coverage.ShoppingItem.Id);
+                    if (meal.MealId is not { } mealId) continue;
+                    var covers = coverage.CoveredMeals.Contains(meal.Name);
+                    try
+                    {
+                        await Api.SetPantryCoverageAsync(coverage.IngredientId, mealId, covers);
+                        CheckState.MarkCoverage(coverage.IngredientName, mealId, covers);
+                    }
+                    catch { /* best-effort */ }
                 }
-                else
+
+                if (coverage.ShoppingItem is { } shopping)
                 {
-                    await Api.AddToShoppingListAsync(coverage.ShoppingItem.IngredientId, remainingNotes);
-                    ShoppingState.AddOrUpdateItem(coverage.ShoppingItem with { Notes = remainingNotes });
+                    var remainingNotes = BuildRemainingNotes(shopping.Notes, coverage.CoveredMeals);
+                    if (remainingNotes is null)
+                    {
+                        await Api.RemoveFromShoppingListAsync(shopping.Id);
+                        ShoppingState.RemoveItem(shopping.Id);
+                    }
+                    else
+                    {
+                        await Api.AddToShoppingListAsync(shopping.IngredientId, remainingNotes);
+                        ShoppingState.AddOrUpdateItem(shopping with { Notes = remainingNotes });
+                    }
                 }
             }
             catch (Exception)
@@ -411,6 +562,7 @@ List<string> AllMeals)
             }
         }
         _pendingCoverage.Clear();
+        ShoppingSync.TriggerSync();
     }
 
     private static int GetMealCount(string? notes)
@@ -419,19 +571,46 @@ List<string> AllMeals)
         return notes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Length;
     }
 
-    private static List<string> ExtractAllMealNames(string? notes)
+    private static (string MealName, Guid? MealId) ParseNotePart(string part)
+    {
+        // Trailing "|<guid>" carries the MealId; strip it before parsing the week/day suffix.
+        Guid? mealId = null;
+        var pipeIdx = part.LastIndexOf('|');
+        if (pipeIdx > 0 && Guid.TryParseExact(part[(pipeIdx + 1)..].Trim(), "N", out var gid))
+        {
+            mealId = gid;
+            part = part[..pipeIdx];
+        }
+        var vIdx = part.LastIndexOf(" v");
+        if (vIdx > 0)
+        {
+            var suffix = part[(vIdx + 2)..].Trim();
+            var dIdx = suffix.IndexOf('d');
+            var hasWeek = dIdx > 0
+                ? int.TryParse(suffix[..dIdx], out _) && int.TryParse(suffix[(dIdx + 1)..], out _)
+                : int.TryParse(suffix, out _);
+            if (hasWeek) return (part[..vIdx].Trim(), mealId);
+        }
+        return (part.Trim(), mealId);
+    }
+
+    private static List<MealRef> ExtractAllMealRefs(string? notes)
     {
         if (string.IsNullOrEmpty(notes)) return [];
         return notes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(part =>
+            .Select(ParseNotePart)
+            .Where(x => !string.IsNullOrEmpty(x.MealName))
+            .GroupBy(x => x.MealName, StringComparer.OrdinalIgnoreCase)
+            .Select(g =>
             {
-                var vIdx = part.LastIndexOf(" v");
-                return vIdx > 0 && int.TryParse(part[(vIdx + 2)..], out _) ? part[..vIdx] : part;
+                var withId = g.FirstOrDefault(x => x.MealId.HasValue);
+                return new MealRef(g.Key, withId.MealId);
             })
-            .Where(n => !string.IsNullOrEmpty(n))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
+
+    private static List<string> ExtractAllMealNames(string? notes) =>
+        ExtractAllMealRefs(notes).Select(m => m.Name).ToList();
 
     private static string? BuildRemainingNotes(string? originalNotes, HashSet<string> coveredMeals)
     {
@@ -440,8 +619,7 @@ List<string> AllMeals)
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Where(part =>
             {
-                var vIdx = part.LastIndexOf(" v");
-                var mealName = vIdx > 0 && int.TryParse(part[(vIdx + 2)..], out _) ? part[..vIdx] : part;
+                var (mealName, _) = ParseNotePart(part);
                 return !coveredMeals.Contains(mealName);
             })
             .ToList();

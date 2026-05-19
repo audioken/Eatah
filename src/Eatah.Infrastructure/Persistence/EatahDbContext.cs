@@ -24,6 +24,7 @@ public class EatahDbContext : IdentityDbContext<EatahUser, IdentityRole<Guid>, G
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<IngredientMaster> IngredientMaster => Set<IngredientMaster>();
     public DbSet<PantryItem> PantryItems => Set<PantryItem>();
+    public DbSet<PantryItemMealCoverage> PantryItemMealCoverages => Set<PantryItemMealCoverage>();
     public DbSet<ShoppingItem> ShoppingItems => Set<ShoppingItem>();
     public DbSet<ChatThread> ChatThreads => Set<ChatThread>();
     public DbSet<ChatThreadParticipant> ChatThreadParticipants => Set<ChatThreadParticipant>();

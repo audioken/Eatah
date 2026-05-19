@@ -18,6 +18,10 @@ public static class PantryEndpoints
             => (await svc.AddAsync(req.IngredientId, ct)).ToHttpResult());
         pantry.MapDelete("/{id:guid}", async (Guid id, PantryService svc, CancellationToken ct)
             => (await svc.RemoveAsync(id, ct)).ToNoContentResult());
+        pantry.MapGet("/coverage", async (PantryService svc, CancellationToken ct)
+            => Results.Ok(await svc.GetCoverageAsync(ct)));
+        pantry.MapPost("/coverage", async (SetPantryCoverageRequest req, PantryService svc, CancellationToken ct)
+            => (await svc.SetCoverageAsync(req.IngredientId, req.MealId, req.Covers, ct)).ToHttpResult());
 
         var shop = app.MapGroup("/api/shoppinglist").WithTags("ShoppingList").RequireAuthorization();
         shop.MapGet("/", async (ShoppingListService svc, CancellationToken ct) => Results.Ok(await svc.GetAllAsync(ct)));

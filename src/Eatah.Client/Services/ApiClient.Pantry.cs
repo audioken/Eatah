@@ -46,6 +46,20 @@ public partial class ApiClient
         await EnsureSuccessAsync(response, ct);
     }
 
+    public async Task<List<PantryCoverageResponse>> GetPantryCoverageAsync(CancellationToken ct = default)
+    {
+        var response = await _http.GetAsync("api/pantry/coverage", ct);
+        await EnsureSuccessAsync(response, ct);
+        return await response.Content.ReadFromJsonAsync<List<PantryCoverageResponse>>(cancellationToken: ct) ?? [];
+    }
+
+    public async Task<PantryCoverageResponse?> SetPantryCoverageAsync(Guid ingredientId, Guid mealId, bool covers, CancellationToken ct = default)
+    {
+        var response = await _http.PostAsJsonAsync("api/pantry/coverage", new SetPantryCoverageRequest(ingredientId, mealId, covers), ct);
+        await EnsureSuccessAsync(response, ct);
+        return await response.Content.ReadFromJsonAsync<PantryCoverageResponse>(cancellationToken: ct);
+    }
+
     // ---- Shopping list ----
 
     public async Task<List<ShoppingItemResponse>> GetShoppingListAsync(CancellationToken ct = default)

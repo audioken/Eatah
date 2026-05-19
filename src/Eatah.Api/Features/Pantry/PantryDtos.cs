@@ -8,3 +8,6 @@ public record ShoppingItemResponse(Guid Id, Guid IngredientId, string Name, stri
 public record AddShoppingItemRequest(Guid IngredientId, string? Notes = null);
 public record ToggleShoppingItemRequest(bool IsChecked);
 public record SyncWeeklyPlanRequest(Guid WeeklyPlanId);
+
+public record PantryCoverageResponse(Guid IngredientId, Guid MealId, bool Covers);
+public record SetPantryCoverageRequest(Guid IngredientId, Guid MealId, bool Covers);

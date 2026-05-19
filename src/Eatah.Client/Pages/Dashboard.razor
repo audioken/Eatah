@@ -136,10 +136,14 @@
 			var planTask = Api.GetWeeklyPlanByWeekAsync(year, week);
 			var mealsTask = Api.GetMealsAsync();
 			var pantryTask = Api.GetPantryAsync();
-			await Task.WhenAll(planTask, mealsTask, pantryTask);
+			var coverageTask = Api.GetPantryCoverageAsync();
+			await Task.WhenAll(planTask, mealsTask, pantryTask, coverageTask);
 			_plan = await planTask;
 			_meals = await mealsTask;
-			CheckState.SetPantryItems((await pantryTask).Select(p => p.Name));
+			var pantry = await pantryTask;
+			CheckState.SetPantryItems(pantry.Select(p => p.Name));
+			CheckState.SetPantryIngredientIds(pantry.Select(p => (p.Name, p.IngredientId)));
+			CheckState.SetCoverage((await coverageTask).Select(c => (c.IngredientId, c.MealId, c.Covers)));
 			RefreshActiveMeals();
 		}
 		catch (Exception ex)
@@ -156,10 +160,15 @@
 	private void RefreshActiveMeals()
 	{
 		if (_plan is null) return;
+		// Past days of the current week are excluded — those meals already happened, their
+		// ingredients aren't on the shopping list and shouldn't drive coverage popups/badges.
+		// Other weeks (prev/next) include all days.
+		static int DayIdx(DayOfWeek d) => d == DayOfWeek.Sunday ? 6 : (int)d - 1;
+		var minDayIdx = _weekOffset == 0 ? DayIdx(DateTime.Today.DayOfWeek) : 0;
 		CheckState.SetActiveMeals(
 			_plan.Days
-				.Where(d => d.Meal is not null)
-				.Select(d => d.Meal!.Id));
+				.Where(d => d.Meal is not null && DayIdx(d.DayOfWeek) >= minDayIdx)
+				.Select(d => (d.Meal!.Id, d.Meal!.Name)));
 	}
 
 	private async Task NavigateWeekAsync(int delta)
@@ -173,6 +182,7 @@
 			var target = DateTime.UtcNow.Date.AddDays(_weekOffset * 7);
 			var (year, week) = (ISOWeek.GetYear(target), ISOWeek.GetWeekOfYear(target));
 			_plan = await Api.GetWeeklyPlanByWeekAsync(year, week);
+			RefreshActiveMeals();
 		}
 		catch (Exception ex)
 		{

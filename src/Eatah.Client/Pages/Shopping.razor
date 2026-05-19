@@ -46,12 +46,21 @@
                     {
                         @foreach (var item in PantryState.Items)
                         {
-                            var pantryCount = CheckState.GetSharedMealCount(item.Name);
+                            var (pCovered, pTotal) = CheckState.GetCoverageFraction(item.Name);
+                            var pantryCount = pTotal > 0 ? pTotal : CheckState.GetSharedMealCount(item.Name);
                             <div class="eatah-shopping-item eatah-shopping-item--pantry">
                                 <div class="eatah-shopping-item__body">
                                     <div class="eatah-shopping-item__name-row">
                                         <span class="eatah-shopping-item__name">@item.Name</span>
-                                        @if (pantryCount > 1)
+                                        @if (pTotal > 1 && pCovered < pTotal)
+                                        {
+                                            <span class="shrink-0 text-[#F2A20C] text-[11px] font-semibold">@pCovered/@pTotal</span>
+                                        }
+                                        else if (pTotal > 1)
+                                        {
+                                            <span class="eatah-shopping-item__count-badge">@pTotal/@pTotal</span>
+                                        }
+                                        else if (pantryCount > 1)
                                         {
                                             <span class="eatah-shopping-item__count-badge">(@pantryCount)</span>
                                         }
@@ -128,7 +137,8 @@
                                             var groupKey = GetMealGroupKey(mealGroup.MealName, weekKey);
                                             var isExpanded = _expandedGroups.Contains(groupKey);
                                             <div class="eatah-shopping-group">
-                                                <button type="button" class="eatah-shopping-group__header" @onclick="() => ToggleGroup(groupKey)">
+                                                <button type="button" class="eatah-shopping-group__header"
+                                                        @onclick="() => ToggleGroup(groupKey)">
                                                     <Icon Name="@(isExpanded ? "angle-down-solid" : "angle-right-solid")" Size="10"
                                                           CssClass="eatah-shopping-group__chevron" />
                                                     <span class="eatah-shopping-group__name">@mealGroup.MealName</span>
@@ -238,12 +248,12 @@
                         <div class="text-white font-semibold text-[14px] mb-1.5 px-1">@cov.Item.Name</div>
                         @foreach (var meal in cov.AllMeals)
                         {
-                            var isCovered = cov.CoveredMeals.Contains(meal);
+                            var isCovered = cov.CoveredMeals.Contains(meal.Name);
                             var rowClass = isCovered ? "bg-white/35 border-white/30" : "bg-white/15 border-white/10";
                             <label class="flex items-center gap-2.5 px-3 py-2 rounded-[10px] border cursor-pointer mb-1 @rowClass">
                                 <input type="checkbox" class="w-4 h-4 accent-white cursor-pointer flex-shrink-0"
-                                       checked="@isCovered" @onchange="@(() => ToggleCoverage(cov, meal))" />
-                                <span class="text-dayCardText text-[13px] font-medium truncate">@meal</span>
+                                       checked="@isCovered" @onchange="@(() => ToggleCoverage(cov, meal.Name))" />
+                                <span class="text-dayCardText text-[13px] font-medium truncate">@meal.Name</span>
                             </label>
                         }
                     </div>
@@ -314,15 +324,17 @@
     private char _pendingChatType; // 'i' = Jag köper, 'k' = Kan du köpa
     private List<WorkspaceMemberResponse> _householdMembers = [];
 
-    // A single parsed entry from Notes: "Pasta Carbonara v22d0" → (item, "Pasta Carbonara", 22, 0)
-    private record NoteEntry(ShoppingItemResponse Item, string MealName, int? WeekNumber, int? DayIndex);
+    // A single parsed entry from Notes: "Pasta Carbonara v22d0|<guid>" → (item, "Pasta Carbonara", 22, 0, <guid>)
+    private record NoteEntry(ShoppingItemResponse Item, string MealName, int? WeekNumber, int? DayIndex, Guid? MealId);
     private record MealGroupView(string MealName, int? DayIndex, List<NoteEntry> Views);
     private record WeekGroupView(string WeekKey, string Label, List<MealGroupView> MealGroups);
 
     // Coverage popup: confirm which meals a shared ingredient covers when moved to pantry.
-    private record PendingCoverage(ShoppingItemResponse Item, List<string> AllMeals)
+    // MealRef carries name (for display) and optional MealId (for coverage persistence).
+    private record MealRef(string Name, Guid? MealId);
+    private record PendingCoverage(ShoppingItemResponse Item, List<MealRef> AllMeals)
     {
-        public HashSet<string> CoveredMeals { get; } = new(AllMeals, StringComparer.OrdinalIgnoreCase);
+        public HashSet<string> CoveredMeals { get; } = new(AllMeals.Select(m => m.Name), StringComparer.OrdinalIgnoreCase);
     }
 
     private bool _coveragePopupOpen;
@@ -341,12 +353,12 @@
                 .SelectMany(s =>
                 {
                     if (string.IsNullOrEmpty(s.Notes))
-                        return (IEnumerable<NoteEntry>)[new NoteEntry(s, "Övrigt", null, null)];
+                        return (IEnumerable<NoteEntry>)[new NoteEntry(s, "Övrigt", null, null, null)];
                     return s.Notes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                         .Select(part =>
                         {
-                            var (meal, week, day) = ParseNoteEntry(part);
-                            return new NoteEntry(s, meal, week, day);
+                            var (meal, week, day, mealId) = ParseNoteEntry(part);
+                            return new NoteEntry(s, meal, week, day, mealId);
                         });
                 })
                 .ToList();
@@ -360,9 +372,9 @@
                     var label = weekNum switch
                     {
                         var w when w == currentWeek => "Denna veckan",
-                        var w when w == nextWeek    => "Nästa vecka",
-                        null                        => "Övrigt",
-                        _                           => $"Vecka {weekNum}"
+                        var w when w == nextWeek => "Nästa vecka",
+                        null => "Övrigt",
+                        _ => $"Vecka {weekNum}"
                     };
                     var mealGroups = weekG
                         .GroupBy(e => e.MealName, StringComparer.OrdinalIgnoreCase)
@@ -380,9 +392,9 @@
                 .OrderBy(w => w.WeekKey switch
                 {
                     var k when k == $"v{currentWeek}" => 0,
-                    var k when k == $"v{nextWeek}"    => 1,
-                    "null"                            => 2,
-                    _                                 => 3
+                    var k when k == $"v{nextWeek}" => 1,
+                    "null" => 2,
+                    _ => 3
                 })
                 .ToList();
         }
@@ -409,13 +421,13 @@
 
     private static int GetDayIndexFromDate(DateTime date) => date.DayOfWeek switch
     {
-        DayOfWeek.Monday    => 0,
-        DayOfWeek.Tuesday   => 1,
+        DayOfWeek.Monday => 0,
+        DayOfWeek.Tuesday => 1,
         DayOfWeek.Wednesday => 2,
-        DayOfWeek.Thursday  => 3,
-        DayOfWeek.Friday    => 4,
-        DayOfWeek.Saturday  => 5,
-        _                   => 6
+        DayOfWeek.Thursday => 3,
+        DayOfWeek.Friday => 4,
+        DayOfWeek.Saturday => 5,
+        _ => 6
     };
 
     private static int WeekDaySortKey(int week, int day, int currentWeek, int todayDayIdx)
@@ -426,18 +438,26 @@
         return weekOffset + dayOffset;
     }
 
-    private static (string MealName, int? Week, int? Day) ParseNoteEntry(string part)
+    private static (string MealName, int? Week, int? Day, Guid? MealId) ParseNoteEntry(string part)
     {
+        // Strip optional "|<guid>" suffix carrying the MealId (so coverage popups can persist per-meal answers).
+        Guid? mealId = null;
+        var pipeIdx = part.LastIndexOf('|');
+        if (pipeIdx > 0 && Guid.TryParseExact(part[(pipeIdx + 1)..].Trim(), "N", out var gid))
+        {
+            mealId = gid;
+            part = part[..pipeIdx];
+        }
         var vIdx = part.LastIndexOf(" v");
-        if (vIdx <= 0) return (part.Trim(), null, null);
+        if (vIdx <= 0) return (part.Trim(), null, null, mealId);
         var mealName = part[..vIdx].Trim();
         var suffix = part[(vIdx + 2)..].Trim();
         var dIdx = suffix.IndexOf('d');
         if (dIdx > 0 && int.TryParse(suffix[..dIdx], out var week) && int.TryParse(suffix[(dIdx + 1)..], out var day))
-            return (mealName, week, day);
+            return (mealName, week, day, mealId);
         if (int.TryParse(suffix, out week))
-            return (mealName, week, null);
-        return (part.Trim(), null, null);
+            return (mealName, week, null, mealId);
+        return (part.Trim(), null, null, mealId);
     }
 
     private bool _isLoading = true;
@@ -492,33 +512,51 @@
 
     private async Task AddToPantryAsync(IngredientResponse ing)
     {
-        // If this ingredient is on the shopping list with multiple meal notes, ask which meals it covers.
         var shoppingItem = ShoppingState.Items.FirstOrDefault(s => s.IngredientId == ing.Id && !s.IsChecked);
+
+        // If the shopping note still references multiple meals, ask which ones the pantry covers.
         if (shoppingItem is not null && GetMealCount(shoppingItem.Notes) > 1)
         {
-            _pendingCoverage = [new PendingCoverage(shoppingItem, ExtractAllMealNames(shoppingItem.Notes))];
+            _pendingCoverage = [new PendingCoverage(shoppingItem, ExtractAllMealRefs(shoppingItem.Notes))];
             _coveragePopupOpen = true;
             return;
         }
 
+        // No popup needed — single-meal (or no) note. Add to pantry (if not already there) and
+        // mark coverage=true for the remaining meal(s) so the shopping row + badge update immediately.
         try
         {
-            var item = await Api.AddToPantryAsync(ing.Id);
-            if (item is not null)
+            try
             {
-                PantryState.AddItem(item);
-                CheckState.AddPantryName(ing.Name);
-                // Remove from shopping list if it was queued there
-                if (shoppingItem is not null)
+                var item = await Api.AddToPantryAsync(ing.Id);
+                if (item is not null)
                 {
-                    await Api.RemoveFromShoppingListAsync(shoppingItem.Id);
-                    ShoppingState.RemoveItem(shoppingItem.Id);
+                    PantryState.AddItem(item);
+                    CheckState.AddPantryName(ing.Name);
                 }
             }
-        }
-        catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.PantryItemAlreadyExists)
-        {
-            Toasts.Show($"{ing.Name} finns redan i skafferiet.");
+            catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.PantryItemAlreadyExists)
+            {
+                // Already in pantry — that's fine; we still want to record coverage and remove the row.
+                CheckState.AddPantryName(ing.Name);
+            }
+
+            if (shoppingItem is not null)
+            {
+                foreach (var meal in ExtractAllMealRefs(shoppingItem.Notes))
+                {
+                    if (meal.MealId is not { } mealId) continue;
+                    try
+                    {
+                        await Api.SetPantryCoverageAsync(ing.Id, mealId, true);
+                        CheckState.MarkCoverage(ing.Name, mealId, true);
+                    }
+                    catch { /* best-effort */ }
+                }
+                await Api.RemoveFromShoppingListAsync(shoppingItem.Id);
+                ShoppingState.RemoveItem(shoppingItem.Id);
+                ShoppingSync.TriggerSync();
+            }
         }
         catch (Exception ex)
         {
@@ -581,14 +619,27 @@
                 try { pantryItem = await Api.AddToPantryAsync(item.IngredientId); }
                 catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.PantryItemAlreadyExists) { }
 
+                // Mark coverage=true for the meal(s) referenced by the note BEFORE removing the
+                // row, so partial-coverage state ("1/2") becomes full ("2/2") immediately.
+                foreach (var meal in ExtractAllMealRefs(item.Notes))
+                {
+                    if (meal.MealId is not { } mealId) continue;
+                    try
+                    {
+                        await Api.SetPantryCoverageAsync(item.IngredientId, mealId, true);
+                        CheckState.MarkCoverage(item.Name, mealId, true);
+                    }
+                    catch { /* best-effort */ }
+                }
+
                 await Api.RemoveFromShoppingListAsync(item.Id);
                 ShoppingState.RemoveItem(item.Id);
 
                 if (pantryItem is not null)
                 {
                     PantryState.AddItem(pantryItem);
-                    CheckState.AddPantryName(item.Name);
                 }
+                CheckState.AddPantryName(item.Name);
             }
             catch (Exception ex) { _error = ex.Message; }
         }
@@ -597,7 +648,7 @@
         if (sharedItems.Count > 0)
         {
             _pendingCoverage = sharedItems
-                .Select(s => new PendingCoverage(s, ExtractAllMealNames(s.Notes)))
+                .Select(s => new PendingCoverage(s, ExtractAllMealRefs(s.Notes)))
                 .ToList();
             _coveragePopupOpen = true;
         }
@@ -613,7 +664,7 @@
     {
         foreach (var cov in _pendingCoverage)
             foreach (var meal in cov.AllMeals)
-                cov.CoveredMeals.Add(meal);
+                cov.CoveredMeals.Add(meal.Name);
         await ConfirmCoverageAsync();
     }
 
@@ -632,6 +683,19 @@
                 {
                     PantryState.AddItem(pantryItem);
                     CheckState.AddPantryName(coverage.Item.Name);
+                }
+
+                // Persist coverage answers per meal so the per-meal pending question won't be asked again.
+                foreach (var meal in coverage.AllMeals)
+                {
+                    if (meal.MealId is not { } mealId) continue;
+                    var covers = coverage.CoveredMeals.Contains(meal.Name);
+                    try
+                    {
+                        await Api.SetPantryCoverageAsync(coverage.Item.IngredientId, mealId, covers);
+                        CheckState.MarkCoverage(coverage.Item.Name, mealId, covers);
+                    }
+                    catch { /* best-effort */ }
                 }
 
                 var remainingNotes = BuildRemainingNotes(coverage.Item.Notes, coverage.CoveredMeals);
@@ -661,7 +725,7 @@
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Where(part =>
             {
-                var (mealName, _, _) = ParseNoteEntry(part);
+                var (mealName, _, _, _) = ParseNoteEntry(part);
                 return !coveredMeals.Contains(mealName);
             })
             .ToList();
@@ -739,24 +803,28 @@
     private static string? ExtractMealName(string? notes)
     {
         if (string.IsNullOrEmpty(notes)) return null;
-        var (mealName, _, _) = ParseNoteEntry(notes.Split(',')[0].Trim());
+        var (mealName, _, _, _) = ParseNoteEntry(notes.Split(',')[0].Trim());
         return string.IsNullOrEmpty(mealName) ? null : mealName;
     }
 
-    /// <summary>Extracts all meal names from Notes. Works with both old ("Pasta v22") and new ("Pasta v22d0") format.</summary>
-    private static List<string> ExtractAllMealNames(string? notes)
+    /// <summary>Extracts all distinct meal references (name + optional MealId) from Notes.</summary>
+    private static List<MealRef> ExtractAllMealRefs(string? notes)
     {
         if (string.IsNullOrEmpty(notes)) return [];
         return notes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(part =>
             {
-                var (mealName, _, _) = ParseNoteEntry(part);
-                return mealName;
+                var (mealName, _, _, mealId) = ParseNoteEntry(part);
+                return new MealRef(mealName, mealId);
             })
-            .Where(n => !string.IsNullOrEmpty(n))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Where(m => !string.IsNullOrEmpty(m.Name))
+            .GroupBy(m => m.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.FirstOrDefault(m => m.MealId.HasValue) ?? g.First())
             .ToList();
     }
+
+    private static List<string> ExtractAllMealNames(string? notes) =>
+        ExtractAllMealRefs(notes).Select(m => m.Name).ToList();
 
     private void ToggleGroup(string key)
     {
@@ -790,7 +858,7 @@
                 return s.Notes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                     .Select(part =>
                     {
-                        var (meal, week, day) = ParseNoteEntry(part);
+                        var (meal, week, day, _) = ParseNoteEntry(part);
                         return (Week: week, Day: day, MealName: meal);
                     })
                     .Where(x => x.Week.HasValue && x.Day.HasValue)

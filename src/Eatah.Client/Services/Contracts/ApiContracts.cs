@@ -135,6 +135,8 @@ public record AddShoppingItemRequest(Guid IngredientId, string? Notes = null);
 public record AddPantryItemRequest(Guid IngredientId);
 public record ToggleShoppingItemRequest(bool IsChecked);
 public record SyncWeeklyPlanRequest(Guid WeeklyPlanId);
+public record PantryCoverageResponse(Guid IngredientId, Guid MealId, bool Covers);
+public record SetPantryCoverageRequest(Guid IngredientId, Guid MealId, bool Covers);
 
 // ---- Chat ----
 

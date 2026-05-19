@@ -100,6 +100,54 @@ public class PantryService
         await _db.SaveChangesAsync(ct);
         return Result.Success();
     }
+
+    /// <summary>
+    /// Returns all coverage answers (covers/declined) per (IngredientId, MealId) for the current workspace.
+    /// Absence of a row means the question is still pending for that pair.
+    /// </summary>
+    public async Task<List<PantryCoverageResponse>> GetCoverageAsync(CancellationToken ct)
+    {
+        var wsId = _ws.RequireCurrent();
+        return await _db.PantryItemMealCoverages.AsNoTracking()
+            .Where(c => c.PantryItem!.WorkspaceId == wsId)
+            .Select(c => new PantryCoverageResponse(c.PantryItem!.IngredientId, c.MealId, c.Covers))
+            .ToListAsync(ct);
+    }
+
+    /// <summary>
+    /// Upserts the coverage answer for a (pantry ingredient, meal) pair in the current workspace.
+    /// Requires that the ingredient already exists in pantry.
+    /// </summary>
+    public async Task<Result<PantryCoverageResponse>> SetCoverageAsync(Guid ingredientId, Guid mealId, bool covers, CancellationToken ct)
+    {
+        var wsId = _ws.RequireCurrent();
+        var pantry = await _db.PantryItems
+            .FirstOrDefaultAsync(p => p.WorkspaceId == wsId && p.IngredientId == ingredientId, ct);
+        if (pantry is null) return Error.NotFound(ErrorCodes.PantryItemNotFound, "Ingredient not in pantry.");
+
+        var existing = await _db.PantryItemMealCoverages
+            .FirstOrDefaultAsync(c => c.PantryItemId == pantry.Id && c.MealId == mealId, ct);
+
+        if (existing is null)
+        {
+            existing = new PantryItemMealCoverage
+            {
+                Id = Guid.NewGuid(),
+                PantryItemId = pantry.Id,
+                MealId = mealId,
+                Covers = covers,
+                AnsweredAt = DateTime.UtcNow
+            };
+            _db.PantryItemMealCoverages.Add(existing);
+        }
+        else
+        {
+            existing.Covers = covers;
+            existing.AnsweredAt = DateTime.UtcNow;
+        }
+        await _db.SaveChangesAsync(ct);
+        return new PantryCoverageResponse(ingredientId, mealId, covers);
+    }
 }
 
 public class ShoppingListService
@@ -223,10 +271,21 @@ public class ShoppingListService
         var weekLabel = $"v{plan.WeekNumber}";
 
         // Load existing pantry ingredient IDs and all shopping items (tracked for mutations)
-        var pantryIngIds = await _db.PantryItems
+        var pantryItems = await _db.PantryItems
             .Where(p => p.WorkspaceId == wsId)
-            .Select(p => p.IngredientId)
-            .ToHashSetAsync(ct);
+            .Select(p => new { p.Id, p.IngredientId })
+            .ToListAsync(ct);
+        var pantryIngIds = pantryItems.Select(p => p.IngredientId).ToHashSet();
+        var pantryItemIds = pantryItems.Select(p => p.Id).ToList();
+
+        // Coverage: per IngredientId, set of MealIds the pantry stock has been confirmed to cover.
+        var coverageRows = await _db.PantryItemMealCoverages
+            .Where(c => pantryItemIds.Contains(c.PantryItemId) && c.Covers)
+            .Join(_db.PantryItems, c => c.PantryItemId, p => p.Id, (c, p) => new { p.IngredientId, c.MealId })
+            .ToListAsync(ct);
+        var coveredByIngredient = coverageRows
+            .GroupBy(x => x.IngredientId)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.MealId).ToHashSet());
 
         var existingShoppingByIngId = await _db.ShoppingItems
             .Where(s => s.WorkspaceId == wsId)
@@ -249,20 +308,20 @@ public class ShoppingListService
         var ingredientsToSync = plan.Days
             .Where(d => d.Meal is not null
                 && (fromDayInclusive is null || DayIndex(d.DayOfWeek) >= DayIndex(fromDayInclusive.Value)))
-            .SelectMany(d => d.Meal!.Ingredients.Select(i => new { Name = i.Name.Trim(), MealName = d.Meal!.Name, Day = DayIndex(d.DayOfWeek) }))
+            .SelectMany(d => d.Meal!.Ingredients.Select(i => new { Name = i.Name.Trim(), MealId = d.Meal!.Id, MealName = d.Meal!.Name, Day = DayIndex(d.DayOfWeek) }))
             .GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
             .Select(g => new
             {
                 Name = g.Key,
-                MealEntries = g.GroupBy(x => x.MealName, StringComparer.OrdinalIgnoreCase)
-                               .Select(mg => (MealName: mg.Key, Day: mg.Min(x => x.Day)))
+                MealEntries = g.GroupBy(x => x.MealId)
+                               .Select(mg => (MealId: mg.Key, MealName: mg.First().MealName, Day: mg.Min(x => x.Day)))
                                .ToList()
             })
             .ToList();
 
         // Phase 1: Resolve IngredientMaster IDs and build the "needed" set
         var neededIngredientIds = new HashSet<Guid>();
-        var ingredientsWithMaster = new List<(List<(string MealName, int Day)> MealEntries, IngredientMaster Master)>();
+        var ingredientsWithMaster = new List<(List<(Guid MealId, string MealName, int Day)> MealEntries, IngredientMaster Master)>();
 
         foreach (var item in ingredientsToSync)
         {
@@ -282,6 +341,18 @@ public class ShoppingListService
             {
                 neededIngredientIds.Add(master.Id);
                 ingredientsWithMaster.Add((item.MealEntries, master));
+            }
+            else
+            {
+                // Ingredient is in pantry. Filter out meals confirmed covered; if any remain
+                // (declined or not-yet-answered), the ingredient still needs buying for those meals.
+                var coveredMeals = coveredByIngredient.TryGetValue(master.Id, out var cov) ? cov : new HashSet<Guid>();
+                var uncovered = item.MealEntries.Where(e => !coveredMeals.Contains(e.MealId)).ToList();
+                if (uncovered.Count > 0)
+                {
+                    neededIngredientIds.Add(master.Id);
+                    ingredientsWithMaster.Add((uncovered, master));
+                }
             }
         }
 
@@ -312,7 +383,9 @@ public class ShoppingListService
         // Day index is embedded in the note suffix ("MealName v22d0") for client-side day grouping.
         foreach (var (mealEntries, master) in ingredientsWithMaster)
         {
-            var newNoteEntries = mealEntries.Select(e => $"{e.MealName} {weekLabel}d{e.Day}");
+            // Note format: "MealName v22d4|<MealId:N>" — MealId embedded so the client can
+            // persist coverage decisions back to PantryItemMealCoverage from popup answers.
+            var newNoteEntries = mealEntries.Select(e => $"{e.MealName} {weekLabel}d{e.Day}|{e.MealId:N}");
 
             if (existingShoppingByIngId.TryGetValue(master.Id, out var existingShop))
             {

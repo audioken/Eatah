@@ -33,6 +33,23 @@ public class PantryItemConfiguration : IEntityTypeConfiguration<PantryItem>
     }
 }
 
+public class PantryItemMealCoverageConfiguration : IEntityTypeConfiguration<PantryItemMealCoverage>
+{
+    public void Configure(EntityTypeBuilder<PantryItemMealCoverage> b)
+    {
+        b.ToTable("pantry_item_meal_coverages");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).HasColumnName("id");
+        b.Property(x => x.PantryItemId).HasColumnName("pantry_item_id");
+        b.Property(x => x.MealId).HasColumnName("meal_id");
+        b.Property(x => x.Covers).HasColumnName("covers");
+        b.Property(x => x.AnsweredAt).HasColumnName("answered_at").HasDefaultValueSql("NOW()");
+        b.HasOne(x => x.PantryItem).WithMany().HasForeignKey(x => x.PantryItemId).OnDelete(DeleteBehavior.Cascade);
+        b.HasOne<Meal>().WithMany().HasForeignKey(x => x.MealId).OnDelete(DeleteBehavior.Cascade);
+        b.HasIndex(x => new { x.PantryItemId, x.MealId }).IsUnique();
+    }
+}
+
 public class ShoppingItemConfiguration : IEntityTypeConfiguration<ShoppingItem>
 {
     public void Configure(EntityTypeBuilder<ShoppingItem> b)

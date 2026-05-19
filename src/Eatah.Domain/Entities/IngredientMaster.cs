@@ -24,6 +24,21 @@ public class PantryItem
     public DateTime AddedAt { get; set; } = DateTime.UtcNow;
 }
 
+/// <summary>
+/// Per-meal answer to "does this pantry item cover this meal?".
+/// Absence of a row for a (PantryItem, Meal) pair means the question is still pending
+/// (rendered as a "!" badge on the meal's checklist tile).
+/// </summary>
+public class PantryItemMealCoverage
+{
+    public Guid Id { get; set; }
+    public Guid PantryItemId { get; set; }
+    public PantryItem? PantryItem { get; set; }
+    public Guid MealId { get; set; }
+    public bool Covers { get; set; }
+    public DateTime AnsweredAt { get; set; } = DateTime.UtcNow;
+}
+
 /// <summary>An item to buy (workspace shopping list).</summary>
 public class ShoppingItem
 {
