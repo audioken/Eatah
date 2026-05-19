@@ -25,14 +25,41 @@ public class DietProfileRepository : IDietProfileRepository
         _workspace = workspace;
     }
 
-    /// <summary>System profiles (WorkspaceId null) + profiles belonging to the current workspace.</summary>
+    /// <summary>
+    /// System profiles (WorkspaceId null) + profiles belonging to the current workspace
+    /// + profiles from all members' personal workspaces (so household members see each other's personal profiles).
+    /// </summary>
     public async Task<List<DietProfile>> GetAllAsync(CancellationToken cancellationToken)
     {
         var wsId = _workspace.CurrentWorkspaceId;
+
+        // Build the set of workspace IDs whose profiles should be visible.
+        // Always includes the current workspace; for any workspace type we also
+        // pull in the personal workspaces of every member so profiles are never
+        // silently hidden when switching between personal ↔ household views.
+        var visibleWorkspaceIds = new List<Guid>();
+        if (wsId.HasValue)
+        {
+            visibleWorkspaceIds.Add(wsId.Value);
+
+            var memberUserIds = await _context.WorkspaceMembers
+                .Where(m => m.WorkspaceId == wsId.Value)
+                .Select(m => m.UserId)
+                .ToListAsync(cancellationToken);
+
+            var personalIds = await _context.Workspaces
+                .Where(w => w.Type == WorkspaceType.Personal && w.Members.Any(m => memberUserIds.Contains(m.UserId)))
+                .Select(w => w.Id)
+                .ToListAsync(cancellationToken);
+
+            visibleWorkspaceIds.AddRange(personalIds);
+        }
+
         return await _context.DietProfiles
             .Include(p => p.Rules)
             .AsNoTracking()
-            .Where(p => p.WorkspaceId == null || p.WorkspaceId == wsId)
+            .Where(p => p.WorkspaceId == null ||
+                        (wsId.HasValue && visibleWorkspaceIds.Contains(p.WorkspaceId.Value)))
             .OrderBy(p => p.Name)
             .ToListAsync(cancellationToken);
     }

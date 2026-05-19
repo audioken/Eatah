@@ -2,6 +2,7 @@
 @inject ApiClient Api
 @inject ModalService Modals
 @inject ToastService Toasts
+@inject DietProfileState ProfileState
 
 <div class="eatah-diet-modal">
     <div class="eatah-diet-modal__header">
@@ -158,6 +159,7 @@
                 _description = string.Empty;
                 _expandedId = generated.Id;
                 await LoadAsync();
+                ProfileState.NotifyChanged();
                 Toasts.Show($"Kostprofil \"{generated.Name}\" skapad!");
             }
         }
