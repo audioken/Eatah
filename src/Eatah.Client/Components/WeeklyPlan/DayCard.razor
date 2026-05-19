@@ -48,7 +48,7 @@
 	</div>
 
 	@* Sliding card surface *@
-	<div class="relative h-full w-full rounded-[15px] border border-black/10 font-kanit overflow-hidden cursor-pointer touch-pan-y"
+	<div class="relative h-full w-full rounded-[15px] border border-black/10 font-kanit overflow-hidden @CursorClass touch-pan-y"
 		 style="transform: translateX(@OffsetCss); transition: @(_dragging ? "none" : "transform .25s ease"); background: @CardBackground; box-shadow: @CardShadow;"
 		 @onpointerdown="OnPointerDown" @onpointermove="OnPointerMove" @onpointerup="OnPointerUp"
 		 @onpointercancel="OnPointerUp" @onclick="HandleClick">
@@ -243,6 +243,8 @@
 	private bool IsPast => WeekOffset < 0
 		|| (WeekOffset == 0 && DayIndex(Day.DayOfWeek) < DayIndex(DateTime.Today.DayOfWeek));
 
+	private string CursorClass => IsPast ? "cursor-default" : "cursor-pointer";
+
 	private string CardBackground => IsToday
 		? "linear-gradient(90deg, #896124 0%, #D4A843 91.83%)"
 		: "linear-gradient(90deg, #839B7F 0%, #A8D1AA 91.83%)";
@@ -265,6 +267,7 @@
 
 	private void OnPointerDown(PointerEventArgs e)
 	{
+		if (IsPast) return;
 		_dragging = true;
 		_dragMoved = false;
 		_startX = e.ClientX;
@@ -312,6 +315,7 @@
 
 	private Task HandleClick()
 	{
+		if (IsPast) return Task.CompletedTask;
 		// Swallow click that resulted from a drag gesture.
 		if (_dragMoved)
 		{

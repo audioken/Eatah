@@ -148,18 +148,40 @@ public class WeeklyPlanService
             profile = await _profileRepository.GetByIdAsync(profileId, cancellationToken);
         }
 
+        // Split days into past (locked) and future (to randomize).
+        var today = DateTime.UtcNow.Date;
+        var weekMonday = ISOWeek.GetYearStart(plan.Year).AddDays(7 * (plan.WeekNumber - 1));
+
         var orderedDays = plan.Days.OrderBy(d => DayOrderIndex(d.DayOfWeek)).ToList();
-        var dayOrder = orderedDays.Select(d => d.DayOfWeek).ToList();
+        var pastDays = orderedDays.Where(d => weekMonday.AddDays(DayOrderIndex(d.DayOfWeek)) < today).ToList();
+        var futureDays = orderedDays.Where(d => weekMonday.AddDays(DayOrderIndex(d.DayOfWeek)) >= today).ToList();
 
-        var assignments = _generator.Generate(meals, dayOrder, profile);
+        if (futureDays.Count == 0)
+        {
+            // All days are locked – nothing to randomize.
+            return BuildResponseFromMealLookup(plan, meals);
+        }
 
-        for (var i = 0; i < orderedDays.Count; i++)
+        // Count meals already assigned to past days so the generator can respect
+        // the diet profile budget for the whole week.
+        var mealLookup = meals.ToDictionary(m => m.Id);
+        var preAssignedCounts = new Dictionary<MealCategory, int>();
+        foreach (var pastDay in pastDays)
+        {
+            if (pastDay.MealId is Guid pastMealId && mealLookup.TryGetValue(pastMealId, out var pastMeal))
+                preAssignedCounts[pastMeal.Category] = preAssignedCounts.GetValueOrDefault(pastMeal.Category, 0) + 1;
+        }
+
+        var futureDayOrder = futureDays.Select(d => d.DayOfWeek).ToList();
+        var assignments = _generator.Generate(meals, futureDayOrder, profile, preAssignedCounts);
+
+        for (var i = 0; i < futureDays.Count; i++)
         {
             var chosen = assignments[i];
             // Only update the FK. Setting `Meal = null` on a tracked entity triggers EF's
             // relationship fixup which would also revert `MealId` to null. The response is
             // built below from the detached `meals` lookup, so the stale navigation is unused.
-            orderedDays[i].MealId = chosen?.Id;
+            futureDays[i].MealId = chosen?.Id;
         }
 
         await _repository.SaveChangesAsync(cancellationToken);

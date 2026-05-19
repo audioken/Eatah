@@ -7,7 +7,8 @@ public interface IRandomMealGenerator
     IReadOnlyList<Meal?> Generate(
         IReadOnlyList<Meal> availableMeals,
         IReadOnlyList<DayOfWeek> days,
-        DietProfile? profile);
+        DietProfile? profile,
+        IReadOnlyDictionary<MealCategory, int>? preAssignedCounts = null);
 
     Meal? GenerateForDay(
         IReadOnlyList<Meal> availableMeals,
@@ -21,7 +22,8 @@ public class RandomMealGenerator : IRandomMealGenerator
     public IReadOnlyList<Meal?> Generate(
         IReadOnlyList<Meal> availableMeals,
         IReadOnlyList<DayOfWeek> days,
-        DietProfile? profile)
+        DietProfile? profile,
+        IReadOnlyDictionary<MealCategory, int>? preAssignedCounts = null)
     {
         ArgumentNullException.ThrowIfNull(availableMeals);
         ArgumentNullException.ThrowIfNull(days);
@@ -32,7 +34,7 @@ public class RandomMealGenerator : IRandomMealGenerator
         if (profile is null)
             return PickWithoutRepetition(availableMeals, days.Count, Random.Shared);
 
-        return GenerateWithConstraints(availableMeals, days.Count, profile.Rules);
+        return GenerateWithConstraints(availableMeals, days.Count, profile.Rules, preAssignedCounts ?? new Dictionary<MealCategory, int>());
     }
 
     public Meal? GenerateForDay(
@@ -110,7 +112,8 @@ public class RandomMealGenerator : IRandomMealGenerator
     private static Meal?[] GenerateWithConstraints(
         IReadOnlyList<Meal> availableMeals,
         int slotCount,
-        IReadOnlyList<DietRule> rules)
+        IReadOnlyList<DietRule> rules,
+        IReadOnlyDictionary<MealCategory, int> preAssignedCounts)
     {
         var assigned = new List<Meal?>();
         var usedIds = new HashSet<Guid>();
@@ -120,11 +123,19 @@ public class RandomMealGenerator : IRandomMealGenerator
             if (assigned.Count >= slotCount) break;
             if (rule.MaxPerWeek == 0) continue; // explicitly excluded
 
-            var target = rule.MinPerWeek == rule.MaxPerWeek
+            var preCount = preAssignedCounts.GetValueOrDefault(rule.Category, 0);
+
+            // How many more of this category the max still allows.
+            var remainingMax = rule.MaxPerWeek - preCount;
+            if (remainingMax <= 0) continue;
+
+            var totalTarget = rule.MinPerWeek == rule.MaxPerWeek
                 ? rule.MinPerWeek
                 : Random.Shared.Next(rule.MinPerWeek, rule.MaxPerWeek + 1);
 
-            if (target <= 0) continue;
+            // Subtract already-assigned (past days) from the total target.
+            var additionalTarget = Math.Max(0, Math.Min(totalTarget - preCount, remainingMax));
+            if (additionalTarget <= 0) continue;
 
             var categoryMeals = availableMeals
                 .Where(m => m.Category == rule.Category && !usedIds.Contains(m.Id))
@@ -133,7 +144,7 @@ public class RandomMealGenerator : IRandomMealGenerator
 
             // Assign as many as available, up to the target and remaining slots.
             // If fewer meals exist than required, we leave those slots unfilled (null at the end).
-            var toAssign = Math.Min(target, Math.Min(categoryMeals.Count, slotCount - assigned.Count));
+            var toAssign = Math.Min(additionalTarget, Math.Min(categoryMeals.Count, slotCount - assigned.Count));
             for (var i = 0; i < toAssign; i++)
             {
                 assigned.Add(categoryMeals[i]);
