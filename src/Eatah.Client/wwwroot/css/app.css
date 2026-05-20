@@ -276,17 +276,31 @@ h1:focus { outline: none; }
    Diet profile selector card
    ============================================================ */
 .eatah-diet-card {
+    container-type: inline-size;
+    container-name: diet-card;
     width: 100%;
     max-width: 420px;
     height: auto;
-    min-height: 90px;
     margin: 0 auto;
     padding: 12px 16px;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    gap: 14px;
-    align-items: center;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
     border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.eatah-diet-card__header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.eatah-diet-card__bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
 }
 
 .eatah-diet-card__left {
@@ -300,6 +314,7 @@ h1:focus { outline: none; }
     display: flex;
     align-items: center;
     gap: 8px;
+    flex: 1;
     min-width: 0;
 }
 
@@ -486,33 +501,41 @@ h1:focus { outline: none; }
     filter: grayscale(1);
 }
 
-.eatah-diet-card__actions {
-    display: flex;
+.eatah-diet-card__randomize {
+    display: inline-flex;
     align-items: center;
-}
-
-.eatah-diet-card__dice {
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
+    gap: 7px;
+    padding: 9px 18px;
     background: #4ED4F2;
     color: #FFFFFF;
     border: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    border-radius: 20px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
     cursor: pointer;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
     transition: filter 0.15s ease;
+    flex-shrink: 0;
 }
 
-.eatah-diet-card__dice:hover:not(:disabled) {
+.eatah-diet-card__randomize:hover:not(:disabled) {
     filter: brightness(1.1);
 }
 
-.eatah-diet-card__dice:disabled {
+.eatah-diet-card__randomize:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+}
+
+@container diet-card (max-width: 340px) {
+    .eatah-diet-card__randomize-label {
+        display: none;
+    }
+    .eatah-diet-card__randomize {
+        padding: 9px 11px;
+    }
 }
 
 /* ============================================================

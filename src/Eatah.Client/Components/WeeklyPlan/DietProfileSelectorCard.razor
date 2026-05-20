@@ -7,7 +7,8 @@
 @inject DietProfileState ProfileState
 
 <div class="eatah-card eatah-diet-card">
-    <div class="eatah-diet-card__left">
+    <!-- Top row: title + score pill + dropdown -->
+    <div class="eatah-diet-card__header">
         <div class="eatah-diet-card__title-row">
             <span class="eatah-diet-card__title">Kostprofil</span>
             @if (HasProfile && _evaluation is not null)
@@ -31,7 +32,7 @@
                 {
                     <button type="button" class="eatah-diet-card__select-btn" @onclick="ToggleDropdown"
                             aria-haspopup="listbox" aria-expanded="@_dropdownOpen">
-                        <span class="eatah-diet-card__select-label">@(SelectedProfileName ?? "VÃ¤lj profil")</span>
+                        <span class="eatah-diet-card__select-label">@(SelectedProfileName ?? "Välj profil")</span>
                         <span class="eatah-diet-card__chevron">
                             <Icon Name="chevron-down" Size="12" />
                         </span>
@@ -73,42 +74,44 @@
         }
     </div>
 
-    <div class="eatah-diet-card__icons">
-        @foreach (var category in CategoriesInOrder)
-        {
-            var rule = FindRule(category);
-            var actual = FindActual(category);
-            var isExcluded = rule is { MinPerWeek: 0, MaxPerWeek: 0 };
-            <div class="eatah-diet-card__icon-cell @(isExcluded ? "eatah-diet-card__icon-cell--excluded" : "")">
-                <span class="eatah-category-icon @CategoryClass(category)">
-                    <Icon Name="@CategoryIconName(category)" />
-                </span>
-                @if (rule is not null)
-                {
-                    if (isExcluded)
+    <!-- Bottom row: category icons + randomize button -->
+    <div class="eatah-diet-card__bottom">
+        <div class="eatah-diet-card__icons">
+            @foreach (var category in CategoriesInOrder)
+            {
+                var rule = FindRule(category);
+                var actual = FindActual(category);
+                var isExcluded = rule is { MinPerWeek: 0, MaxPerWeek: 0 };
+                <div class="eatah-diet-card__icon-cell @(isExcluded ? "eatah-diet-card__icon-cell--excluded" : "")">
+                    <span class="eatah-category-icon @CategoryClass(category)">
+                        <Icon Name="@CategoryIconName(category)" />
+                    </span>
+                    @if (rule is not null)
                     {
-                        <span class="eatah-pill eatah-pill--muted eatah-diet-card__rule-pill">0</span>
+                        if (isExcluded)
+                        {
+                            <span class="eatah-pill eatah-pill--muted eatah-diet-card__rule-pill">0</span>
+                        }
+                        else
+                        {
+                            var ok = actual >= rule.MinPerWeek && actual <= rule.MaxPerWeek;
+                            <span class="eatah-pill @(ok ? "eatah-pill--ok" : "eatah-pill--bad") eatah-diet-card__rule-pill">
+                                @(rule.MinPerWeek == rule.MaxPerWeek ? $"{rule.MinPerWeek}" : $"{rule.MinPerWeek}-{rule.MaxPerWeek}")
+                            </span>
+                        }
                     }
                     else
                     {
-                        var ok = actual >= rule.MinPerWeek && actual <= rule.MaxPerWeek;
-                        <span class="eatah-pill @(ok ? "eatah-pill--ok" : "eatah-pill--bad") eatah-diet-card__rule-pill">
-                            @(rule.MinPerWeek == rule.MaxPerWeek ? $"{rule.MinPerWeek}" : $"{rule.MinPerWeek}-{rule.MaxPerWeek}")
-                        </span>
+                        <span class="eatah-pill eatah-pill--muted eatah-diet-card__rule-pill">–</span>
                     }
-                }
-                else
-                {
-                    <span class="eatah-pill eatah-pill--muted eatah-diet-card__rule-pill">â€“</span>
-                }
-            </div>
-        }
-    </div>
+                </div>
+            }
+        </div>
 
-    <div class="eatah-diet-card__actions">
-        <button type="button" class="eatah-diet-card__dice" disabled="@_isRandomizing" title="Slumpa veckan"
+        <button type="button" class="eatah-diet-card__randomize" disabled="@_isRandomizing"
                 @onclick="HandleRandomize">
-            <Icon Name="dice" Size="18" />
+            <Icon Name="dice" Size="20" />
+            <span class="eatah-diet-card__randomize-label">Slumpa maträtter</span>
         </button>
     </div>
 </div>
