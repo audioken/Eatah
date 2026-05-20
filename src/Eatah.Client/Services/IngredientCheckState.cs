@@ -27,7 +27,7 @@ public class IngredientCheckState
     // pointing at the same meal stay distinct.
     private Dictionary<Guid, ActiveSession> _activeSessions = new();
 
-    public record ActiveSession(Guid DayPlanId, Guid MealId, string MealName, int DayIndex);
+    public record ActiveSession(Guid DayPlanId, Guid MealId, string MealName, int DayIndex, int? WeekNumber = null);
 
     public event Action? OnChange;
 

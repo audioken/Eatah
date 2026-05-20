@@ -184,7 +184,7 @@
 					var minDay = DayIdx(today.DayOfWeek);
 					_cachedSessions[0] = plan.Days
 						.Where(d => d.Meal is not null && DayIdx(d.DayOfWeek) >= minDay)
-						.Select(d => new IngredientCheckState.ActiveSession(d.Id, d.Meal!.Id, d.Meal!.Name, DayIdx(d.DayOfWeek)))
+						.Select(d => new IngredientCheckState.ActiveSession(d.Id, d.Meal!.Id, d.Meal!.Name, DayIdx(d.DayOfWeek), ISOWeek.GetWeekOfYear(today)))
 						.ToList();
 					updated = true;
 				}
@@ -201,7 +201,7 @@
 				{
 					_cachedSessions[1] = plan.Days
 						.Where(d => d.Meal is not null)
-						.Select(d => new IngredientCheckState.ActiveSession(d.Id, d.Meal!.Id, d.Meal!.Name, DayIdx(d.DayOfWeek)))
+						.Select(d => new IngredientCheckState.ActiveSession(d.Id, d.Meal!.Id, d.Meal!.Name, DayIdx(d.DayOfWeek), ISOWeek.GetWeekOfYear(next)))
 						.ToList();
 					updated = true;
 				}
@@ -220,9 +220,10 @@
 		// ingredients aren't on the shopping list and shouldn't drive coverage popups/badges.
 		// Other weeks (prev/next) include all days.
 		var minDayIdx = _weekOffset == 0 ? DayIdx(DateTime.Today.DayOfWeek) : 0;
+		var weekNum = ISOWeek.GetWeekOfYear(DateTime.Today.AddDays(_weekOffset * 7));
 		_cachedSessions[_weekOffset] = _plan.Days
 			.Where(d => d.Meal is not null && DayIdx(d.DayOfWeek) >= minDayIdx)
-			.Select(d => new IngredientCheckState.ActiveSession(d.Id, d.Meal!.Id, d.Meal!.Name, DayIdx(d.DayOfWeek)))
+			.Select(d => new IngredientCheckState.ActiveSession(d.Id, d.Meal!.Id, d.Meal!.Name, DayIdx(d.DayOfWeek), weekNum))
 			.ToList();
 		// Merge current (0) and next (1) week sessions — matches shopping-sync scope so badge
 		// counts in the checklist are consistent with what the shopping list shows.

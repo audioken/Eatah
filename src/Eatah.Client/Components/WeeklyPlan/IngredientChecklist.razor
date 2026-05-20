@@ -168,31 +168,49 @@
                 @foreach (var cov in _pendingCoverage)
                 {
                     <div>
-                        <div class="text-white font-semibold text-[14px] mb-1.5 px-1">@cov.IngredientName</div>
-                        @foreach (var session in cov.AllSessions)
+                        <div class="text-white font-semibold text-[14px] mb-2 px-1">@cov.IngredientName</div>
+                        @foreach (var weekGrp in cov.AllSessions.GroupBy(s => s.WeekNumber).OrderBy(g => g.Key ?? 9999))
                         {
-                            var isCovered = cov.CoveredSessionIds.Contains(session.DayPlanId);
-                            var rowClass = isCovered ? "bg-white/35 border-white/30" : "bg-white/15 border-white/10";
-                            <label class="flex items-center gap-2.5 px-3 py-2 rounded-[10px] border cursor-pointer mb-1 @rowClass">
-                                <input type="checkbox" class="w-4 h-4 accent-white cursor-pointer flex-shrink-0"
-                                       checked="@isCovered" @onchange="@(() => ToggleCoverage(cov, session.DayPlanId))" />
-                                <span class="text-dayCardText text-[13px] font-medium truncate">@session.DisplayLabel</span>
-                            </label>
+                            <div class="bg-white/[0.14] text-white font-extrabold text-[13px] uppercase tracking-[0.03em] px-[10px] py-[6px] rounded-[10px] mb-1.5">
+                                @GetCoverageWeekLabel(weekGrp.Key)
+                            </div>
+                            @foreach (var session in weekGrp)
+                            {
+                                var isCovered = cov.CoveredSessionIds.Contains(session.DayPlanId);
+                                var isOrigin = session.DayPlanId == cov.OriginDayPlanId;
+                                var rowClass = isOrigin && isCovered
+                                    ? "bg-white/45 border-white/60 ring-1 ring-white/40"
+                                    : isCovered ? "bg-white/35 border-white/30" : "bg-white/15 border-white/10";
+                                <label class="flex items-center gap-2.5 px-3 py-2 rounded-[10px] border cursor-pointer mb-1 @rowClass">
+                                    <input type="checkbox" class="w-4 h-4 accent-white cursor-pointer flex-shrink-0"
+                                           checked="@isCovered" @onchange="@(() => ToggleCoverage(cov, session.DayPlanId))" />
+                                    <span class="text-dayCardText text-[13px] font-medium flex-1 min-w-0 truncate">@session.MealName</span>
+                                    <span class="eatah-shopping-group__day">@session.DayName</span>
+                                </label>
+                            }
                         }
                     </div>
                 }
             </div>
 
+            @{
+                var onlyOriginCovered = _pendingCoverage.All(cov =>
+                    cov.OriginDayPlanId.HasValue &&
+                    cov.CoveredSessionIds.Count == 1 &&
+                    cov.CoveredSessionIds.Contains(cov.OriginDayPlanId.Value));
+                var confirmBtnCls = onlyOriginCovered
+                    ? "flex-1 py-2.5 rounded-[12px] bg-white/25 hover:bg-white/40 text-white font-semibold text-[13px] uppercase tracking-wide"
+                    : "flex-1 py-2.5 rounded-[12px] bg-white/15 hover:bg-white/25 text-white font-medium text-[13px]";
+                var confirmBtnLabel = onlyOriginCovered ? "RÄCKER TILL DENNA" : "Spara urval";
+            }
             <div class="px-4 pb-5 pt-2 flex gap-2">
                 <button type="button"
                         class="flex-1 py-2.5 rounded-[12px] bg-white/30 hover:bg-white/45 text-white font-semibold text-[13px] uppercase tracking-wide"
                         @onclick="CoverAllAndConfirmAsync">
                     Räcker till alla
                 </button>
-                <button type="button"
-                        class="flex-1 py-2.5 rounded-[12px] bg-white/15 hover:bg-white/25 text-white font-medium text-[13px]"
-                        @onclick="ConfirmCoverageAsync">
-                    Spara urval
+                <button type="button" class="@confirmBtnCls" @onclick="ConfirmCoverageAsync">
+                    @confirmBtnLabel
                 </button>
             </div>
         </div>
@@ -258,9 +276,12 @@
 
     // A single scheduled cooking session (a DayPlan) — distinct from a Meal so that the
     // same recipe scheduled on multiple days is asked independently.
-    private record SessionRef(Guid DayPlanId, string MealName, int DayIndex)
+    private record SessionRef(Guid DayPlanId, string MealName, int DayIndex, int? WeekNumber = null)
     {
-        public string DisplayLabel => $"{MealName} ({DayLabel(DayIndex)})";
+        public string DayName => DayLabel(DayIndex);
+        public string DisplayLabel => WeekNumber.HasValue
+            ? $"{MealName} ({DayLabel(DayIndex)}, v{WeekNumber})"
+            : $"{MealName} ({DayLabel(DayIndex)})";
         private static string DayLabel(int d) => d switch
         {
             0 => "Mån", 1 => "Tis", 2 => "Ons", 3 => "Tor",
@@ -269,9 +290,11 @@
     }
 
     private record ChecklistPendingCoverage(ShoppingItemResponse? ShoppingItem, string IngredientName, Guid IngredientId,
-        List<SessionRef> AllSessions)
+        List<SessionRef> AllSessions, Guid? OriginDayPlanId = null)
     {
-        public HashSet<Guid> CoveredSessionIds { get; } = new(AllSessions.Select(s => s.DayPlanId));
+        public HashSet<Guid> CoveredSessionIds { get; } = OriginDayPlanId is { } oid
+            ? new HashSet<Guid> { oid }
+            : AllSessions.Count > 0 ? new HashSet<Guid> { AllSessions[0].DayPlanId } : new HashSet<Guid>();
     }
 
     private bool _coveragePopupOpen;
@@ -451,7 +474,8 @@
             // Sessions still needing confirmation. Covered ones are filtered out so the
             // popup never asks about a session the user has already answered.
             var uncoveredSessions = CheckState.GetUncoveredActiveSessionsForIngredient(name)
-                .Select(s => new SessionRef(s.DayPlanId, s.MealName, s.DayIndex))
+                .Select(s => new SessionRef(s.DayPlanId, s.MealName, s.DayIndex, s.WeekNumber))
+                .OrderBy(s => s.WeekNumber ?? 9999).ThenBy(s => s.DayIndex)
                 .ToList();
 
             // Fallback when the planner isn't loaded — derive sessions from the shopping
@@ -461,7 +485,7 @@
                 uncoveredSessions = ExtractAllSessionRefs(shoppingItem.Notes);
 
             if (uncoveredSessions.Count > 1)
-                sharedPending.Add(new ChecklistPendingCoverage(shoppingItem, name, ingId, uncoveredSessions));
+                sharedPending.Add(new ChecklistPendingCoverage(shoppingItem, name, ingId, uncoveredSessions, DayPlanId));
             else
                 normalItems.Add((name, ingId));
         }
@@ -598,8 +622,17 @@
         return notes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Length;
     }
 
-    /// <summary>Parses a single note part into (MealName, DayPlanId, DayIndex).</summary>
-    private static (string MealName, Guid? DayPlanId, int? Day) ParseNotePart(string part)
+    private static string GetCoverageWeekLabel(int? weekNum)
+    {
+        if (weekNum is null) return "Vecka ?";
+        var current = System.Globalization.ISOWeek.GetWeekOfYear(DateTime.Today);
+        return weekNum == current
+            ? $"V. {weekNum} (Denna vecka)"
+            : $"V. {weekNum}";
+    }
+
+    /// <summary>Parses a single note part into (MealName, DayPlanId, DayIndex, WeekNumber).</summary>
+    private static (string MealName, Guid? DayPlanId, int? Day, int? Week) ParseNotePart(string part)
     {
         Guid? dpId = null;
         var pipeIdx = part.LastIndexOf('|');
@@ -613,12 +646,12 @@
         {
             var suffix = part[(vIdx + 2)..].Trim();
             var dIdx = suffix.IndexOf('d');
-            if (dIdx > 0 && int.TryParse(suffix[..dIdx], out _) && int.TryParse(suffix[(dIdx + 1)..], out var day))
-                return (part[..vIdx].Trim(), dpId, day);
-            if (int.TryParse(suffix, out _))
-                return (part[..vIdx].Trim(), dpId, null);
+            if (dIdx > 0 && int.TryParse(suffix[..dIdx], out var week) && int.TryParse(suffix[(dIdx + 1)..], out var day))
+                return (part[..vIdx].Trim(), dpId, day, week);
+            if (int.TryParse(suffix, out var weekOnly))
+                return (part[..vIdx].Trim(), dpId, null, weekOnly);
         }
-        return (part.Trim(), dpId, null);
+        return (part.Trim(), dpId, null, null);
     }
 
     private static List<SessionRef> ExtractAllSessionRefs(string? notes)
@@ -631,8 +664,10 @@
             .Select(g =>
             {
                 var first = g.First();
-                return new SessionRef(g.Key, first.MealName, first.Day ?? 0);
+                return new SessionRef(g.Key, first.MealName, first.Day ?? 0, first.Week);
             })
+            .OrderBy(s => s.WeekNumber ?? 9999)
+            .ThenBy(s => s.DayIndex)
             .ToList();
     }
 
@@ -646,7 +681,7 @@
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Where(part =>
             {
-                var (_, dpId, _) = ParseNotePart(part);
+                var (_, dpId, _, _) = ParseNotePart(part);
                 // Keep parts that either have no DayPlanId (legacy/manual) or aren't covered.
                 return !dpId.HasValue || !coveredDayPlans.Contains(dpId.Value);
             })
