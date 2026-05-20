@@ -48,7 +48,7 @@
 	</div>
 
 	@* Sliding card surface *@
-	<div class="relative h-full w-full rounded-[15px] border border-black/10 font-kanit overflow-hidden @CursorClass touch-pan-y"
+	<div class="relative h-full w-full rounded-[15px] font-kanit overflow-hidden @CursorClass touch-pan-y"
 		 style="transform: translateX(@OffsetCss); transition: @(_dragging ? "none" : "transform .25s ease"); background: @CardBackground; box-shadow: @CardShadow;"
 		 @onpointerdown="OnPointerDown" @onpointermove="OnPointerMove" @onpointerup="OnPointerUp"
 		 @onpointercancel="OnPointerUp" @onclick="HandleClick">
