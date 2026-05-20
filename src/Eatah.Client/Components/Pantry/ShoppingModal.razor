@@ -1,7 +1,7 @@
-@page "/shopping"
+@namespace Eatah.Client.Components.Pantry
 @inject ApiClient Api
+@inject ModalService Modals
 @inject ToastService Toasts
-@inject HeaderState Header
 @inject PantryStateService PantryState
 @inject ShoppingStateService ShoppingState
 @inject IngredientCheckState CheckState
@@ -10,223 +10,235 @@
 @inject WorkspaceState WorkspaceState
 @implements IDisposable
 
-<div class="eatah-shopping-page">
-    @if (_error is not null)
-    {
-        <div class="mb-3 p-3 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm">@_error</div>
-    }
+<div class="eatah-shopping-modal">
 
-    @if (_isLoading)
-    {
-        <div class="p-8 text-center text-white/70">Laddar köplista…</div>
-    }
-    else
-    {
-        <!-- Two-column layout -->
-        <div class="eatah-shopping-columns">
+    <div class="eatah-shopping-modal__header">
+        <span class="eatah-shopping-modal__title">Köplista</span>
+        <button type="button" class="eatah-shopping-modal__close" @onclick="Close" aria-label="Stäng">
+            <Icon Name="close" Size="20" />
+        </button>
+    </div>
 
-            <!-- LEFT: Skafferi -->
-            <div class="eatah-shopping-col">
-                <div class="eatah-shopping-col__header">
-                    <Icon Name="house" Size="16" CssClass="eatah-shopping-col__header-icon" />
-                    <span>Skafferi</span>
-                    <span class="eatah-shopping-col__count">@PantryState.Items.Count</span>
-                </div>
+    <div class="eatah-shopping-modal__body">
 
-                <div class="eatah-shopping-col__add">
-                    <IngredientSearch Placeholder="Lägg till i skafferi…" OnSelected="AddToPantryAsync" />
-                </div>
+        @if (_error is not null)
+        {
+            <div class="mb-3 p-3 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm">@_error</div>
+        }
 
-                <div class="eatah-shopping-col__list">
-                    @if (!PantryState.Items.Any())
-                    {
-                        <p class="eatah-shopping-col__empty">Skafferiet är tomt.</p>
-                    }
-                    else
-                    {
-                        @foreach (var item in PantryState.Items)
-                        {
-                            var (pCovered, pTotal) = CheckState.GetCoverageFraction(item.Name);
-                            var pantryCount = pTotal > 0 ? pTotal : CheckState.GetSharedSessionCount(item.Name);
-                            <div class="eatah-shopping-item eatah-shopping-item--pantry">
-                                <div class="eatah-shopping-item__body">
-                                    <div class="eatah-shopping-item__name-row">
-                                        <span class="eatah-shopping-item__name">@item.Name</span>
-                                        @if (pTotal > 1 && pCovered < pTotal)
-                                        {
-                                            <span class="shrink-0 text-[#F2A20C] text-[11px] font-semibold">@pCovered/@pTotal</span>
-                                        }
-                                        else if (pTotal > 1)
-                                        {
-                                            <span class="eatah-shopping-item__count-badge">@pTotal/@pTotal</span>
-                                        }
-                                        else if (pantryCount > 1)
-                                        {
-                                            <span class="eatah-shopping-item__count-badge">(@pantryCount)</span>
-                                        }
-                                    </div>
-                                    <span class="eatah-shopping-item__meta">Tillagt @FormatDate(item.AddedAt)</span>
-                                </div>
-                                <button type="button" class="eatah-shopping-item__remove" title="Ta bort från skafferiet"
-                                        @onclick="() => RemoveFromPantryAsync(item)">
-                                    <Icon Name="close" Size="12" />
-                                </button>
-                            </div>
-                        }
-                    }
-                </div>
-            </div>
+        @if (_isLoading)
+        {
+            <div class="p-8 text-center text-white/70">Laddar köplista…</div>
+        }
+        else
+        {
+            <!-- Two-column layout -->
+            <div class="eatah-shopping-columns">
 
-            <!-- RIGHT: Köplista -->
-            <div class="eatah-shopping-col">
-                <div class="eatah-shopping-col__header">
-                    <Icon Name="basket" Size="16" CssClass="eatah-shopping-col__header-icon" />
-                    <span>Köplista</span>
-                    <span class="eatah-shopping-col__count">@ShoppingState.Items.Count(s => !s.IsChecked)</span>
-                </div>
-
-                <div class="eatah-shopping-col__add">
-                    <IngredientSearch Placeholder="Lägg till på köplistan…" OnSelected="AddToShoppingAsync" />
-                </div>
-                @if (_selectedShoppingItems.Count > 0)
-                {
-                    <div class="eatah-shopping-actions">
-                        <button type="button" class="eatah-shopping-actions__btn eatah-shopping-actions__btn--primary"
-                                @onclick="MoveSelectedToPantryAsync">
-                            <Icon Name="arrow-left" Size="13" />
-                            <span>Flytta till skafferi</span>
-                        </button>
-                        <button type="button" class="eatah-shopping-actions__btn eatah-shopping-actions__btn--chat"
-                                @onclick="() => OpenChatDropdown('i')" title="Jag köper dessa">
-                            <Icon Name="chat" Size="13" />
-                            <span>Jag köper</span>
-                        </button>
-                        <button type="button" class="eatah-shopping-actions__btn eatah-shopping-actions__btn--chat"
-                                @onclick="() => OpenChatDropdown('k')" title="Be någon köpa dessa">
-                            <Icon Name="chat" Size="13" />
-                            <span>Kan du köpa?</span>
-                        </button>
+                <!-- LEFT: Skafferi -->
+                <div class="eatah-shopping-col">
+                    <div class="eatah-shopping-col__header">
+                        <Icon Name="house" Size="16" CssClass="eatah-shopping-col__header-icon" />
+                        <span>Skafferi</span>
+                        <span class="eatah-shopping-col__count">@PantryState.Items.Count</span>
                     </div>
-                }
 
-                <div class="eatah-shopping-col__list">
-                    @if (ShoppingState.Items.Count == 0)
-                    {
-                        <p class="eatah-shopping-col__empty">Köplistan är tom.</p>
-                    }
-                    else
-                    {
-                        @* Unchecked items grouped by week (Denna veckan / Nästa vecka) then by meal *@
-                        @foreach (var weekGroup in WeekGroups)
+                    <div class="eatah-shopping-col__add">
+                        <IngredientSearch Placeholder="Lägg till i skafferi…" OnSelected="AddToPantryAsync" />
+                    </div>
+
+                    <div class="eatah-shopping-col__list">
+                        @if (!PantryState.Items.Any())
                         {
-                            var weekKey = weekGroup.WeekKey;
-                            var weekExpanded = _expandedWeeks.Contains(weekKey);
-                            var weekPendingCount = weekGroup.MealGroups.Sum(m => m.Views.Count);
-                            <div class="eatah-shopping-week">
-                                <button type="button" class="eatah-shopping-week__header" @onclick="() => ToggleWeek(weekKey)">
-                                    <Icon Name="@(weekExpanded ? "angle-down-solid" : "angle-right-solid")" Size="10"
-                                          CssClass="eatah-shopping-week__chevron" />
-                                    <span class="eatah-shopping-week__label">@weekGroup.Label</span>
-                                    <span class="eatah-shopping-week__count">@weekPendingCount</span>
-                                </button>
-                                @if (weekExpanded)
-                                {
-                                    <div class="eatah-shopping-week__body">
-                                        @foreach (var mealGroup in weekGroup.MealGroups)
-                                        {
-                                            var groupKey = GetMealGroupKey(mealGroup.MealName, weekKey, mealGroup.DayIndex);
-                                            var isExpanded = _expandedGroups.Contains(groupKey);
-                                            <div class="eatah-shopping-group">
-                                                <button type="button" class="eatah-shopping-group__header"
-                                                        @onclick="() => ToggleGroup(groupKey)">
-                                                    <Icon Name="@(isExpanded ? "angle-down-solid" : "angle-right-solid")" Size="10"
-                                                          CssClass="eatah-shopping-group__chevron" />
-                                                    <span class="eatah-shopping-group__name">@mealGroup.MealName</span>
-                                                    @if (mealGroup.DayIndex.HasValue)
-                                                    {
-                                                        <span class="eatah-shopping-group__day">@GetDayName(mealGroup.DayIndex.Value)</span>
-                                                    }
-                                                    <span class="eatah-shopping-group__count">@mealGroup.Views.Count</span>
-                                                </button>
-                                                @if (isExpanded)
-                                                {
-                                                    <div class="eatah-shopping-group__items">
-                                                        @foreach (var view in mealGroup.Views)
-                                                        {
-                                                            var item = view.Item;
-                                                            var isSelected = _selectedShoppingItems.Contains(item.Id);
-                                                            var itemSelClass = isSelected ? "eatah-shopping-item--selected" : "";
-                                                            var btnSelClass = isSelected ? "eatah-shopping-item__select--active" : "";
-                                                            var groupedCount = GetMealCount(item.Notes);
-                                                            <div class="eatah-shopping-item eatah-shopping-item--unchecked @itemSelClass">
-                                                                <button type="button" class="eatah-shopping-item__select @btnSelClass"
-                                                                        @onclick="() => ToggleShoppingSelection(item.Id)">
-                                                                    @if (isSelected)
-                                                                    {
-                                                                        <Icon Name="check" Size="10" />
-                                                                    }
-                                                                </button>
-                                                                <div class="eatah-shopping-item__body">
-                                                                    <div class="eatah-shopping-item__name-row">
-                                                                        <span class="eatah-shopping-item__name">@item.Name</span>
-                                                                        @if (groupedCount > 1)
-                                                                        {
-                                                                            <span class="eatah-shopping-item__count-badge">(@groupedCount)</span>
-                                                                        }
-                                                                    </div>
-                                                                </div>
-                                                                <button type="button" class="eatah-shopping-item__remove" title="Ta bort"
-                                                                        @onclick="() => RemoveFromShoppingAsync(item)">
-                                                                    <Icon Name="close" Size="12" />
-                                                                </button>
-                                                            </div>
-                                                        }
-                                                    </div>
-                                                }
-                                            </div>
-                                        }
-                                    </div>
-                                }
-                            </div>
+                            <p class="eatah-shopping-col__empty">Skafferiet är tomt.</p>
                         }
-
-                        <!-- Checked items (grayed out) -->
-                        @if (ShoppingState.Items.Any(s => s.IsChecked))
+                        else
                         {
-                            <div class="eatah-shopping-checked-divider">
-                                <span>Köpt</span>
-                                <button type="button" class="eatah-shopping-clear-btn" @onclick="ClearCheckedAsync">
-                                    Rensa
-                                </button>
-                            </div>
-                            @foreach (var item in ShoppingState.Items.Where(s => s.IsChecked))
+                            @foreach (var item in PantryState.Items)
                             {
-                                <div class="eatah-shopping-item eatah-shopping-item--checked">
-                                    <button type="button" class="eatah-shopping-item__check eatah-shopping-item__check--done"
-                                            title="Avmarkera" @onclick="() => UncheckItemAsync(item)">
-                                        <Icon Name="check" Size="10" />
-                                    </button>
+                                var (pCovered, pTotal) = CheckState.GetCoverageFraction(item.Name);
+                                var pantryCount = pTotal > 0 ? pTotal : CheckState.GetSharedSessionCount(item.Name);
+                                <div class="eatah-shopping-item eatah-shopping-item--pantry">
                                     <div class="eatah-shopping-item__body">
-                                        <span class="eatah-shopping-item__name">@item.Name</span>
+                                        <div class="eatah-shopping-item__name-row">
+                                            <span class="eatah-shopping-item__name">@item.Name</span>
+                                            @if (pTotal > 1 && pCovered < pTotal)
+                                            {
+                                                <span class="shrink-0 text-[#F2A20C] text-[11px] font-semibold">@pCovered/@pTotal</span>
+                                            }
+                                            else if (pTotal > 1)
+                                            {
+                                                <span class="eatah-shopping-item__count-badge">@pTotal/@pTotal</span>
+                                            }
+                                            else if (pantryCount > 1)
+                                            {
+                                                <span class="eatah-shopping-item__count-badge">(@pantryCount)</span>
+                                            }
+                                        </div>
+                                        <span class="eatah-shopping-item__meta">Tillagt @FormatDate(item.AddedAt)</span>
                                     </div>
-                                    <button type="button" class="eatah-shopping-item__remove" title="Ta bort"
-                                            @onclick="() => RemoveFromShoppingAsync(item)">
+                                    <button type="button" class="eatah-shopping-item__remove" title="Ta bort från skafferiet"
+                                            @onclick="() => RemoveFromPantryAsync(item)">
                                         <Icon Name="close" Size="12" />
                                     </button>
                                 </div>
                             }
                         }
+                    </div>
+                </div>
+
+                <!-- RIGHT: Köplista -->
+                <div class="eatah-shopping-col">
+                    <div class="eatah-shopping-col__header">
+                        <Icon Name="basket" Size="16" CssClass="eatah-shopping-col__header-icon" />
+                        <span>Köplista</span>
+                        <span class="eatah-shopping-col__count">@ShoppingState.Items.Count(s => !s.IsChecked)</span>
+                    </div>
+
+                    <div class="eatah-shopping-col__add">
+                        <IngredientSearch Placeholder="Lägg till på köplistan…" OnSelected="AddToShoppingAsync" />
+                    </div>
+                    @if (_selectedShoppingItems.Count > 0)
+                    {
+                        <div class="eatah-shopping-actions">
+                            <button type="button" class="eatah-shopping-actions__btn eatah-shopping-actions__btn--primary"
+                                    @onclick="MoveSelectedToPantryAsync">
+                                <Icon Name="arrow-left" Size="13" />
+                                <span>Flytta till skafferi</span>
+                            </button>
+                            <button type="button" class="eatah-shopping-actions__btn eatah-shopping-actions__btn--chat"
+                                    @onclick="() => OpenChatDropdown('i')" title="Jag köper dessa">
+                                <Icon Name="chat" Size="13" />
+                                <span>Jag köper</span>
+                            </button>
+                            <button type="button" class="eatah-shopping-actions__btn eatah-shopping-actions__btn--chat"
+                                    @onclick="() => OpenChatDropdown('k')" title="Be någon köpa dessa">
+                                <Icon Name="chat" Size="13" />
+                                <span>Kan du köpa?</span>
+                            </button>
+                        </div>
                     }
+
+                    <div class="eatah-shopping-col__list">
+                        @if (ShoppingState.Items.Count == 0)
+                        {
+                            <p class="eatah-shopping-col__empty">Köplistan är tom.</p>
+                        }
+                        else
+                        {
+                            @* Unchecked items grouped by week (Denna veckan / Nästa vecka) then by meal *@
+                            @foreach (var weekGroup in WeekGroups)
+                            {
+                                var weekKey = weekGroup.WeekKey;
+                                var weekExpanded = _expandedWeeks.Contains(weekKey);
+                                var weekPendingCount = weekGroup.MealGroups.Sum(m => m.Views.Count);
+                                <div class="eatah-shopping-week">
+                                    <button type="button" class="eatah-shopping-week__header" @onclick="() => ToggleWeek(weekKey)">
+                                        <Icon Name="@(weekExpanded ? "angle-down-solid" : "angle-right-solid")" Size="10"
+                                              CssClass="eatah-shopping-week__chevron" />
+                                        <span class="eatah-shopping-week__label">@weekGroup.Label</span>
+                                        <span class="eatah-shopping-week__count">@weekPendingCount</span>
+                                    </button>
+                                    @if (weekExpanded)
+                                    {
+                                        <div class="eatah-shopping-week__body">
+                                            @foreach (var mealGroup in weekGroup.MealGroups)
+                                            {
+                                                var groupKey = GetMealGroupKey(mealGroup.MealName, weekKey, mealGroup.DayIndex);
+                                                var isExpanded = _expandedGroups.Contains(groupKey);
+                                                <div class="eatah-shopping-group">
+                                                    <button type="button" class="eatah-shopping-group__header"
+                                                            @onclick="() => ToggleGroup(groupKey)">
+                                                        <Icon Name="@(isExpanded ? "angle-down-solid" : "angle-right-solid")" Size="10"
+                                                              CssClass="eatah-shopping-group__chevron" />
+                                                        <span class="eatah-shopping-group__name">@mealGroup.MealName</span>
+                                                        @if (mealGroup.DayIndex.HasValue)
+                                                        {
+                                                            <span class="eatah-shopping-group__day">@GetDayName(mealGroup.DayIndex.Value)</span>
+                                                        }
+                                                        <span class="eatah-shopping-group__count">@mealGroup.Views.Count</span>
+                                                    </button>
+                                                    @if (isExpanded)
+                                                    {
+                                                        <div class="eatah-shopping-group__items">
+                                                            @foreach (var view in mealGroup.Views)
+                                                            {
+                                                                var item = view.Item;
+                                                                var isSelected = _selectedShoppingItems.Contains(item.Id);
+                                                                var itemSelClass = isSelected ? "eatah-shopping-item--selected" : "";
+                                                                var btnSelClass = isSelected ? "eatah-shopping-item__select--active" : "";
+                                                                var groupedCount = GetMealCount(item.Notes);
+                                                                <div class="eatah-shopping-item eatah-shopping-item--unchecked @itemSelClass">
+                                                                    <button type="button" class="eatah-shopping-item__select @btnSelClass"
+                                                                            @onclick="() => ToggleShoppingSelection(item.Id)">
+                                                                        @if (isSelected)
+                                                                        {
+                                                                            <Icon Name="check" Size="10" />
+                                                                        }
+                                                                    </button>
+                                                                    <div class="eatah-shopping-item__body">
+                                                                        <div class="eatah-shopping-item__name-row">
+                                                                            <span class="eatah-shopping-item__name">@item.Name</span>
+                                                                            @if (groupedCount > 1)
+                                                                            {
+                                                                                <span class="eatah-shopping-item__count-badge">(@groupedCount)</span>
+                                                                            }
+                                                                        </div>
+                                                                    </div>
+                                                                    <button type="button" class="eatah-shopping-item__remove" title="Ta bort"
+                                                                            @onclick="() => RemoveFromShoppingAsync(item)">
+                                                                        <Icon Name="close" Size="12" />
+                                                                    </button>
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            }
+
+                            <!-- Checked items (grayed out) -->
+                            @if (ShoppingState.Items.Any(s => s.IsChecked))
+                            {
+                                <div class="eatah-shopping-checked-divider">
+                                    <span>Köpt</span>
+                                    <button type="button" class="eatah-shopping-clear-btn" @onclick="ClearCheckedAsync">
+                                        Rensa
+                                    </button>
+                                </div>
+                                @foreach (var item in ShoppingState.Items.Where(s => s.IsChecked))
+                                {
+                                    <div class="eatah-shopping-item eatah-shopping-item--checked">
+                                        <button type="button" class="eatah-shopping-item__check eatah-shopping-item__check--done"
+                                                title="Avmarkera" @onclick="() => UncheckItemAsync(item)">
+                                            <Icon Name="check" Size="10" />
+                                        </button>
+                                        <div class="eatah-shopping-item__body">
+                                            <span class="eatah-shopping-item__name">@item.Name</span>
+                                        </div>
+                                        <button type="button" class="eatah-shopping-item__remove" title="Ta bort"
+                                                @onclick="() => RemoveFromShoppingAsync(item)">
+                                            <Icon Name="close" Size="12" />
+                                        </button>
+                                    </div>
+                                }
+                            }
+                        }
+                    </div>
                 </div>
             </div>
-        </div>
-    }
+        }
+
+    </div>
 </div>
 
-@* Coverage confirmation popup for shared ingredients *@
+@* Coverage confirmation popup for shared ingredients — z-[250] to appear above the modal backdrop *@
 @if (_coveragePopupOpen)
 {
-    <div class="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 p-4"
+    <div class="fixed inset-0 z-[250] flex items-end sm:items-center justify-center bg-black/50 p-4"
          style="padding-bottom: max(1rem, var(--navbar-height, 64px));" @onclick="() => _coveragePopupOpen = false">
         <div class="w-full max-w-[420px] rounded-[20px] border border-black/10 font-kanit overflow-hidden"
              style="background: linear-gradient(135deg, #839B7F 0%, #A8D1AA 91.83%); box-shadow: 0px 8px 24px rgba(0,0,0,0.35);"
@@ -245,93 +257,93 @@
                 @foreach (var cov in _pendingCoverage)
                 {
                     <div>
-                        <div class="text-white font-semibold text-[14px] mb-2 px-1">@cov.Item.Name</div>
-                        @foreach (var weekGrp in cov.AllSessions.GroupBy(s => s.WeekNumber).OrderBy(g => g.Key ?? 9999))
+                        <div class="text-white font-semibold text-[14px] mb-1.5 px-1">@cov.Item.Name</div>
+                        @foreach (var session in cov.AllSessions)
                         {
-                            <div class="bg-white/[0.14] text-white font-extrabold text-[13px] uppercase tracking-[0.03em] px-[10px] py-[6px] rounded-[10px] mb-1.5">
-                                @GetCoverageWeekLabel(weekGrp.Key)
-                            </div>
-                            @foreach (var session in weekGrp)
-                            {
-                                var isCovered = cov.CoveredSessionIds.Contains(session.DayPlanId);
-                                var isOrigin = session.DayPlanId == cov.OriginDayPlanId;
-                                var rowClass = isOrigin && isCovered
-                                    ? "bg-white/45 border-white/60 ring-1 ring-white/40"
-                                    : isCovered ? "bg-white/35 border-white/30" : "bg-white/15 border-white/10";
-                                <label class="flex items-center gap-2.5 px-3 py-2 rounded-[10px] border cursor-pointer mb-1 @rowClass">
-                                    <input type="checkbox" class="w-4 h-4 accent-white cursor-pointer flex-shrink-0"
-                                           checked="@isCovered" @onchange="@(() => ToggleCoverage(cov, session.DayPlanId))" />
-                                    <span class="text-dayCardText text-[13px] font-medium flex-1 min-w-0 truncate">@session.MealName</span>
-                                    <span class="eatah-shopping-group__day">@session.DayName</span>
+                            var isCovered = cov.CoveredSessionIds.Contains(session.DayPlanId);
+                            var isOrigin = session.DayPlanId == cov.OriginDayPlanId;
+                            var rowClass = isOrigin && isCovered
+                                ? "bg-white/45 border-white/60 ring-1 ring-white/40"
+                                : isCovered ? "bg-white/35 border-white/30" : "bg-white/15 border-white/10";
+                            <label class="flex items-center gap-2.5 px-3 py-2 rounded-[10px] border cursor-pointer mb-1 @rowClass">
+                                <input type="checkbox" class="w-4 h-4 accent-white cursor-pointer flex-shrink-0"
+                                       checked="@isCovered" @onchange="@(() => ToggleCoverage(cov, session.DayPlanId))" />
+                                <span class="text-dayCardText text-[13px] font-medium truncate">@session.DisplayLabel</span>
+                                @if (isOrigin)
+                                {
+                                    <span class="shrink-0 text-white/80 text-[10px] font-semibold uppercase tracking-wide">←
+                                        denna</span>
+                                    }
                                 </label>
                             }
-                        }
+                        </div>
+                    }
+                </div>
+
+                @{
+                    var onlyOriginCovered = _pendingCoverage.All(cov =>
+                        cov.OriginDayPlanId.HasValue &&
+                        cov.CoveredSessionIds.Count == 1 &&
+                        cov.CoveredSessionIds.Contains(cov.OriginDayPlanId.Value));
+                    var confirmBtnCls = onlyOriginCovered
+                        ? "flex-1 py-2.5 rounded-[12px] bg-white/25 hover:bg-white/40 text-white font-semibold text-[13px] uppercase tracking-wide"
+                        : "flex-1 py-2.5 rounded-[12px] bg-white/15 hover:bg-white/25 text-white font-medium text-[13px]";
+                    var confirmBtnLabel = onlyOriginCovered ? "RÄCKER TILL DENNA" : "Spara urval";
+                }
+                <div class="px-4 pb-5 pt-2 flex gap-2">
+                    <button type="button"
+                            class="flex-1 py-2.5 rounded-[12px] bg-white/30 hover:bg-white/45 text-white font-semibold text-[13px] uppercase tracking-wide"
+                            @onclick="CoverAllAndConfirmAsync">
+                        Räcker till alla
+                    </button>
+                    <button type="button" class="@confirmBtnCls" @onclick="ConfirmCoverageAsync">
+                        @confirmBtnLabel
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @* Chat recipient picker dropdown *@
+    @if (_showChatDropdown)
+    {
+        <div class="eatah-chat-recipient-overlay" @onclick="() => _showChatDropdown = false">
+            <div class="eatah-chat-recipient-picker" @onclick:stopPropagation="true">
+                <div class="eatah-chat-recipient-picker__title">Skicka till&hellip;</div>
+
+                @* Household group chat *@
+                <button type="button" class="eatah-chat-recipient-item" @onclick="SendToGroupAsync">
+                    <div class="eatah-chat-recipient-item__avatar eatah-chat-recipient-item__avatar--group">
+                        <Icon Name="house" Size="14" />
                     </div>
+                    <span class="eatah-chat-recipient-item__name">Hush&aring;llschatten</span>
+                </button>
+
+                @* Individual household members *@
+                @foreach (var member in _householdMembers)
+                {
+                    var m = member;
+                    <button type="button" class="eatah-chat-recipient-item" @onclick="() => SendToMemberAsync(m)">
+                        <div class="eatah-chat-recipient-item__avatar">
+                            <Icon Name="profile" Size="14" />
+                        </div>
+                        <span class="eatah-chat-recipient-item__name">@m.DisplayName</span>
+                    </button>
+                }
+
+                @if (_dropdownLoading)
+                {
+                    <div class="eatah-chat-recipient-picker__loading">Laddar&hellip;</div>
                 }
             </div>
-
-            @{
-                var onlyOriginCovered = _pendingCoverage.All(cov =>
-                    cov.OriginDayPlanId.HasValue &&
-                    cov.CoveredSessionIds.Count == 1 &&
-                    cov.CoveredSessionIds.Contains(cov.OriginDayPlanId.Value));
-                var confirmBtnCls = onlyOriginCovered
-                    ? "flex-1 py-2.5 rounded-[12px] bg-white/25 hover:bg-white/40 text-white font-semibold text-[13px] uppercase tracking-wide"
-                    : "flex-1 py-2.5 rounded-[12px] bg-white/15 hover:bg-white/25 text-white font-medium text-[13px]";
-                var confirmBtnLabel = onlyOriginCovered ? "RÄCKER TILL DENNA" : "Spara urval";
-            }
-            <div class="px-4 pb-5 pt-2 flex gap-2">
-                <button type="button"
-                        class="flex-1 py-2.5 rounded-[12px] bg-white/30 hover:bg-white/45 text-white font-semibold text-[13px] uppercase tracking-wide"
-                        @onclick="CoverAllAndConfirmAsync">
-                    Räcker till alla
-                </button>
-                <button type="button" class="@confirmBtnCls" @onclick="ConfirmCoverageAsync">
-                    @confirmBtnLabel
-                </button>
-            </div>
         </div>
-    </div>
-}
+    }
 
-@* Chat recipient picker dropdown *@
-@if (_showChatDropdown)
-{
-    <div class="eatah-chat-recipient-overlay" @onclick="() => _showChatDropdown = false">
-        <div class="eatah-chat-recipient-picker" @onclick:stopPropagation="true">
-            <div class="eatah-chat-recipient-picker__title">Skicka till&hellip;</div>
-
-            @* Household group chat *@
-            <button type="button" class="eatah-chat-recipient-item" @onclick="SendToGroupAsync">
-                <div class="eatah-chat-recipient-item__avatar eatah-chat-recipient-item__avatar--group">
-                    <Icon Name="house" Size="14" />
-                </div>
-                <span class="eatah-chat-recipient-item__name">Hush&aring;llschatten</span>
-            </button>
-
-            @* Individual household members *@
-            @foreach (var member in _householdMembers)
-            {
-                var m = member;
-                <button type="button" class="eatah-chat-recipient-item" @onclick="() => SendToMemberAsync(m)">
-                    <div class="eatah-chat-recipient-item__avatar">
-                        <Icon Name="profile" Size="14" />
-                    </div>
-                    <span class="eatah-chat-recipient-item__name">@m.DisplayName</span>
-                </button>
-            }
-
-            @if (_dropdownLoading)
-            {
-                <div class="eatah-chat-recipient-picker__loading">Laddar&hellip;</div>
-            }
-        </div>
-    </div>
-}
-
-@using System.Globalization
+    @using System.Globalization
 
 @code {
+    [CascadingParameter] private ModalInstance? ModalInstance { get; set; }
+
     private HashSet<Guid> _selectedShoppingItems = [];
     private HashSet<string> _expandedGroups = new(StringComparer.OrdinalIgnoreCase);
     private HashSet<string> _expandedWeeks = new(StringComparer.OrdinalIgnoreCase);
@@ -357,8 +369,13 @@
             : $"{MealName} ({DayLabel(DayIndex)})";
         private static string DayLabel(int d) => d switch
         {
-            0 => "Mån", 1 => "Tis", 2 => "Ons", 3 => "Tor",
-            4 => "Fre", 5 => "Lör", _ => "Sön"
+            0 => "Mån",
+            1 => "Tis",
+            2 => "Ons",
+            3 => "Tor",
+            4 => "Fre",
+            5 => "Lör",
+            _ => "Sön"
         };
     }
     private record PendingCoverage(ShoppingItemResponse Item, List<SessionRef> AllSessions, Guid? OriginDayPlanId = null)
@@ -497,7 +514,6 @@
 
     protected override void OnInitialized()
     {
-        Header.Set(center: @<span>Köplista</span>);
         PantryState.OnChanged += OnPantryChanged;
         ShoppingState.OnChanged += OnShoppingChanged;
         WorkspaceState.OnChange += OnWorkspaceChanged;
@@ -505,11 +521,12 @@
 
     public void Dispose()
     {
-        Header.Clear();
         PantryState.OnChanged -= OnPantryChanged;
         ShoppingState.OnChanged -= OnShoppingChanged;
         WorkspaceState.OnChange -= OnWorkspaceChanged;
     }
+
+    private void Close() => Modals.CloseTop();
 
     private void OnPantryChanged() => InvokeAsync(StateHasChanged);
     private void OnShoppingChanged() { ReinitGroups(); InvokeAsync(StateHasChanged); }
@@ -534,6 +551,10 @@
             CheckState.SetPantryIngredientIds(pantry.Select(p => (p.Name, p.IngredientId)));
             ShoppingState.SetShopping(await shoppingTask);
             ReinitGroups();
+
+            // Load active sessions for current + next week so pantry coverage counts are
+            // always correct, regardless of whether the user has visited the meal planner.
+            _ = LoadActiveSessionsAsync();
         }
         catch (Exception ex)
         {
@@ -546,6 +567,50 @@
 
         // Auto-sync from meal plan silently after initial data is shown
         ShoppingSync.TriggerSync();
+    }
+
+    private static int DayIdx(DayOfWeek d) => d == DayOfWeek.Sunday ? 6 : (int)d - 1;
+
+    private async Task LoadActiveSessionsAsync()
+    {
+        try
+        {
+            var today = DateTime.UtcNow.Date;
+            var next = today.AddDays(7);
+            var currentPlanTask = Api.GetWeeklyPlanByWeekAsync(ISOWeek.GetYear(today), ISOWeek.GetWeekOfYear(today));
+            var nextPlanTask = Api.GetWeeklyPlanByWeekAsync(ISOWeek.GetYear(next), ISOWeek.GetWeekOfYear(next));
+            await Task.WhenAll(currentPlanTask, nextPlanTask);
+
+            var sessions = new List<IngredientCheckState.ActiveSession>();
+
+            var currentPlan = await currentPlanTask;
+            if (currentPlan is not null)
+            {
+                var todayDayIdx = DayIdx(today.DayOfWeek);
+                var currentWeek = ISOWeek.GetWeekOfYear(today);
+                sessions.AddRange(currentPlan.Days
+                    .Where(d => d.Meal is not null && DayIdx(d.DayOfWeek) >= todayDayIdx)
+                    .Select(d => new IngredientCheckState.ActiveSession(
+                        d.Id, d.Meal!.Id, d.Meal!.Name, DayIdx(d.DayOfWeek), currentWeek)));
+            }
+
+            var nextPlan = await nextPlanTask;
+            if (nextPlan is not null)
+            {
+                var nextWeek = ISOWeek.GetWeekOfYear(next);
+                sessions.AddRange(nextPlan.Days
+                    .Where(d => d.Meal is not null)
+                    .Select(d => new IngredientCheckState.ActiveSession(
+                        d.Id, d.Meal!.Id, d.Meal!.Name, DayIdx(d.DayOfWeek), nextWeek)));
+            }
+
+            CheckState.SetActiveSessions(sessions);
+            await InvokeAsync(StateHasChanged);
+        }
+        catch
+        {
+            // Non-critical — badge counts degrade gracefully
+        }
     }
 
     private async Task AddToPantryAsync(IngredientResponse ing)
@@ -752,7 +817,8 @@
         _pendingCoverage.Clear();
     }
 
-    /// <summary>Rebuilds Notes keeping only parts whose DayPlanId is NOT in coveredDayPlans (and parts without DayPlanId). Returns null if everything is covered.</summary>
+    /// <summary>Rebuilds Notes keeping only parts whose DayPlanId is NOT in coveredDayPlans (and parts without DayPlanId).
+    Returns null if everything is covered.</summary>
     private static string? BuildRemainingNotesByDayPlan(string? originalNotes, HashSet<Guid> coveredDayPlans)
     {
         if (string.IsNullOrEmpty(originalNotes)) return null;
@@ -1016,4 +1082,3 @@
         return $"{prefix}: {string.Join(", ", selected)}";
     }
 }
-

@@ -1785,6 +1785,54 @@ body.eatah-modal-open {
     margin: 0 auto;
 }
 
+/* ── Shopping modal ────────────────────────────────────────────── */
+.eatah-modal:has(.eatah-shopping-modal) {
+    max-width: 680px;
+}
+
+.eatah-shopping-modal {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1;
+}
+
+.eatah-shopping-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px 14px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    flex-shrink: 0;
+}
+
+.eatah-shopping-modal__title {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0;
+    color: var(--color-text-dark);
+}
+
+.eatah-shopping-modal__close {
+    background: transparent;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    color: rgba(0, 0, 0, 0.5);
+    display: inline-flex;
+}
+
+.eatah-shopping-modal__body {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.eatah-shopping-modal .eatah-shopping-col {
+    max-height: calc(90dvh - 62px);
+}
+
 /* Sync button */
 .eatah-shopping-sync-btn {
     display: inline-flex;
@@ -1793,8 +1841,8 @@ body.eatah-modal-open {
     padding: 7px 14px;
     border: none;
     border-radius: 20px;
-    background: rgba(255, 255, 255, 0.15);
-    color: #fff;
+    background: rgba(0, 0, 0, 0.07);
+    color: var(--color-text-dark);
     font-family: inherit;
     font-size: 13px;
     font-weight: 600;
@@ -1804,7 +1852,7 @@ body.eatah-modal-open {
 }
 
 .eatah-shopping-sync-btn:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.25);
+    background: rgba(0, 0, 0, 0.12);
 }
 
 .eatah-shopping-sync-btn:disabled {
@@ -1812,21 +1860,18 @@ body.eatah-modal-open {
     cursor: not-allowed;
 }
 
-/* Two-column layout – single shared card */
+/* Two-column layout */
 .eatah-shopping-columns {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 0;
     align-items: start;
-    background: linear-gradient(135deg, #839B7F 0%, #A8D1AA 91.83%);
-    border-radius: var(--radius-card);
-    box-shadow: var(--shadow-soft);
     overflow: hidden;
 }
 
 /* Vertical divider between the two columns */
 .eatah-shopping-col + .eatah-shopping-col {
-    border-left: 1px solid rgba(255, 255, 255, 0.2);
+    border-left: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 /* Column */
@@ -1846,8 +1891,8 @@ body.eatah-modal-open {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.07em;
-    color: rgba(255, 255, 255, 0.85);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--color-text-dark);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
     flex-shrink: 0;
 }
 
@@ -1857,8 +1902,8 @@ body.eatah-modal-open {
 
 .eatah-shopping-col__count {
     margin-left: auto;
-    background: rgba(255, 255, 255, 0.2);
-    color: #fff;
+    background: rgba(0, 0, 0, 0.08);
+    color: var(--color-text-dark);
     font-size: 11px;
     font-weight: 700;
     padding: 1px 7px;
@@ -1879,7 +1924,7 @@ body.eatah-modal-open {
 .eatah-shopping-col__empty {
     font-size: 12px;
     font-style: italic;
-    color: rgba(255, 255, 255, 0.5);
+    color: rgba(0, 0, 0, 0.4);
     text-align: center;
     padding: 16px 0;
     margin: 0;
@@ -1892,8 +1937,8 @@ body.eatah-modal-open {
     gap: 8px;
     padding: 6px 8px;
     border-radius: 10px;
-    background: rgba(255, 255, 255, 0.28);
-    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.65);
+    border: 1px solid rgba(0, 0, 0, 0.08);
     margin-bottom: 5px;
 }
 
@@ -1902,13 +1947,13 @@ body.eatah-modal-open {
 }
 
 .eatah-shopping-item--pantry {
-    background: rgba(255, 255, 255, 0.22);
-    border-color: rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.45);
+    border-color: rgba(0, 0, 0, 0.06);
 }
 
 .eatah-shopping-item--checked {
-    background: rgba(255, 255, 255, 0.14);
-    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.06);
 }
 
 .eatah-shopping-item__body {
@@ -1922,7 +1967,7 @@ body.eatah-modal-open {
 .eatah-shopping-item__name {
     font-size: 13px;
     font-weight: 500;
-    color: var(--color-text-on-card);
+    color: var(--color-text-dark);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1931,7 +1976,7 @@ body.eatah-modal-open {
 .eatah-shopping-item__meta,
 .eatah-shopping-item__notes {
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.65);
+    color: rgba(0, 0, 0, 0.5);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1956,7 +2001,7 @@ body.eatah-modal-open {
     flex-shrink: 0;
     font-size: 10px;
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.6);
+    color: rgba(0, 0, 0, 0.4);
     line-height: 1;
 }
 
@@ -1966,7 +2011,7 @@ body.eatah-modal-open {
     width: 22px;
     height: 22px;
     border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.45);
+    border: 2px solid rgba(0, 0, 0, 0.25);
     background: transparent;
     display: inline-flex;
     align-items: center;
@@ -2000,7 +2045,7 @@ body.eatah-modal-open {
     width: 22px;
     height: 22px;
     border-radius: 6px;
-    border: 2px solid rgba(255, 255, 255, 0.45);
+    border: 2px solid rgba(0, 0, 0, 0.25);
     background: transparent;
     display: inline-flex;
     align-items: center;
@@ -2008,11 +2053,11 @@ body.eatah-modal-open {
     cursor: pointer;
     transition: border-color 0.12s, background 0.12s;
     padding: 0;
-    color: #fff;
+    color: var(--color-text-dark);
 }
 
 .eatah-shopping-item__select:hover {
-    border-color: rgba(255, 255, 255, 0.8);
+    border-color: rgba(0, 0, 0, 0.5);
 }
 
 .eatah-shopping-item__select--active {
@@ -2022,8 +2067,8 @@ body.eatah-modal-open {
 
 /* Selected item highlight */
 .eatah-shopping-item--selected {
-    background: rgba(255, 255, 255, 0.38);
-    border-color: rgba(255, 255, 255, 0.5);
+    background: rgba(90, 174, 0, 0.12);
+    border-color: rgba(90, 174, 0, 0.35);
 }
 
 /* Bulk-action bar (Shopping.razor – below IngredientSearch) */
@@ -2055,16 +2100,15 @@ body.eatah-modal-open {
 }
 
 .eatah-shopping-actions__btn--primary {
-    background: rgba(255, 255, 255, 0.25);
-    color: #fff;
-    backdrop-filter: blur(4px);
+    background: rgba(0, 0, 0, 0.07);
+    color: var(--color-text-dark);
 }
 
 .eatah-shopping-actions__slot {
     width: 30px;
     height: 30px;
     border-radius: 50%;
-    border: 2px dashed rgba(255, 255, 255, 0.2);
+    border: 2px dashed rgba(0, 0, 0, 0.15);
     flex-shrink: 0;
 }
 
@@ -2075,7 +2119,7 @@ body.eatah-modal-open {
     border: none;
     padding: 4px;
     cursor: pointer;
-    color: rgba(255, 255, 255, 0.4);
+    color: rgba(0, 0, 0, 0.3);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -2084,7 +2128,7 @@ body.eatah-modal-open {
 }
 
 .eatah-shopping-item__remove:hover {
-    color: rgba(255, 255, 255, 0.9);
+    color: rgba(0, 0, 0, 0.7);
 }
 
 /* Week section in shopping list (Denna veckan / Nästa vecka) */
@@ -2097,13 +2141,13 @@ body.eatah-modal-open {
     align-items: center;
     gap: 6px;
     width: 100%;
-    background: rgba(255, 255, 255, 0.14);
+    background: rgba(0, 0, 0, 0.05);
     border: none;
     padding: 7px 10px;
     border-radius: 10px;
     cursor: pointer;
     text-align: left;
-    color: #fff;
+    color: var(--color-text-dark);
     font-family: inherit;
     font-size: 13px;
     font-weight: 800;
@@ -2114,7 +2158,7 @@ body.eatah-modal-open {
 }
 
 .eatah-shopping-week__header:hover {
-    background: rgba(255, 255, 255, 0.22);
+    background: rgba(0, 0, 0, 0.08);
 }
 
 .eatah-shopping-week__chevron {
@@ -2127,8 +2171,8 @@ body.eatah-modal-open {
 }
 
 .eatah-shopping-week__count {
-    background: rgba(255, 255, 255, 0.25);
-    color: #fff;
+    background: rgba(0, 0, 0, 0.08);
+    color: var(--color-text-dark);
     font-size: 10px;
     font-weight: 700;
     padding: 1px 7px;
@@ -2144,8 +2188,8 @@ body.eatah-modal-open {
 .eatah-shopping-group__day {
     font-size: 10px;
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.65);
-    background: rgba(255, 255, 255, 0.12);
+    color: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.06);
     padding: 1px 5px;
     border-radius: 6px;
     flex-shrink: 0;
@@ -2161,13 +2205,13 @@ body.eatah-modal-open {
     align-items: center;
     gap: 5px;
     width: 100%;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.05);
     border: none;
     padding: 5px 8px;
     border-radius: 8px;
     cursor: pointer;
     text-align: left;
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--color-text-dark);
     font-family: inherit;
     font-size: 12px;
     font-weight: 700;
@@ -2176,7 +2220,7 @@ body.eatah-modal-open {
 }
 
 .eatah-shopping-group__header:hover {
-    background: rgba(255, 255, 255, 0.18);
+    background: rgba(0, 0, 0, 0.08);
 }
 
 .eatah-shopping-group__chevron {
@@ -2192,8 +2236,8 @@ body.eatah-modal-open {
 }
 
 .eatah-shopping-group__count {
-    background: rgba(255, 255, 255, 0.2);
-    color: #fff;
+    background: rgba(0, 0, 0, 0.08);
+    color: var(--color-text-dark);
     font-size: 10px;
     font-weight: 700;
     padding: 1px 6px;
@@ -2216,13 +2260,13 @@ body.eatah-modal-open {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: var(--color-text-muted);
+    color: rgba(0, 0, 0, 0.4);
 }
 
 .eatah-shopping-clear-btn {
     background: transparent;
     border: none;
-    color: var(--color-text-muted);
+    color: rgba(0, 0, 0, 0.4);
     font-family: inherit;
     font-size: 11px;
     font-weight: 700;
@@ -2235,7 +2279,7 @@ body.eatah-modal-open {
 }
 
 .eatah-shopping-clear-btn:hover {
-    color: #fff;
+    color: var(--color-text-dark);
 }
 
 /* ============================================================
@@ -2255,10 +2299,10 @@ body.eatah-modal-open {
 .eatah-ing-search__input {
     width: 100%;
     padding: 8px 32px 8px 10px;
-    border: 1px solid rgba(255, 255, 255, 0.25);
+    border: 1px solid rgba(0, 0, 0, 0.15);
     border-radius: 10px;
-    background: rgba(255, 255, 255, 0.12);
-    color: #fff;
+    background: rgba(255, 255, 255, 0.7);
+    color: var(--color-text-dark);
     font-family: inherit;
     font-size: 13px;
     box-sizing: border-box;
@@ -2266,13 +2310,13 @@ body.eatah-modal-open {
 }
 
 .eatah-ing-search__input::placeholder {
-    color: rgba(255, 255, 255, 0.45);
+    color: rgba(0, 0, 0, 0.35);
 }
 
 .eatah-ing-search__input:focus {
     outline: none;
-    border-color: rgba(255, 255, 255, 0.55);
-    background: rgba(255, 255, 255, 0.18);
+    border-color: rgba(0, 0, 0, 0.35);
+    background: rgba(255, 255, 255, 0.9);
 }
 
 .eatah-ing-search__spinner {
@@ -2280,8 +2324,8 @@ body.eatah-modal-open {
     right: 10px;
     width: 14px;
     height: 14px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-top-color: #fff;
+    border: 2px solid rgba(0, 0, 0, 0.15);
+    border-top-color: var(--color-text-dark);
     border-radius: 50%;
     animation: eatah-spin 0.7s linear infinite;
     pointer-events: none;
@@ -2296,12 +2340,12 @@ body.eatah-modal-open {
     top: calc(100% + 4px);
     left: 0;
     right: 0;
-    background: rgba(36, 48, 34, 0.97);
-    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid rgba(0, 0, 0, 0.1);
     border-radius: 10px;
     overflow: hidden;
     z-index: 300;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
     list-style: none;
     margin: 0;
     padding: 4px 0;
@@ -2320,25 +2364,25 @@ body.eatah-modal-open {
 }
 
 .eatah-ing-search__option:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.05);
 }
 
 .eatah-ing-search__option-name {
     font-size: 13px;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--color-text-dark);
 }
 
 .eatah-ing-search__option-cat {
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.45);
+    color: rgba(0, 0, 0, 0.45);
     margin-left: 8px;
 }
 
 .eatah-ing-search__option--new {
     color: var(--color-brand);
     font-size: 13px;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .eatah-ing-search__option--new span {

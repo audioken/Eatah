@@ -20,12 +20,12 @@
 @code {
     private record NavItem(string Label, string Icon, NavAction Action, string? Route = null);
 
-    private enum NavAction { Navigate, ComingSoon, Profile, Chat, DietProfiles }
+    private enum NavAction { Navigate, ComingSoon, Profile, Chat, DietProfiles, Shopping }
 
     private readonly List<NavItem> _items = new()
     {
         new("Kost", "vegan", NavAction.DietProfiles),
-        new("Köplista", "basket", NavAction.Navigate, "/shopping"),
+        new("Köplista", "basket", NavAction.Shopping),
         new("Matplan", "calendar", NavAction.Navigate, "/"),
         new("Chat", "chat", NavAction.Chat), // opens chat popup
         new("Profil", "profile", NavAction.Profile), // opens profile modal
@@ -72,6 +72,9 @@
                 break;
             case NavAction.Chat:
                 ChatState.Open();
+                break;
+            case NavAction.Shopping:
+                Modals.Show<ShoppingModal>();
                 break;
         }
     }
