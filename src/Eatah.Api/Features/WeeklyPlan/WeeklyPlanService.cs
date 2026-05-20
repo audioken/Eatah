@@ -57,6 +57,31 @@ public class WeeklyPlanService
         return ToResponse(plan);
     }
 
+    public async Task<Result<WeeklyPlanResponse>> UpdateDietProfileAsync(
+        Guid planId,
+        UpdateWeeklyPlanDietProfileRequest request,
+        CancellationToken cancellationToken)
+    {
+        var plan = await _repository.GetByIdAsync(planId, cancellationToken);
+        if (plan is null)
+        {
+            return WeeklyPlanErrors.NotFound(planId);
+        }
+
+        if (request.ProfileId is Guid profileId)
+        {
+            var profile = await _profileRepository.GetByIdAsync(profileId, cancellationToken);
+            if (profile is null)
+            {
+                return Error.NotFound(ErrorCodes.DietProfileNotFound, $"Diet profile with id {profileId} was not found.");
+            }
+        }
+
+        plan.DietProfileId = request.ProfileId;
+        await _repository.SaveChangesAsync(cancellationToken);
+        return ToResponse(plan);
+    }
+
     public async Task<Result<WeeklyPlanResponse>> CreateAsync(CreateWeeklyPlanRequest request, CancellationToken cancellationToken)
     {
         var existing = await _repository.GetByYearWeekAsync(request.Year, request.WeekNumber, cancellationToken);
@@ -306,7 +331,7 @@ public class WeeklyPlanService
                     : new MealSummaryResponse(d.Meal.Id, d.Meal.Name, d.Meal.Category)))
             .ToList();
 
-        return new WeeklyPlanResponse(plan.Id, plan.Year, plan.WeekNumber, plan.CreatedAt, days);
+        return new WeeklyPlanResponse(plan.Id, plan.Year, plan.WeekNumber, plan.CreatedAt, days, plan.DietProfileId);
     }
 
     /// <summary>
@@ -332,7 +357,7 @@ public class WeeklyPlanService
             })
             .ToList();
 
-        return new WeeklyPlanResponse(plan.Id, plan.Year, plan.WeekNumber, plan.CreatedAt, days);
+        return new WeeklyPlanResponse(plan.Id, plan.Year, plan.WeekNumber, plan.CreatedAt, days, plan.DietProfileId);
     }
 }
 

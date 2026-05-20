@@ -1,10 +1,9 @@
-@namespace Eatah.Client.Components.WeeklyPlan
+﻿@namespace Eatah.Client.Components.WeeklyPlan
 @using System.Globalization
 @using Eatah.Client.Services
 @implements IDisposable
 @inject ApiClient Api
 @inject ToastService Toasts
-@inject IUserPreferences Preferences
 @inject DietProfileState ProfileState
 
 <div class="eatah-card eatah-diet-card">
@@ -22,15 +21,50 @@
         @if (_profiles is { Count: > 0 })
         {
             <div class="eatah-diet-card__select-wrap">
-                <select class="eatah-diet-card__select" @onchange="OnProfileChanged" aria-label="Välj kostprofil">
-                    @foreach (var profile in _profiles)
+                @if (IsLocked)
+                {
+                    <span class="eatah-diet-card__select-locked">
+                        @(SelectedProfileName ?? "Ingen profil")
+                    </span>
+                }
+                else
+                {
+                    <button type="button" class="eatah-diet-card__select-btn" @onclick="ToggleDropdown"
+                            aria-haspopup="listbox" aria-expanded="@_dropdownOpen">
+                        <span class="eatah-diet-card__select-label">@(SelectedProfileName ?? "VÃ¤lj profil")</span>
+                        <span class="eatah-diet-card__chevron">
+                            <Icon Name="chevron-down" Size="12" />
+                        </span>
+                    </button>
+
+                    @if (_dropdownOpen)
                     {
-                        <option value="@profile.Id" selected="@(profile.Id == _selectedProfileId)">@profile.Name</option>
+                        <div class="eatah-diet-card__backdrop" @onclick="CloseDropdown"></div>
+                        <div class="eatah-diet-card__dropdown" role="listbox">
+                            <div class="eatah-diet-card__dropdown-list">
+                                @foreach (var profile in _profiles)
+                                {
+                                    var isSelected = profile.Id == _selectedProfileId;
+                                    <button type="button" role="option" aria-selected="@isSelected"
+                                            class="eatah-diet-card__dropdown-item @(isSelected ? "eatah-diet-card__dropdown-item--active" : "")"
+                                            @onclick="() => SelectProfileAsync(profile.Id)">
+                                        @if (isSelected)
+                                        {
+                                            <span class="eatah-diet-card__dropdown-check">
+                                                <Icon Name="check" Size="12" />
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="eatah-diet-card__dropdown-check eatah-diet-card__dropdown-check--empty"></span>
+                                        }
+                                        <span>@profile.Name</span>
+                                    </button>
+                                }
+                            </div>
+                        </div>
                     }
-                </select>
-                <span class="eatah-diet-card__chevron">
-                    <Icon Name="chevron-down" Size="12" />
-                </span>
+                }
             </div>
         }
         else
@@ -65,7 +99,7 @@
                 }
                 else
                 {
-                    <span class="eatah-pill eatah-pill--muted eatah-diet-card__rule-pill">–</span>
+                    <span class="eatah-pill eatah-pill--muted eatah-diet-card__rule-pill">â€“</span>
                 }
             </div>
         }
@@ -82,8 +116,8 @@
 @code {
     [Parameter, EditorRequired] public WeeklyPlanResponse Plan { get; set; } = default!;
     [Parameter] public EventCallback<Guid?> OnRandomize { get; set; }
-
-    private const string PreferenceKey = "eatah.selected_diet_profile_id";
+    /// <summary>-1 = previous week (locked), 0 = current week, 1 = next week.</summary>
+    [Parameter] public int WeekOffset { get; set; }
 
     private static readonly MealCategory[] CategoriesInOrder =
     [
@@ -98,9 +132,14 @@
     private Guid? _selectedProfileId;
     private DietEvaluationResponse? _evaluation;
     private bool _isRandomizing;
+    private bool _dropdownOpen;
     private string? _planSignature;
 
     private bool HasProfile => _selectedProfileId is not null;
+    private bool IsLocked => WeekOffset < 0;
+
+    private string? SelectedProfileName =>
+        _profiles?.FirstOrDefault(p => p.Id == _selectedProfileId)?.Name;
 
     protected override async Task OnInitializedAsync()
     {
@@ -114,6 +153,17 @@
         if (signature != _planSignature)
         {
             _planSignature = signature;
+
+            // Sync selected profile from the plan (server-stored per week).
+            if (_profiles is not null)
+            {
+                _selectedProfileId = Plan.DietProfileId is Guid planProfileId
+                    && _profiles.Any(p => p.Id == planProfileId)
+                        ? planProfileId
+                        : _profiles.FirstOrDefault()?.Id;
+                ProfileState.SetSelectedProfileId(_selectedProfileId);
+            }
+
             await EvaluateAsync();
         }
     }
@@ -137,9 +187,13 @@
         try
         {
             _profiles = await Api.GetDietProfilesAsync();
-            var savedId = LoadSavedProfileId();
-            _selectedProfileId =
-                (savedId is { } id && _profiles.Any(p => p.Id == id)) ? id : _profiles.FirstOrDefault()?.Id;
+
+            // Use the profile stored on the plan; fallback to first available.
+            _selectedProfileId = Plan?.DietProfileId is Guid planProfileId
+                && _profiles.Any(p => p.Id == planProfileId)
+                    ? planProfileId
+                    : _profiles.FirstOrDefault()?.Id;
+
             ProfileState.SetSelectedProfileId(_selectedProfileId);
             await EvaluateAsync();
         }
@@ -166,15 +220,27 @@
         }
     }
 
-    private async Task OnProfileChanged(ChangeEventArgs e)
+    private void ToggleDropdown() => _dropdownOpen = !_dropdownOpen;
+    private void CloseDropdown() => _dropdownOpen = false;
+
+    private async Task SelectProfileAsync(Guid id)
     {
-        if (Guid.TryParse(e.Value?.ToString(), out var id))
+        _dropdownOpen = false;
+        if (id == _selectedProfileId) return;
+
+        _selectedProfileId = id;
+        ProfileState.SetSelectedProfileId(id);
+
+        try
         {
-            _selectedProfileId = id;
-            ProfileState.SetSelectedProfileId(id);
-            SaveSelectedProfileId(id);
-            await EvaluateAsync();
+            await Api.UpdateWeeklyPlanDietProfileAsync(Plan.Id, id);
         }
+        catch
+        {
+            Toasts.Show("Kunde inte spara kostprofilen.");
+        }
+
+        await EvaluateAsync();
     }
 
     private async Task HandleRandomize()
@@ -212,7 +278,6 @@
         get
         {
             var clamped = ScorePercent.ToString(CultureInfo.InvariantCulture);
-            // Smooth red → green via color-mix in sRGB.
             return $"color-mix(in srgb, var(--color-pill-good) {clamped}%, var(--color-pill-bad))";
         }
     }
@@ -240,17 +305,8 @@
     private static string ComputeSignature(WeeklyPlanResponse plan)
     {
         if (plan?.Days is null) return string.Empty;
-        return string.Join("|", plan.Days.OrderBy(d => d.DayOfWeek).Select(d => d.MealId?.ToString() ?? "-"));
-    }
-
-    private Guid? LoadSavedProfileId()
-    {
-        var raw = Preferences.Get(PreferenceKey);
-        return Guid.TryParse(raw, out var id) ? id : null;
-    }
-
-    private void SaveSelectedProfileId(Guid id)
-    {
-        Preferences.Set(PreferenceKey, id.ToString());
+        // Include DietProfileId in signature so profile changes re-evaluate.
+        var days = string.Join("|", plan.Days.OrderBy(d => d.DayOfWeek).Select(d => d.MealId?.ToString() ?? "-"));
+        return $"{days}#{plan.DietProfileId}";
     }
 }

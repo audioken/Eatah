@@ -17,6 +17,7 @@ public static class WeeklyPlanEndpoints
         group.MapDelete("/{id:guid}/days/{dayOfWeek}", ClearMealFromDay.Handle).WithName(nameof(ClearMealFromDay));
         group.MapPost("/{id:guid}/randomize", RandomizeWeeklyPlan.Handle).WithName(nameof(RandomizeWeeklyPlan));
         group.MapPost("/{id:guid}/days/{dayOfWeek}/randomize", RandomizeDay.Handle).WithName(nameof(RandomizeDay));
+        group.MapPut("/{id:guid}/diet-profile", UpdateWeeklyPlanDietProfile.Handle).WithName(nameof(UpdateWeeklyPlanDietProfile));
 
         return app;
     }

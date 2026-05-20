@@ -128,6 +128,19 @@ public partial class ApiClient
         return await response.Content.ReadFromJsonAsync<AiGeneratedMealResponse>(cancellationToken: cancellationToken);
     }
 
+    public async Task<WeeklyPlanResponse?> UpdateWeeklyPlanDietProfileAsync(
+        Guid planId,
+        Guid? profileId,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _http.PutAsJsonAsync(
+            $"api/weeklyplans/{planId}/diet-profile",
+            new UpdateWeeklyPlanDietProfileRequest(profileId),
+            cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<WeeklyPlanResponse>(cancellationToken: cancellationToken);
+    }
+
     public async Task<List<DietProfileResponse>> GetDietProfilesAsync(CancellationToken cancellationToken = default)
     {
         var response = await _http.GetAsync("api/dietprofiles", cancellationToken);

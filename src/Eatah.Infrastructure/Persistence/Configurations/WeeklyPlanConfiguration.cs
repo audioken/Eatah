@@ -31,6 +31,10 @@ public class WeeklyPlanConfiguration : IEntityTypeConfiguration<WeeklyPlan>
             .HasColumnName("workspace_id")
             .IsRequired();
 
+        builder.Property(w => w.DietProfileId)
+            .HasColumnName("diet_profile_id")
+            .IsRequired(false);
+
         builder.HasMany(w => w.Days)
             .WithOne()
             .HasForeignKey("weekly_plan_id")

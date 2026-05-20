@@ -8,4 +8,5 @@ public class WeeklyPlan
     public List<DayPlan> Days { get; set; } = [];
     public DateTime CreatedAt { get; set; }
     public Guid WorkspaceId { get; set; }
+    public Guid? DietProfileId { get; set; }
 }

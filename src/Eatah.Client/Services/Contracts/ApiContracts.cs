@@ -32,9 +32,12 @@ public record WeeklyPlanResponse(
     int Year,
     int WeekNumber,
     DateTime CreatedAt,
-    List<DayPlanResponse> Days);
+    List<DayPlanResponse> Days,
+    Guid? DietProfileId);
 
 public record AssignMealRequest(Guid MealId);
+
+public record UpdateWeeklyPlanDietProfileRequest(Guid? ProfileId);
 
 public record CreateMealRequest(string Name, MealCategory Category, List<string> Ingredients, int? CookingTimeMinutes);
 

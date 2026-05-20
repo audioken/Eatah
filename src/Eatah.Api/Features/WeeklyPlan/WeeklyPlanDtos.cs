@@ -15,7 +15,8 @@ public record WeeklyPlanResponse(
     int Year,
     int WeekNumber,
     DateTime CreatedAt,
-    List<DayPlanResponse> Days);
+    List<DayPlanResponse> Days,
+    Guid? DietProfileId);
 
 public record CreateWeeklyPlanRequest(int Year, int WeekNumber);
 
@@ -24,3 +25,5 @@ public record AssignMealRequest(Guid MealId);
 public record RandomizeWeeklyPlanRequest(Guid? ProfileId);
 
 public record RandomizeDayRequest(Guid? ProfileId);
+
+public record UpdateWeeklyPlanDietProfileRequest(Guid? ProfileId);
