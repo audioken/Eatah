@@ -102,7 +102,7 @@ public class PantryService
     }
 
     /// <summary>
-    /// Returns all coverage answers (covers/declined) per (IngredientId, MealId) for the current workspace.
+    /// Returns all coverage answers (covers/declined) per (IngredientId, DayPlanId) for the current workspace.
     /// Absence of a row means the question is still pending for that pair.
     /// </summary>
     public async Task<List<PantryCoverageResponse>> GetCoverageAsync(CancellationToken ct)
@@ -110,15 +110,15 @@ public class PantryService
         var wsId = _ws.RequireCurrent();
         return await _db.PantryItemMealCoverages.AsNoTracking()
             .Where(c => c.PantryItem!.WorkspaceId == wsId)
-            .Select(c => new PantryCoverageResponse(c.PantryItem!.IngredientId, c.MealId, c.Covers))
+            .Select(c => new PantryCoverageResponse(c.PantryItem!.IngredientId, c.DayPlanId, c.Covers))
             .ToListAsync(ct);
     }
 
     /// <summary>
-    /// Upserts the coverage answer for a (pantry ingredient, meal) pair in the current workspace.
+    /// Upserts the coverage answer for a (pantry ingredient, DayPlan) pair in the current workspace.
     /// Requires that the ingredient already exists in pantry.
     /// </summary>
-    public async Task<Result<PantryCoverageResponse>> SetCoverageAsync(Guid ingredientId, Guid mealId, bool covers, CancellationToken ct)
+    public async Task<Result<PantryCoverageResponse>> SetCoverageAsync(Guid ingredientId, Guid dayPlanId, bool covers, CancellationToken ct)
     {
         var wsId = _ws.RequireCurrent();
         var pantry = await _db.PantryItems
@@ -126,7 +126,7 @@ public class PantryService
         if (pantry is null) return Error.NotFound(ErrorCodes.PantryItemNotFound, "Ingredient not in pantry.");
 
         var existing = await _db.PantryItemMealCoverages
-            .FirstOrDefaultAsync(c => c.PantryItemId == pantry.Id && c.MealId == mealId, ct);
+            .FirstOrDefaultAsync(c => c.PantryItemId == pantry.Id && c.DayPlanId == dayPlanId, ct);
 
         if (existing is null)
         {
@@ -134,7 +134,7 @@ public class PantryService
             {
                 Id = Guid.NewGuid(),
                 PantryItemId = pantry.Id,
-                MealId = mealId,
+                DayPlanId = dayPlanId,
                 Covers = covers,
                 AnsweredAt = DateTime.UtcNow
             };
@@ -146,7 +146,7 @@ public class PantryService
             existing.AnsweredAt = DateTime.UtcNow;
         }
         await _db.SaveChangesAsync(ct);
-        return new PantryCoverageResponse(ingredientId, mealId, covers);
+        return new PantryCoverageResponse(ingredientId, dayPlanId, covers);
     }
 }
 
@@ -250,10 +250,16 @@ public class ShoppingListService
 
     /// <summary>
     /// Syncs the shopping list with the given weekly plan: adds ingredients for currently
-    /// planned meals (skipping pantry items) and removes any previously-synced items that
-    /// are no longer needed. Manually-added items (Notes == null) are never removed.
-    /// Returns the full updated list.
+    /// planned meals (skipping pantry items where coverage has been confirmed for that
+    /// specific DayPlan) and removes any previously-synced items that are no longer
+    /// needed. Manually-added items (Notes == null) are never removed. Returns the full
+    /// updated list.
     /// </summary>
+    /// <remarks>
+    /// Each scheduled DayPlan is an independent cooking session, so the same meal on
+    /// multiple days (or across weeks) is tracked as separate entries and requires its
+    /// own coverage answer — never collapse them by MealId.
+    /// </remarks>
     public async Task<Result<List<ShoppingItemResponse>>> SyncFromWeeklyPlanAsync(Guid planId, CancellationToken ct, DayOfWeek? fromDayInclusive = null)
     {
         var wsId = _ws.RequireCurrent();
@@ -269,6 +275,8 @@ public class ShoppingListService
             return Error.NotFound(ErrorCodes.WeeklyPlanNotFound, "Weekly plan not found.");
 
         var weekLabel = $"v{plan.WeekNumber}";
+        // Match " {weekLabel}d" rather than " {weekLabel}" so e.g. "v2" doesn't collide with "v20"/"v21".
+        var weekSentinel = $" {weekLabel}d";
 
         // Load existing pantry ingredient IDs and all shopping items (tracked for mutations)
         var pantryItems = await _db.PantryItems
@@ -278,20 +286,21 @@ public class ShoppingListService
         var pantryIngIds = pantryItems.Select(p => p.IngredientId).ToHashSet();
         var pantryItemIds = pantryItems.Select(p => p.Id).ToList();
 
-        // Coverage: per IngredientId, set of MealIds the pantry stock has been confirmed to cover.
+        // Coverage: per IngredientId, set of DayPlanIds the pantry stock has been
+        // confirmed to cover. Each DayPlan is its own cooking session so the same meal
+        // on multiple days requires independent confirmation.
         var coverageRows = await _db.PantryItemMealCoverages
             .Where(c => pantryItemIds.Contains(c.PantryItemId) && c.Covers)
-            .Join(_db.PantryItems, c => c.PantryItemId, p => p.Id, (c, p) => new { p.IngredientId, c.MealId })
+            .Join(_db.PantryItems, c => c.PantryItemId, p => p.Id, (c, p) => new { p.IngredientId, c.DayPlanId })
             .ToListAsync(ct);
         var coveredByIngredient = coverageRows
             .GroupBy(x => x.IngredientId)
-            .ToDictionary(g => g.Key, g => g.Select(x => x.MealId).ToHashSet());
+            .ToDictionary(g => g.Key, g => g.Select(x => x.DayPlanId).ToHashSet());
 
         var existingShoppingByIngId = await _db.ShoppingItems
             .Where(s => s.WorkspaceId == wsId)
             .ToDictionaryAsync(s => s.IngredientId, ct);
 
-        // Collect unique ingredient names with their source meal, skipping past days when requested
         static int DayIndex(DayOfWeek d) => d switch
         {
             DayOfWeek.Monday => 0,
@@ -303,25 +312,33 @@ public class ShoppingListService
             _ => 6
         };
 
-        // Group by ingredient name to collect ALL meals that need each ingredient, preserving day-of-week.
-        // Day index is embedded in notes ("MealName v22d0") for client-side day-based grouping.
+        // Group by ingredient name and keep one entry per DayPlan (never collapse by MealId).
+        // The DayPlanId is the cooking-session identifier the rest of the pipeline uses for
+        // coverage decisions and notes.
         var ingredientsToSync = plan.Days
             .Where(d => d.Meal is not null
                 && (fromDayInclusive is null || DayIndex(d.DayOfWeek) >= DayIndex(fromDayInclusive.Value)))
-            .SelectMany(d => d.Meal!.Ingredients.Select(i => new { Name = i.Name.Trim(), MealId = d.Meal!.Id, MealName = d.Meal!.Name, Day = DayIndex(d.DayOfWeek) }))
+            .SelectMany(d => d.Meal!.Ingredients.Select(i => new
+            {
+                Name = i.Name.Trim(),
+                DayPlanId = d.Id,
+                MealName = d.Meal!.Name,
+                Day = DayIndex(d.DayOfWeek)
+            }))
             .GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
             .Select(g => new
             {
                 Name = g.Key,
-                MealEntries = g.GroupBy(x => x.MealId)
-                               .Select(mg => (MealId: mg.Key, MealName: mg.First().MealName, Day: mg.Min(x => x.Day)))
+                // Dedupe by DayPlanId only — in case a meal lists the same ingredient twice.
+                SessionEntries = g.GroupBy(x => x.DayPlanId)
+                               .Select(sg => (DayPlanId: sg.Key, MealName: sg.First().MealName, Day: sg.First().Day))
                                .ToList()
             })
             .ToList();
 
         // Phase 1: Resolve IngredientMaster IDs and build the "needed" set
         var neededIngredientIds = new HashSet<Guid>();
-        var ingredientsWithMaster = new List<(List<(Guid MealId, string MealName, int Day)> MealEntries, IngredientMaster Master)>();
+        var ingredientsWithMaster = new List<(List<(Guid DayPlanId, string MealName, int Day)> SessionEntries, IngredientMaster Master)>();
 
         foreach (var item in ingredientsToSync)
         {
@@ -340,14 +357,13 @@ public class ShoppingListService
             if (!pantryIngIds.Contains(master.Id))
             {
                 neededIngredientIds.Add(master.Id);
-                ingredientsWithMaster.Add((item.MealEntries, master));
+                ingredientsWithMaster.Add((item.SessionEntries, master));
             }
             else
             {
-                // Ingredient is in pantry. Filter out meals confirmed covered; if any remain
-                // (declined or not-yet-answered), the ingredient still needs buying for those meals.
-                var coveredMeals = coveredByIngredient.TryGetValue(master.Id, out var cov) ? cov : new HashSet<Guid>();
-                var uncovered = item.MealEntries.Where(e => !coveredMeals.Contains(e.MealId)).ToList();
+                // In pantry: drop sessions confirmed covered; the rest still need buying.
+                var coveredSessions = coveredByIngredient.TryGetValue(master.Id, out var cov) ? cov : new HashSet<Guid>();
+                var uncovered = item.SessionEntries.Where(e => !coveredSessions.Contains(e.DayPlanId)).ToList();
                 if (uncovered.Count > 0)
                 {
                     neededIngredientIds.Add(master.Id);
@@ -356,15 +372,15 @@ public class ShoppingListService
             }
         }
 
-        // Phase 2: Remove stale week-N entries only. Items with entries from OTHER weeks keep
-        // those entries intact (multi-week sync support). If all entries are stale the item is removed.
+        // Phase 2: Remove stale week-N entries from items no longer needed at all.
+        // Other-week entries on the same item are preserved (multi-week sync).
         foreach (var existing in existingShoppingByIngId.Values
-            .Where(s => s.Notes is not null && s.Notes.Contains($" {weekLabel}") && !neededIngredientIds.Contains(s.IngredientId))
+            .Where(s => s.Notes is not null && s.Notes.Contains(weekSentinel) && !neededIngredientIds.Contains(s.IngredientId))
             .ToList())
         {
             var remainingEntries = existing.Notes!
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Where(part => !part.Contains($" {weekLabel}"))
+                .Where(part => !part.Contains(weekSentinel))
                 .ToList();
 
             if (remainingEntries.Count == 0)
@@ -380,18 +396,17 @@ public class ShoppingListService
 
         // Phase 3: Add or update shopping items for needed ingredients.
         // Notes are merged per week: other-week entries are preserved, this week's entries are replaced.
-        // Day index is embedded in the note suffix ("MealName v22d0") for client-side day grouping.
-        foreach (var (mealEntries, master) in ingredientsWithMaster)
+        // Note format: "MealName v22d4|<DayPlanId:N>" — DayPlanId embedded so the client can
+        // persist per-session coverage decisions back to PantryItemMealCoverage.
+        foreach (var (sessionEntries, master) in ingredientsWithMaster)
         {
-            // Note format: "MealName v22d4|<MealId:N>" — MealId embedded so the client can
-            // persist coverage decisions back to PantryItemMealCoverage from popup answers.
-            var newNoteEntries = mealEntries.Select(e => $"{e.MealName} {weekLabel}d{e.Day}|{e.MealId:N}");
+            var newNoteEntries = sessionEntries.Select(e => $"{e.MealName} {weekLabel}d{e.Day}|{e.DayPlanId:N}");
 
             if (existingShoppingByIngId.TryGetValue(master.Id, out var existingShop))
             {
                 var otherWeekEntries = existingShop.Notes is null ? [] :
                     existingShop.Notes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                        .Where(part => !part.Contains($" {weekLabel}"));
+                        .Where(part => !part.Contains(weekSentinel));
                 existingShop.Notes = string.Join(", ", otherWeekEntries.Concat(newNoteEntries));
                 if (existingShop.IsChecked)
                 {

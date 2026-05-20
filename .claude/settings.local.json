@@ -5,7 +5,12 @@
       "Read(//c/Users/kenza/.claude/projects/**)",
       "Bash(dotnet build *)",
       "Bash(dotnet test *)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(command -v dotnet)",
+      "Bash(dotnet --version)",
+      "Bash(dotnet ef *)",
+      "Bash(cd \"/c/Users/kenza/repos/personal/eatah\" && ls *.sln 2>/dev/null)",
+      "Read(//c/c/Users/kenza/repos/personal/**)"
     ]
   }
 }

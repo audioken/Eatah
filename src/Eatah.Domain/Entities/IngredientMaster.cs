@@ -25,16 +25,17 @@ public class PantryItem
 }
 
 /// <summary>
-/// Per-meal answer to "does this pantry item cover this meal?".
-/// Absence of a row for a (PantryItem, Meal) pair means the question is still pending
-/// (rendered as a "!" badge on the meal's checklist tile).
+/// Per-cooking-session answer to "does this pantry item cover this DayPlan?".
+/// Keyed by DayPlanId rather than MealId so the same meal scheduled on multiple
+/// days (or across weeks) gets independent coverage answers. Absence of a row
+/// for a (PantryItem, DayPlan) pair means the question is still pending.
 /// </summary>
 public class PantryItemMealCoverage
 {
     public Guid Id { get; set; }
     public Guid PantryItemId { get; set; }
     public PantryItem? PantryItem { get; set; }
-    public Guid MealId { get; set; }
+    public Guid DayPlanId { get; set; }
     public bool Covers { get; set; }
     public DateTime AnsweredAt { get; set; } = DateTime.UtcNow;
 }

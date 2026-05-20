@@ -11,6 +11,9 @@ public interface IWeeklyPlanRepository
     Task<Eatah.Domain.Entities.WeeklyPlan?> GetByYearWeekAsync(int year, int weekNumber, CancellationToken cancellationToken);
     Task AddAsync(Eatah.Domain.Entities.WeeklyPlan plan, CancellationToken cancellationToken);
     Task SaveChangesAsync(CancellationToken cancellationToken);
+    /// <summary>Deletes all pantry coverage answers linked to the given DayPlan IDs.
+    /// Must be called before saving the new meal assignment so coverage is reset for the slot.</summary>
+    Task DeleteCoverageForDayPlansAsync(IEnumerable<Guid> dayPlanIds, CancellationToken cancellationToken);
 }
 
 public class WeeklyPlanRepository : IWeeklyPlanRepository
@@ -52,5 +55,14 @@ public class WeeklyPlanRepository : IWeeklyPlanRepository
     public async Task SaveChangesAsync(CancellationToken cancellationToken)
     {
         await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task DeleteCoverageForDayPlansAsync(IEnumerable<Guid> dayPlanIds, CancellationToken cancellationToken)
+    {
+        var ids = dayPlanIds.ToList();
+        if (ids.Count == 0) return;
+        await _context.PantryItemMealCoverages
+            .Where(c => ids.Contains(c.DayPlanId))
+            .ExecuteDeleteAsync(cancellationToken);
     }
 }

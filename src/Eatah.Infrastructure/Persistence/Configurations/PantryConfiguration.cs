@@ -41,12 +41,12 @@ public class PantryItemMealCoverageConfiguration : IEntityTypeConfiguration<Pant
         b.HasKey(x => x.Id);
         b.Property(x => x.Id).HasColumnName("id");
         b.Property(x => x.PantryItemId).HasColumnName("pantry_item_id");
-        b.Property(x => x.MealId).HasColumnName("meal_id");
+        b.Property(x => x.DayPlanId).HasColumnName("day_plan_id");
         b.Property(x => x.Covers).HasColumnName("covers");
         b.Property(x => x.AnsweredAt).HasColumnName("answered_at").HasDefaultValueSql("NOW()");
         b.HasOne(x => x.PantryItem).WithMany().HasForeignKey(x => x.PantryItemId).OnDelete(DeleteBehavior.Cascade);
-        b.HasOne<Meal>().WithMany().HasForeignKey(x => x.MealId).OnDelete(DeleteBehavior.Cascade);
-        b.HasIndex(x => new { x.PantryItemId, x.MealId }).IsUnique();
+        b.HasOne<DayPlan>().WithMany().HasForeignKey(x => x.DayPlanId).OnDelete(DeleteBehavior.Cascade);
+        b.HasIndex(x => new { x.PantryItemId, x.DayPlanId }).IsUnique();
     }
 }
 
@@ -61,7 +61,7 @@ public class ShoppingItemConfiguration : IEntityTypeConfiguration<ShoppingItem>
         b.Property(x => x.IngredientId).HasColumnName("ingredient_id");
         b.Property(x => x.IsChecked).HasColumnName("is_checked");
         b.Property(x => x.AddedAt).HasColumnName("added_at").HasDefaultValueSql("NOW()");
-        b.Property(x => x.Notes).HasColumnName("notes").HasMaxLength(200);
+        b.Property(x => x.Notes).HasColumnName("notes").HasMaxLength(2000);
         b.HasOne(x => x.Ingredient).WithMany().HasForeignKey(x => x.IngredientId).OnDelete(DeleteBehavior.Restrict);
         b.HasIndex(x => new { x.WorkspaceId, x.IngredientId }).IsUnique();
     }

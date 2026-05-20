@@ -94,6 +94,9 @@ public class WeeklyPlanService
             return Error.NotFound(ErrorCodes.MealNotFound, $"Meal with id {mealId} was not found.");
         }
 
+        // Reset coverage answers for this slot — the new meal's ingredients must be re-confirmed.
+        await _repository.DeleteCoverageForDayPlansAsync([day.Id], cancellationToken);
+
         day.MealId = meal.Id;
         day.Meal = meal;
 
@@ -120,6 +123,9 @@ public class WeeklyPlanService
         {
             return WeeklyPlanErrors.DayNotFound(planId, dayOfWeek);
         }
+
+        // Reset coverage answers for this slot when the meal is cleared.
+        await _repository.DeleteCoverageForDayPlansAsync([day.Id], cancellationToken);
 
         day.MealId = null;
         day.Meal = null;
@@ -185,6 +191,9 @@ public class WeeklyPlanService
         var futureDayOrder = futureDays.Select(d => d.DayOfWeek).ToList();
         var assignments = _generator.Generate(meals, futureDayOrder, profile, preAssignedCounts);
 
+        // Reset coverage answers for all days being re-randomized.
+        await _repository.DeleteCoverageForDayPlansAsync(futureDays.Select(d => d.Id), cancellationToken);
+
         for (var i = 0; i < futureDays.Count; i++)
         {
             var chosen = assignments[i];
@@ -239,6 +248,9 @@ public class WeeklyPlanService
             string.Join(", ", plan.Days.Where(d => d.DayOfWeek != dayOfWeek && d.Meal is not null).Select(d => $"{d.DayOfWeek}:{d.Meal!.Category}")),
             chosen?.Name ?? "<null>",
             chosen?.Category.ToString() ?? "-");
+
+        // Reset coverage answers for this slot — the new meal's ingredients must be re-confirmed.
+        await _repository.DeleteCoverageForDayPlansAsync([day.Id], cancellationToken);
 
         // Only update the FK (see RandomizeAsync for rationale).
         day.MealId = chosen?.Id;

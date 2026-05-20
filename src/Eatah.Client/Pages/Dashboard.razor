@@ -68,6 +68,9 @@
 	private bool _isLoading = true;
 	private string? _error;
 	private int _weekOffset = 0; // -1 = förra veckan, 0 = denna vecka, +1 = nästa vecka
+								 // Sessions keyed by week offset (0 = current, 1 = next). Merging both gives global badge counts
+								 // that match the shopping-sync scope (current week from today + next week all days).
+	private readonly Dictionary<int, List<IngredientCheckState.ActiveSession>> _cachedSessions = new();
 
 	private int _viewedWeekNumber
 	{
@@ -143,8 +146,11 @@
 			var pantry = await pantryTask;
 			CheckState.SetPantryItems(pantry.Select(p => p.Name));
 			CheckState.SetPantryIngredientIds(pantry.Select(p => (p.Name, p.IngredientId)));
-			CheckState.SetCoverage((await coverageTask).Select(c => (c.IngredientId, c.MealId, c.Covers)));
+			CheckState.SetCoverage((await coverageTask).Select(c => (c.IngredientId, c.DayPlanId, c.Covers)));
 			RefreshActiveMeals();
+			// Fire-and-forget: pre-warm the other week's sessions so cross-week badge counts
+			// are accurate immediately when the checklist opens, without blocking page load.
+			_ = PrewarmPartnerWeeksAsync();
 		}
 		catch (Exception ex)
 		{
@@ -157,18 +163,71 @@
 		}
 	}
 
+	private static int DayIdx(DayOfWeek d) => d == DayOfWeek.Sunday ? 6 : (int)d - 1;
+
+	/// <summary>
+	/// Ensures sessions for both offset=0 (current week from today) and offset=1 (next week)
+	/// are cached and merged into CheckState. Called fire-and-forget after LoadAsync so the
+	/// checklist badge counts reflect both weeks without blocking the initial render.
+	/// </summary>
+	private async Task PrewarmPartnerWeeksAsync()
+	{
+		var today = DateTime.UtcNow.Date;
+		var updated = false;
+		if (!_cachedSessions.ContainsKey(0))
+		{
+			try
+			{
+				var plan = await Api.GetWeeklyPlanByWeekAsync(ISOWeek.GetYear(today), ISOWeek.GetWeekOfYear(today));
+				if (plan is not null)
+				{
+					var minDay = DayIdx(today.DayOfWeek);
+					_cachedSessions[0] = plan.Days
+						.Where(d => d.Meal is not null && DayIdx(d.DayOfWeek) >= minDay)
+						.Select(d => new IngredientCheckState.ActiveSession(d.Id, d.Meal!.Id, d.Meal!.Name, DayIdx(d.DayOfWeek)))
+						.ToList();
+					updated = true;
+				}
+			}
+			catch { /* non-critical — badge counts degrade gracefully */ }
+		}
+		if (!_cachedSessions.ContainsKey(1))
+		{
+			try
+			{
+				var next = today.AddDays(7);
+				var plan = await Api.GetWeeklyPlanByWeekAsync(ISOWeek.GetYear(next), ISOWeek.GetWeekOfYear(next));
+				if (plan is not null)
+				{
+					_cachedSessions[1] = plan.Days
+						.Where(d => d.Meal is not null)
+						.Select(d => new IngredientCheckState.ActiveSession(d.Id, d.Meal!.Id, d.Meal!.Name, DayIdx(d.DayOfWeek)))
+						.ToList();
+					updated = true;
+				}
+			}
+			catch { /* non-critical */ }
+		}
+		if (updated)
+			CheckState.SetActiveSessions(
+				new[] { 0, 1 }.Where(_cachedSessions.ContainsKey).SelectMany(o => _cachedSessions[o]));
+	}
+
 	private void RefreshActiveMeals()
 	{
 		if (_plan is null) return;
 		// Past days of the current week are excluded — those meals already happened, their
 		// ingredients aren't on the shopping list and shouldn't drive coverage popups/badges.
 		// Other weeks (prev/next) include all days.
-		static int DayIdx(DayOfWeek d) => d == DayOfWeek.Sunday ? 6 : (int)d - 1;
 		var minDayIdx = _weekOffset == 0 ? DayIdx(DateTime.Today.DayOfWeek) : 0;
-		CheckState.SetActiveMeals(
-			_plan.Days
-				.Where(d => d.Meal is not null && DayIdx(d.DayOfWeek) >= minDayIdx)
-				.Select(d => (d.Meal!.Id, d.Meal!.Name)));
+		_cachedSessions[_weekOffset] = _plan.Days
+			.Where(d => d.Meal is not null && DayIdx(d.DayOfWeek) >= minDayIdx)
+			.Select(d => new IngredientCheckState.ActiveSession(d.Id, d.Meal!.Id, d.Meal!.Name, DayIdx(d.DayOfWeek)))
+			.ToList();
+		// Merge current (0) and next (1) week sessions — matches shopping-sync scope so badge
+		// counts in the checklist are consistent with what the shopping list shows.
+		CheckState.SetActiveSessions(
+			new[] { 0, 1 }.Where(_cachedSessions.ContainsKey).SelectMany(o => _cachedSessions[o]));
 	}
 
 	private async Task NavigateWeekAsync(int delta)
@@ -215,9 +274,11 @@
 
 		try
 		{
+			var affectedId = _selectedDay.Id;
 			var updated = await Api.AssignMealAsync(_plan.Id, _selectedDay.DayOfWeek, meal.Id);
 			if (updated is not null)
 			{
+				CheckState.ClearCoverageForDayPlans([affectedId]);
 				_plan = updated;
 				RefreshActiveMeals();
 				ShoppingSync.TriggerSync();
@@ -245,6 +306,7 @@
 			var updated = await Api.ClearDayAsync(_plan.Id, day.DayOfWeek);
 			if (updated is not null)
 			{
+				CheckState.ClearCoverageForDayPlans([day.Id]);
 				_plan = updated;
 				RefreshActiveMeals();
 				ShoppingSync.TriggerSync();
@@ -266,9 +328,11 @@
 		_error = null;
 		try
 		{
+			var affectedIds = _plan.Days.Select(d => d.Id).ToList();
 			var updated = await Api.RandomizeWeekAsync(_plan.Id, profileId);
 			if (updated is not null)
 			{
+				CheckState.ClearCoverageForDayPlans(affectedIds);
 				_plan = updated;
 				RefreshActiveMeals();
 				ShoppingSync.TriggerSync();
@@ -299,6 +363,7 @@
 			var updated = await Api.RandomizeDayAsync(_plan.Id, day.DayOfWeek, profileId: ProfileState.SelectedProfileId);
 			if (updated is not null)
 			{
+				CheckState.ClearCoverageForDayPlans([day.Id]);
 				_plan = updated;
 				RefreshActiveMeals();
 				ShoppingSync.TriggerSync();
@@ -391,7 +456,9 @@
 					var updated = await Api.AssignMealAsync(_plan.Id, targetDay.DayOfWeek, created.Id);
 					if (updated is not null)
 					{
+						CheckState.ClearCoverageForDayPlans([targetDay.Id]);
 						_plan = updated;
+						RefreshActiveMeals();
 						ShoppingSync.TriggerSync();
 					}
 				}
@@ -423,10 +490,13 @@
 			if (created is not null)
 			{
 				_meals = _meals is null ? [created] : [.. _meals, created];
+				var affectedId = _selectedDay.Id;
 				var updated = await Api.AssignMealAsync(_plan.Id, _selectedDay.DayOfWeek, created.Id);
 				if (updated is not null)
 				{
+					CheckState.ClearCoverageForDayPlans([affectedId]);
 					_plan = updated;
+					RefreshActiveMeals();
 					ShoppingSync.TriggerSync();
 				}
 			}

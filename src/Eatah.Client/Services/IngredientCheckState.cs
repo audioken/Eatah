@@ -1,9 +1,15 @@
 namespace Eatah.Client.Services;
 
 /// <summary>
-/// Tracks which ingredients have been checked for each meal so that
-/// both the ingredient checklist modal and the day card badge stay in sync.
-/// Pantry items are pre-checked automatically when ingredients are registered.
+/// Tracks ingredient state for the meal-planner UI: which ingredients each meal has,
+/// which ones are in pantry, and per-DayPlan coverage answers ("does my pantry stock
+/// cover this particular cooking session?").
+///
+/// Two different identifiers are used on purpose:
+///   - <b>MealId</b> for recipe data (a meal's ingredient list), which is shared across
+///     every DayPlan that uses the meal.
+///   - <b>DayPlanId</b> for coverage answers, so the same meal scheduled on multiple
+///     days (or across weeks) is asked independently.
 /// </summary>
 public class IngredientCheckState
 {
@@ -12,14 +18,16 @@ public class IngredientCheckState
     private HashSet<string> _pantryNames = new(StringComparer.OrdinalIgnoreCase);
     // Pantry-name → master IngredientId, populated alongside pantry items.
     private Dictionary<string, Guid> _pantryIngredientIds = new(StringComparer.OrdinalIgnoreCase);
-    // Coverage answers per pantry ingredient: Covered = pantry stock covers the meal,
-    // Declined = user said it doesn't. Absence in either = pending question.
-    private readonly Dictionary<string, HashSet<Guid>> _coveredMeals = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, HashSet<Guid>> _declinedMeals = new(StringComparer.OrdinalIgnoreCase);
-    // Meal IDs that are currently active in the viewed weekly plan.
-    private HashSet<Guid> _activeMealIds = new();
-    // Display names for active meals, keyed by MealId. Populated alongside SetActiveMeals.
-    private Dictionary<Guid, string> _activeMealNames = new();
+    // Per-session coverage answers, keyed by ingredient name → set of DayPlanIds.
+    // Covered = pantry stock covers the session. Declined = user said it doesn't.
+    // Absence from either = pending question.
+    private readonly Dictionary<string, HashSet<Guid>> _coveredSessions = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, HashSet<Guid>> _declinedSessions = new(StringComparer.OrdinalIgnoreCase);
+    // Sessions currently visible in the planner. Keyed by DayPlanId so multiple DayPlans
+    // pointing at the same meal stay distinct.
+    private Dictionary<Guid, ActiveSession> _activeSessions = new();
+
+    public record ActiveSession(Guid DayPlanId, Guid MealId, string MealName, int DayIndex);
 
     public event Action? OnChange;
 
@@ -59,8 +67,6 @@ public class IngredientCheckState
     public void SetPantryItems(IEnumerable<string> pantryNames)
     {
         _pantryNames = new HashSet<string>(pantryNames, StringComparer.OrdinalIgnoreCase);
-        // Rebuild checked state for every loaded meal from pantry only.
-        // This discards stale checks (e.g. items removed from pantry since last load).
         foreach (var (mealId, ings) in _ingredients)
         {
             var set = GetChecked(mealId);
@@ -85,7 +91,6 @@ public class IngredientCheckState
     public void AddPantryName(string name)
     {
         _pantryNames.Add(name);
-        // Pre-check this ingredient in every loaded meal that contains it.
         foreach (var (mealId, ings) in _ingredients)
         {
             if (ings.Contains(name, StringComparer.OrdinalIgnoreCase))
@@ -107,56 +112,41 @@ public class IngredientCheckState
     }
 
     /// <summary>
-    /// Updates which meal IDs are active in the currently viewed weekly plan.
-    /// Call this whenever the plan is loaded or mutated.
+    /// Updates which DayPlans are active in the currently viewed weekly plan(s).
+    /// Coverage popups and badges use this to know which sessions are still "live".
     /// </summary>
-    public void SetActiveMeals(IEnumerable<Guid> mealIds)
+    public void SetActiveSessions(IEnumerable<ActiveSession> sessions)
     {
-        _activeMealIds = new HashSet<Guid>(mealIds);
+        _activeSessions = sessions
+            .GroupBy(s => s.DayPlanId)
+            .ToDictionary(g => g.Key, g => g.First());
         OnChange?.Invoke();
     }
 
-    /// <summary>
-    /// Same as <see cref="SetActiveMeals(IEnumerable{Guid})"/> but also records display names so coverage
-    /// popups outside the dashboard can render meal labels by MealId.
-    /// </summary>
-    public void SetActiveMeals(IEnumerable<(Guid Id, string Name)> meals)
+    /// <summary>Active sessions in the viewed plan whose meal includes this ingredient.</summary>
+    public IReadOnlyList<ActiveSession> GetActiveSessionsForIngredient(string ingredientName)
     {
-        var list = meals.ToList();
-        _activeMealIds = list.Select(m => m.Id).ToHashSet();
-        _activeMealNames = list.GroupBy(m => m.Id).ToDictionary(g => g.Key, g => g.First().Name);
-        OnChange?.Invoke();
-    }
-
-    /// <summary>Returns active meals (id+name) in the viewed plan that include this ingredient.</summary>
-    public IReadOnlyList<(Guid Id, string Name)> GetActiveMealsForIngredient(string ingredientName)
-    {
-        return _ingredients
-            .Where(kv => _activeMealIds.Contains(kv.Key)
-                && kv.Value.Any(n => string.Equals(n, ingredientName, StringComparison.OrdinalIgnoreCase)))
-            .Select(kv => (Id: kv.Key, Name: _activeMealNames.TryGetValue(kv.Key, out var n) ? n : string.Empty))
+        return _activeSessions.Values
+            .Where(s => _ingredients.TryGetValue(s.MealId, out var ings)
+                && ings.Any(n => string.Equals(n, ingredientName, StringComparison.OrdinalIgnoreCase)))
             .ToList();
     }
 
     /// <summary>
-    /// Active meals containing this ingredient where pantry stock has NOT been marked as covering
-    /// the meal yet (either explicitly declined, or unanswered). Use this to drive the coverage
-    /// popup so previously-covered meals aren't re-asked.
+    /// Active sessions containing this ingredient where pantry stock has NOT yet been
+    /// marked as covering the session (either explicitly declined or unanswered).
     /// </summary>
-    public IReadOnlyList<(Guid Id, string Name)> GetUncoveredActiveMealsForIngredient(string ingredientName)
+    public IReadOnlyList<ActiveSession> GetUncoveredActiveSessionsForIngredient(string ingredientName)
     {
-        var coveredSet = _coveredMeals.TryGetValue(ingredientName, out var c) ? c : new HashSet<Guid>();
-        return _ingredients
-            .Where(kv => _activeMealIds.Contains(kv.Key)
-                && !coveredSet.Contains(kv.Key)
-                && kv.Value.Any(n => string.Equals(n, ingredientName, StringComparison.OrdinalIgnoreCase)))
-            .Select(kv => (Id: kv.Key, Name: _activeMealNames.TryGetValue(kv.Key, out var n) ? n : string.Empty))
+        var coveredSet = _coveredSessions.TryGetValue(ingredientName, out var c) ? c : new HashSet<Guid>();
+        return GetActiveSessionsForIngredient(ingredientName)
+            .Where(s => !coveredSet.Contains(s.DayPlanId))
             .ToList();
     }
 
-    /// <summary>Number of active meals still needing this ingredient (i.e. not yet marked covered).</summary>
-    public int GetUncoveredMealCount(string ingredientName) =>
-        GetUncoveredActiveMealsForIngredient(ingredientName).Count;
+    /// <summary>Number of active sessions still needing this ingredient (not yet marked covered).</summary>
+    public int GetUncoveredSessionCount(string ingredientName) =>
+        GetUncoveredActiveSessionsForIngredient(ingredientName).Count;
 
     /// <summary>
     /// Returns the number of ingredients for the given meal that are not in the pantry
@@ -169,13 +159,11 @@ public class IngredientCheckState
     }
 
     /// <summary>
-    /// Returns how many distinct active meals in the current weekly plan contain
-    /// the given ingredient name. Returns 0 if not yet known (ingredients not loaded).
+    /// Number of distinct active sessions in the planner whose meal contains this
+    /// ingredient. Returns 0 if not yet known.
     /// </summary>
-    public int GetSharedMealCount(string ingredientName) =>
-        _ingredients
-            .Where(kv => _activeMealIds.Contains(kv.Key))
-            .Count(kv => kv.Value.Any(n => string.Equals(n, ingredientName, StringComparison.OrdinalIgnoreCase)));
+    public int GetSharedSessionCount(string ingredientName) =>
+        GetActiveSessionsForIngredient(ingredientName).Count;
 
     /// <summary>
     /// Replaces the pantry-name → ingredient-id lookup. Used so coverage operations can
@@ -195,88 +183,100 @@ public class IngredientCheckState
     /// Replaces all coverage state from a freshly fetched server map.
     /// Items keyed by pantry-ingredient name (lookup via SetPantryIngredientIds).
     /// </summary>
-    public void SetCoverage(IEnumerable<(Guid IngredientId, Guid MealId, bool Covers)> rows)
+    public void SetCoverage(IEnumerable<(Guid IngredientId, Guid DayPlanId, bool Covers)> rows)
     {
-        _coveredMeals.Clear();
-        _declinedMeals.Clear();
-        // Invert ingredientId → name using known pantry mapping.
+        _coveredSessions.Clear();
+        _declinedSessions.Clear();
         var idToName = _pantryIngredientIds.ToDictionary(kv => kv.Value, kv => kv.Key);
         foreach (var row in rows)
         {
             if (!idToName.TryGetValue(row.IngredientId, out var name)) continue;
-            var bucket = row.Covers ? _coveredMeals : _declinedMeals;
+            var bucket = row.Covers ? _coveredSessions : _declinedSessions;
             if (!bucket.TryGetValue(name, out var set))
             {
                 set = new HashSet<Guid>();
                 bucket[name] = set;
             }
-            set.Add(row.MealId);
+            set.Add(row.DayPlanId);
         }
         OnChange?.Invoke();
     }
 
-    public void MarkCoverage(string ingredientName, Guid mealId, bool covers)
+    public void MarkCoverage(string ingredientName, Guid dayPlanId, bool covers)
     {
         // Remove from the opposite bucket first to keep state consistent.
-        if (covers && _declinedMeals.TryGetValue(ingredientName, out var d)) d.Remove(mealId);
-        else if (!covers && _coveredMeals.TryGetValue(ingredientName, out var c)) c.Remove(mealId);
+        if (covers && _declinedSessions.TryGetValue(ingredientName, out var d)) d.Remove(dayPlanId);
+        else if (!covers && _coveredSessions.TryGetValue(ingredientName, out var c)) c.Remove(dayPlanId);
 
-        var bucket = covers ? _coveredMeals : _declinedMeals;
+        var bucket = covers ? _coveredSessions : _declinedSessions;
         if (!bucket.TryGetValue(ingredientName, out var set))
         {
             set = new HashSet<Guid>();
             bucket[ingredientName] = set;
         }
-        set.Add(mealId);
+        set.Add(dayPlanId);
         OnChange?.Invoke();
     }
 
     /// <summary>
-    /// Coverage stats for an ingredient across the currently-active weekly plan.
-    /// Covered = pantry stock confirmed to cover that meal. Total = meals in the active
-    /// week containing this ingredient.
+    /// Coverage stats for an ingredient across the currently-active sessions.
+    /// Covered = pantry stock confirmed to cover that session. Total = active sessions
+    /// whose meal contains this ingredient.
     /// </summary>
     public (int Covered, int Total) GetCoverageFraction(string ingredientName)
     {
-        var needingMealIds = _ingredients
-            .Where(kv => _activeMealIds.Contains(kv.Key)
-                && kv.Value.Any(n => string.Equals(n, ingredientName, StringComparison.OrdinalIgnoreCase)))
-            .Select(kv => kv.Key)
-            .ToList();
-        var covered = _coveredMeals.TryGetValue(ingredientName, out var set)
-            ? needingMealIds.Count(set.Contains)
+        var sessions = GetActiveSessionsForIngredient(ingredientName);
+        var covered = _coveredSessions.TryGetValue(ingredientName, out var set)
+            ? sessions.Count(s => set.Contains(s.DayPlanId))
             : 0;
-        return (covered, needingMealIds.Count);
+        return (covered, sessions.Count);
     }
 
-    /// <summary>True when at least one pantry ingredient that this meal needs has not been
-    /// answered yet (neither covered nor declined for this meal).</summary>
-    public bool HasPendingCoverageQuestion(Guid mealId)
+    /// <summary>
+    /// True when at least one pantry ingredient that this session's meal needs has not
+    /// yet been answered (neither covered nor declined) for THIS DayPlan.
+    /// </summary>
+    public bool HasPendingCoverageQuestion(Guid dayPlanId, Guid mealId)
     {
         if (!_ingredients.TryGetValue(mealId, out var ings)) return false;
         foreach (var name in ings)
         {
             if (!_pantryNames.Contains(name)) continue;
-            var covered = _coveredMeals.TryGetValue(name, out var c) && c.Contains(mealId);
-            var declined = _declinedMeals.TryGetValue(name, out var d) && d.Contains(mealId);
+            var covered = _coveredSessions.TryGetValue(name, out var c) && c.Contains(dayPlanId);
+            var declined = _declinedSessions.TryGetValue(name, out var dd) && dd.Contains(dayPlanId);
             if (!covered && !declined) return true;
         }
         return false;
     }
 
-    /// <summary>Pantry ingredient names where coverage for this meal is still unanswered.</summary>
-    public IEnumerable<string> GetPendingCoverageIngredients(Guid mealId)
+    /// <summary>Pantry ingredient names where coverage for this DayPlan is still unanswered.</summary>
+    public IEnumerable<string> GetPendingCoverageIngredients(Guid dayPlanId, Guid mealId)
     {
         if (!_ingredients.TryGetValue(mealId, out var ings)) return [];
         return ings.Where(name =>
         {
             if (!_pantryNames.Contains(name)) return false;
-            var covered = _coveredMeals.TryGetValue(name, out var c) && c.Contains(mealId);
-            var declined = _declinedMeals.TryGetValue(name, out var d) && d.Contains(mealId);
+            var covered = _coveredSessions.TryGetValue(name, out var c) && c.Contains(dayPlanId);
+            var declined = _declinedSessions.TryGetValue(name, out var dd) && dd.Contains(dayPlanId);
             return !covered && !declined;
         });
     }
 
-    public bool IsCoveredForMeal(string ingredientName, Guid mealId) =>
-        _coveredMeals.TryGetValue(ingredientName, out var set) && set.Contains(mealId);
+    public bool IsCoveredForSession(string ingredientName, Guid dayPlanId) =>
+        _coveredSessions.TryGetValue(ingredientName, out var set) && set.Contains(dayPlanId);
+
+    /// <summary>
+    /// Clears all coverage answers (covered and declined) for the given DayPlan IDs.
+    /// Call this whenever a meal is swapped or randomised so the new meal's pantry
+    /// ingredients are treated as pending and the user is asked again.
+    /// </summary>
+    public void ClearCoverageForDayPlans(IEnumerable<Guid> dayPlanIds)
+    {
+        var ids = new HashSet<Guid>(dayPlanIds);
+        foreach (var name in _coveredSessions.Keys.ToList())
+            _coveredSessions[name].ExceptWith(ids);
+        foreach (var name in _declinedSessions.Keys.ToList())
+            _declinedSessions[name].ExceptWith(ids);
+        OnChange?.Invoke();
+    }
 }

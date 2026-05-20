@@ -75,7 +75,18 @@
         })();
     </script>
 
-    <script src="_framework/blazor.webassembly.js"></script>
+    <script src="_framework/blazor.webassembly.js" autostart="false"></script>
+    <script>
+        // Skip SRI integrity checks in development so stale hashes after hot-reload
+        // don't break the page. The browser still fetches fresh files on every load.
+        Blazor.start({
+            loadBootResource: function (type, name, defaultUri, integrity) {
+                // dotnetjs resources must return a URI string, not a Response.
+                if (type === 'dotnetjs') return defaultUri;
+                return fetch(defaultUri, { cache: 'no-cache' });
+            }
+        });
+    </script>
     <script src="js/chat.js"></script>
     <script>navigator.serviceWorker && navigator.serviceWorker.register('service-worker.js');</script>
 

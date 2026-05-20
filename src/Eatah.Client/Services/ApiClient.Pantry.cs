@@ -53,9 +53,9 @@ public partial class ApiClient
         return await response.Content.ReadFromJsonAsync<List<PantryCoverageResponse>>(cancellationToken: ct) ?? [];
     }
 
-    public async Task<PantryCoverageResponse?> SetPantryCoverageAsync(Guid ingredientId, Guid mealId, bool covers, CancellationToken ct = default)
+    public async Task<PantryCoverageResponse?> SetPantryCoverageAsync(Guid ingredientId, Guid dayPlanId, bool covers, CancellationToken ct = default)
     {
-        var response = await _http.PostAsJsonAsync("api/pantry/coverage", new SetPantryCoverageRequest(ingredientId, mealId, covers), ct);
+        var response = await _http.PostAsJsonAsync("api/pantry/coverage", new SetPantryCoverageRequest(ingredientId, dayPlanId, covers), ct);
         await EnsureSuccessAsync(response, ct);
         return await response.Content.ReadFromJsonAsync<PantryCoverageResponse>(cancellationToken: ct);
     }
