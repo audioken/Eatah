@@ -30,8 +30,8 @@
                 }
                 else
                 {
-                    <button type="button" class="eatah-diet-card__select-btn" @onclick="ToggleDropdown"
-                            aria-haspopup="listbox" aria-expanded="@_dropdownOpen">
+                    <button type="button" class="eatah-diet-card__select-btn" @onclick="ToggleDropdown" aria-haspopup="listbox"
+                            aria-expanded="@_dropdownOpen">
                         <span class="eatah-diet-card__select-label">@(SelectedProfileName ?? "Välj profil")</span>
                         <span class="eatah-diet-card__chevron">
                             <Icon Name="chevron-down" Size="12" />
@@ -96,7 +96,8 @@
                         {
                             var ok = actual >= rule.MinPerWeek && actual <= rule.MaxPerWeek;
                             <span class="eatah-pill @(ok ? "eatah-pill--ok" : "eatah-pill--bad") eatah-diet-card__rule-pill">
-                                @(rule.MinPerWeek == rule.MaxPerWeek ? $"{rule.MinPerWeek}" : $"{rule.MinPerWeek}-{rule.MaxPerWeek}")
+                                @(rule.MinPerWeek == rule.MaxPerWeek ? $"{rule.MinPerWeek}" :
+                    $"{rule.MinPerWeek}-{rule.MaxPerWeek}")
                             </span>
                         }
                     }
@@ -108,7 +109,7 @@
             }
         </div>
 
-        <button type="button" class="eatah-diet-card__randomize" disabled="@_isRandomizing"
+        <button type="button" class="eatah-diet-card__randomize" disabled="@(_isRandomizing || IsLocked)"
                 @onclick="HandleRandomize">
             <Icon Name="dice" Size="20" />
             <span class="eatah-diet-card__randomize-label">Slumpa maträtter</span>
@@ -158,13 +159,16 @@
             _planSignature = signature;
 
             // Sync selected profile from the plan (server-stored per week).
+            // For locked weeks, never fall back to first available – only show the
+            // profile that was actually stored on that plan (null = no profile used).
             if (_profiles is not null)
             {
                 _selectedProfileId = Plan.DietProfileId is Guid planProfileId
                     && _profiles.Any(p => p.Id == planProfileId)
                         ? planProfileId
-                        : _profiles.FirstOrDefault()?.Id;
-                ProfileState.SetSelectedProfileId(_selectedProfileId);
+                        : (IsLocked ? null : _profiles.FirstOrDefault()?.Id);
+                if (!IsLocked)
+                    ProfileState.SetSelectedProfileId(_selectedProfileId);
             }
 
             await EvaluateAsync();
@@ -191,13 +195,15 @@
         {
             _profiles = await Api.GetDietProfilesAsync();
 
-            // Use the profile stored on the plan; fallback to first available.
+            // Use the profile stored on the plan; for locked weeks, never fall back
+            // to first available – only show the profile actually used that week.
             _selectedProfileId = Plan?.DietProfileId is Guid planProfileId
                 && _profiles.Any(p => p.Id == planProfileId)
                     ? planProfileId
-                    : _profiles.FirstOrDefault()?.Id;
+                    : (IsLocked ? null : _profiles.FirstOrDefault()?.Id);
 
-            ProfileState.SetSelectedProfileId(_selectedProfileId);
+            if (!IsLocked)
+                ProfileState.SetSelectedProfileId(_selectedProfileId);
             await EvaluateAsync();
         }
         catch
