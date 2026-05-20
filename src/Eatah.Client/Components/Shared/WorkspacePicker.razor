@@ -1,54 +1,37 @@
 @namespace Eatah.Client.Components.Shared
 @inject WorkspaceState Workspaces
+@inject ModalService Modals
 @implements IDisposable
 
-@{
-    var chevronClass = "eatah-workspace-picker__chevron" + (_open ? " eatah-workspace-picker__chevron--open" : "");
-}
-<div class="eatah-workspace-picker">
-    <button type="button" class="eatah-workspace-picker__btn" @onclick="Toggle">
-        <span class="eatah-workspace-picker__label">@(Workspaces.Current?.Name ?? "Personligt")</span>
-        <Icon Name="chevron-down" Size="14" CssClass="@chevronClass" />
-    </button>
-
-    @if (_open && Workspaces.Workspaces.Count > 1)
-    {
-        <div class="eatah-workspace-picker__dropdown">
-            @foreach (var ws in Workspaces.Workspaces)
-            {
-                var isActive = ws.Id == Workspaces.CurrentId;
-                <button type="button"
-                        class="eatah-workspace-picker__option @(isActive ? "eatah-workspace-picker__option--active" : "")"
-                        @onclick="() => Select(ws.Id)">
-                    <Icon Name="@(ws.Type == WorkspaceType.Household ? "house" : "profile")" Size="16" />
-                    <span>@ws.Name</span>
-                    @if (isActive)
-                    {
-                        <Icon Name="check" Size="14" />
-                    }
-                </button>
-            }
-        </div>
-        <div class="eatah-workspace-picker__backdrop" @onclick="Close"></div>
-    }
-</div>
+@*
+    Read-only household label in the header. Each user belongs to at most one
+    household; renaming/leaving/creating happens in ProfileModal. Tapping the
+    label opens the profile modal so it's discoverable.
+*@
+<button type="button" class="eatah-workspace-picker__btn" @onclick="OpenProfile" title="@(_label)">
+    <Icon Name="house" Size="14" CssClass="eatah-workspace-picker__icon" />
+    <span class="eatah-workspace-picker__label">@_label</span>
+</button>
 
 @code {
-    private bool _open;
+    private string _label = "Hushåll";
 
     protected override void OnInitialized()
     {
-        Workspaces.OnChange += StateHasChanged;
+        Workspaces.OnChange += UpdateLabel;
+        UpdateLabel();
     }
 
-    private void Toggle() => _open = !_open;
-    private void Close() => _open = false;
-
-    private void Select(Guid id)
+    private void UpdateLabel()
     {
-        Workspaces.SwitchTo(id);
-        _open = false;
+        _label = Workspaces.Current?.Name ?? "Inget hushåll";
+        InvokeAsync(StateHasChanged);
     }
 
-    public void Dispose() => Workspaces.OnChange -= StateHasChanged;
+    private void OpenProfile()
+    {
+        Modals.Show<Eatah.Client.Components.Profile.ProfileModal>();
+    }
+
+    public void Dispose() => Workspaces.OnChange -= UpdateLabel;
 }

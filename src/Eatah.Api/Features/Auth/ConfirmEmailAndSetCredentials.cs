@@ -84,8 +84,9 @@ public static class ConfirmEmailAndSetCredentials
 
         await signInManager.SignInAsync(user, isPersistent: true);
 
-        // Ensure the user has a Personal workspace (idempotent).
-        await workspaceService.EnsurePersonalAsync(user.Id, user.DisplayName, ct);
+        // Ensure the user has a household (idempotent). Created as a 1-person "Mitt hushåll"
+        // so the app is immediately usable; the user can rename it in the profile menu.
+        await workspaceService.EnsureDefaultHouseholdAsync(user.Id, ct);
 
         var token = JwtTokenHelper.GenerateToken(user, authSettings.Value);
         return Results.Ok(new AuthResponse(user.Id, user.Email!, user.DisplayName, token));

@@ -44,7 +44,7 @@ public class EatahWebApplicationFactory : WebApplicationFactory<Program>
         var db = scope.ServiceProvider.GetRequiredService<EatahDbContext>();
         db.Database.EnsureCreated();
         DataSeeder.SeedAsync(db).GetAwaiter().GetResult();
-        DataSeeder.EnsurePersonalWorkspaceAsync(db, TestAuthHandler.TestUserId, TestAuthHandler.TestUserDisplayName).GetAwaiter().GetResult();
+        DataSeeder.EnsureDefaultHouseholdAsync(db, TestAuthHandler.TestUserId).GetAwaiter().GetResult();
         return host;
     }
 

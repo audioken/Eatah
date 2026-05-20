@@ -468,6 +468,7 @@
         Header.Set(center: @<span>Köplista</span>);
         PantryState.OnChanged += OnPantryChanged;
         ShoppingState.OnChanged += OnShoppingChanged;
+        WorkspaceState.OnChange += OnWorkspaceChanged;
     }
 
     public void Dispose()
@@ -475,10 +476,12 @@
         Header.Clear();
         PantryState.OnChanged -= OnPantryChanged;
         ShoppingState.OnChanged -= OnShoppingChanged;
+        WorkspaceState.OnChange -= OnWorkspaceChanged;
     }
 
     private void OnPantryChanged() => InvokeAsync(StateHasChanged);
     private void OnShoppingChanged() { ReinitGroups(); InvokeAsync(StateHasChanged); }
+    private void OnWorkspaceChanged() => InvokeAsync(LoadAsync);
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -493,7 +496,10 @@
 
             await Task.WhenAll(pantryTask, shoppingTask);
 
-            PantryState.SetPantry(await pantryTask);
+            var pantry = await pantryTask;
+            PantryState.SetPantry(pantry);
+            CheckState.SetPantryItems(pantry.Select(p => p.Name));
+            CheckState.SetPantryIngredientIds(pantry.Select(p => (p.Name, p.IngredientId)));
             ShoppingState.SetShopping(await shoppingTask);
             ReinitGroups();
         }
@@ -905,9 +911,9 @@
         if (!_selectedShoppingItems.Any(id => ShoppingState.Items.Any(s => s.Id == id && !s.IsChecked)))
             return;
 
-        if (WorkspaceState.Current?.Type != WorkspaceType.Household)
+        if (WorkspaceState.Current is null || WorkspaceState.Current.MemberCount < 2)
         {
-            Toasts.Show("Chattknapparna används i ett hushåll.");
+            Toasts.Show("Bjud in någon till hushållet för att använda chatten.");
             return;
         }
 

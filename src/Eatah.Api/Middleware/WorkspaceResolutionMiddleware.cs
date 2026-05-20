@@ -6,7 +6,7 @@ namespace Eatah.Api.Middleware;
 
 /// <summary>
 /// Resolves the current workspace for the request. Reads the optional
-/// <c>X-Eatah-Workspace</c> header; falls back to the user's Personal workspace.
+/// <c>X-Eatah-Workspace</c> header; falls back to the user's household if any.
 /// Skips silently if the request is not authenticated.
 /// On invalid workspace or missing membership: short-circuits with a 403 ProblemDetails.
 /// </summary>
@@ -64,14 +64,14 @@ public class WorkspaceResolutionMiddleware
         }
         else
         {
-            // Fallback: user's Personal workspace
-            var personal = await db.WorkspaceMembers
-                .Where(m => m.UserId == userId.Value && m.Workspace.Type == Domain.Entities.WorkspaceType.Personal)
+            // Fallback: the user's household (each user has at most one).
+            var household = await db.WorkspaceMembers
+                .Where(m => m.UserId == userId.Value)
                 .Select(m => (Guid?)m.WorkspaceId)
                 .FirstOrDefaultAsync();
-            if (personal is Guid personalId)
+            if (household is Guid householdId)
             {
-                workspaceContext.SetCurrent(personalId);
+                workspaceContext.SetCurrent(householdId);
             }
             // else: leave unset. Endpoints that require it will fail via RequireCurrent().
         }

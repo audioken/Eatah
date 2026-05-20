@@ -1,5 +1,6 @@
 using Eatah.Api.Common;
 using Eatah.Api.Features.Notifications;
+using Eatah.Api.Features.Workspaces;
 using Eatah.Domain.Entities;
 using Eatah.Infrastructure.Identity;
 using Eatah.Infrastructure.Persistence;
@@ -13,12 +14,18 @@ public class FriendService
     private readonly EatahDbContext _db;
     private readonly UserManager<EatahUser> _users;
     private readonly INotificationService _notifications;
+    private readonly WorkspaceService _workspaces;
 
-    public FriendService(EatahDbContext db, UserManager<EatahUser> users, INotificationService notifications)
+    public FriendService(
+        EatahDbContext db,
+        UserManager<EatahUser> users,
+        INotificationService notifications,
+        WorkspaceService workspaces)
     {
         _db = db;
         _users = users;
         _notifications = notifications;
+        _workspaces = workspaces;
     }
 
     public async Task<List<UserSearchResult>> SearchUsersAsync(Guid currentUserId, string query, CancellationToken ct)
@@ -43,10 +50,10 @@ public class FriendService
         var toUser = await _users.FindByIdAsync(toUserId.ToString());
         if (toUser is null) return Error.NotFound(ErrorCodes.AuthUserNotFound, "User not found.");
 
-        // Find or auto-create the sender's Household workspace.
+        // Find or auto-create the sender's household. Each user has at most one.
         var household = await _db.WorkspaceMembers
             .Include(m => m.Workspace)
-            .Where(m => m.UserId == fromUserId && m.Workspace.Type == WorkspaceType.Household)
+            .Where(m => m.UserId == fromUserId)
             .Select(m => m.Workspace)
             .FirstOrDefaultAsync(ct);
 
@@ -55,8 +62,7 @@ public class FriendService
             household = new Workspace
             {
                 Id = Guid.NewGuid(),
-                Name = "Hushåll",
-                Type = WorkspaceType.Household,
+                Name = "Mitt hushåll",
                 Members = [new WorkspaceMember { UserId = fromUserId, Role = MemberRole.Owner }]
             };
             _db.Workspaces.Add(household);
@@ -114,11 +120,24 @@ public class FriendService
 
         if (accept)
         {
-            var hasHousehold = await _db.WorkspaceMembers
-                .AnyAsync(m => m.UserId == currentUserId && m.Workspace.Type == WorkspaceType.Household, ct);
-            if (hasHousehold)
-                return Error.Conflict(ErrorCodes.WorkspaceHouseholdAlreadyExists,
-                    "You already belong to a household.");
+            // Replace any existing household the invitee belongs to with the inviter's.
+            // Per product decision: the invitee loses their old household's data on accept.
+            var currentMembership = await _db.WorkspaceMembers
+                .FirstOrDefaultAsync(m => m.UserId == currentUserId, ct);
+            if (currentMembership is not null && currentMembership.WorkspaceId != request.HouseholdWorkspaceId)
+            {
+                var oldWorkspaceId = currentMembership.WorkspaceId;
+                _db.WorkspaceMembers.Remove(currentMembership);
+                await _db.SaveChangesAsync(ct);
+
+                // If the invitee was the last member, fully cascade-delete the old household.
+                // (If others remain, leaving is enough — their data stays intact for them.)
+                var remaining = await _db.WorkspaceMembers.CountAsync(m => m.WorkspaceId == oldWorkspaceId, ct);
+                if (remaining == 0)
+                {
+                    await _workspaces.DeleteWorkspaceCascadeAsync(oldWorkspaceId, ct);
+                }
+            }
 
             _db.WorkspaceMembers.Add(new WorkspaceMember
             {
@@ -167,9 +186,9 @@ public class FriendService
 
     public async Task<List<FriendResponse>> GetFriendsAsync(Guid currentUserId, CancellationToken ct)
     {
-        // Foodbuddies = other members of any Household I'm in.
+        // Foodbuddies = other members of the household I'm in.
         var householdIds = await _db.WorkspaceMembers
-            .Where(m => m.UserId == currentUserId && m.Workspace.Type == WorkspaceType.Household)
+            .Where(m => m.UserId == currentUserId)
             .Select(m => m.WorkspaceId)
             .ToListAsync(ct);
 

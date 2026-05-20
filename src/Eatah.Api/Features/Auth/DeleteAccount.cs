@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using Eatah.Api.Common;
-using Eatah.Domain.Entities;
+using Eatah.Api.Features.Workspaces;
 using Eatah.Infrastructure.Identity;
 using Eatah.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
@@ -16,6 +16,7 @@ public static class DeleteAccount
         UserManager<EatahUser> userManager,
         ClaimsPrincipal principal,
         EatahDbContext db,
+        WorkspaceService workspaces,
         CancellationToken ct)
     {
         var user = await userManager.GetUserAsync(principal);
@@ -36,7 +37,8 @@ public static class DeleteAccount
             .Where(r => r.FromUserId == user.Id || r.ToUserId == user.Id)
             .ExecuteDeleteAsync(ct);
 
-        // Remove workspace memberships; delete workspaces that become empty
+        // Remove workspace memberships; cascade-delete workspaces that become empty
+        // (includes all workspace-scoped data: weekly plans, shopping, pantry, chat, meals…).
         var membershipIds = await db.WorkspaceMembers
             .Where(m => m.UserId == user.Id)
             .Select(m => m.WorkspaceId)
@@ -46,18 +48,14 @@ public static class DeleteAccount
             .Where(m => m.UserId == user.Id)
             .ExecuteDeleteAsync(ct);
 
-        // Delete workspaces owned solely by this user (now empty)
         foreach (var wsId in membershipIds)
         {
             var remaining = await db.WorkspaceMembers.CountAsync(m => m.WorkspaceId == wsId, ct);
             if (remaining == 0)
             {
-                var ws = await db.Workspaces.FindAsync([wsId], ct);
-                if (ws is not null)
-                    db.Workspaces.Remove(ws);
+                await workspaces.DeleteWorkspaceCascadeAsync(wsId, ct);
             }
         }
-        await db.SaveChangesAsync(ct);
 
         var result = await userManager.DeleteAsync(user);
         if (!result.Succeeded)

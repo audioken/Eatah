@@ -12,4 +12,11 @@ public class ChatHub : Hub
 
     public Task LeaveThread(string threadId) =>
         Groups.RemoveFromGroupAsync(Context.ConnectionId, $"thread:{threadId}");
+
+    /// <summary>Subscribe to workspace-level events (e.g. household rename). Client calls once per connect.</summary>
+    public Task JoinWorkspace(string workspaceId) =>
+        Groups.AddToGroupAsync(Context.ConnectionId, $"workspace:{workspaceId}");
+
+    public Task LeaveWorkspace(string workspaceId) =>
+        Groups.RemoveFromGroupAsync(Context.ConnectionId, $"workspace:{workspaceId}");
 }

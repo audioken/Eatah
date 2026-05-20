@@ -18,12 +18,6 @@ public class WorkspaceConfiguration : IEntityTypeConfiguration<Workspace>
             .HasMaxLength(100)
             .IsRequired();
 
-        builder.Property(w => w.Type)
-            .HasColumnName("type")
-            .HasConversion<string>()
-            .HasMaxLength(20)
-            .IsRequired();
-
         builder.Property(w => w.CreatedAt)
             .HasColumnName("created_at")
             .HasDefaultValueSql("NOW()");

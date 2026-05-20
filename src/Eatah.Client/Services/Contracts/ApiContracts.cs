@@ -97,9 +97,9 @@ public record CreateDietProfileRequest(
 
 // ---- Workspaces ----
 
-public enum WorkspaceType { Personal = 0, Household = 1 }
-
-public record WorkspaceResponse(Guid Id, string Name, WorkspaceType Type, int MemberCount, bool IsOwner);
+public record WorkspaceResponse(Guid Id, string Name, int MemberCount, bool IsOwner);
+public record RenameWorkspaceRequest(string Name);
+public record CreateHouseholdRequest(string Name);
 public record WorkspaceMemberResponse(Guid UserId, string DisplayName);
 
 // ---- Friends ----

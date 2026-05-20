@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls \"C:/Users/kenza/.claude/projects/\" 2>/dev/null | head -30)",
+      "Read(//c/Users/kenza/.claude/projects/**)",
+      "Bash(dotnet build *)",
+      "Bash(dotnet test *)",
+      "Bash(git stash *)"
+    ]
+  }
+}

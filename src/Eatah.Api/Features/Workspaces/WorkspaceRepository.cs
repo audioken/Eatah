@@ -8,7 +8,7 @@ public interface IWorkspaceRepository
 {
     Task<List<Workspace>> GetForUserAsync(Guid userId, CancellationToken ct);
     Task<Workspace?> GetByIdAsync(Guid id, CancellationToken ct);
-    Task<bool> HasHouseholdAsync(Guid userId, CancellationToken ct);
+    Task<bool> HasAnyAsync(Guid userId, CancellationToken ct);
     Task AddAsync(Workspace workspace, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
 }
@@ -23,8 +23,7 @@ public class WorkspaceRepository : IWorkspaceRepository
         return await _context.Workspaces
             .Include(w => w.Members)
             .Where(w => w.Members.Any(m => m.UserId == userId))
-            .OrderBy(w => w.Type)
-            .ThenBy(w => w.Name)
+            .OrderBy(w => w.Name)
             .ToListAsync(ct);
     }
 
@@ -35,10 +34,10 @@ public class WorkspaceRepository : IWorkspaceRepository
             .FirstOrDefaultAsync(w => w.Id == id, ct);
     }
 
-    public async Task<bool> HasHouseholdAsync(Guid userId, CancellationToken ct)
+    public async Task<bool> HasAnyAsync(Guid userId, CancellationToken ct)
     {
         return await _context.WorkspaceMembers
-            .AnyAsync(m => m.UserId == userId && m.Workspace.Type == WorkspaceType.Household, ct);
+            .AnyAsync(m => m.UserId == userId, ct);
     }
 
     public async Task AddAsync(Workspace workspace, CancellationToken ct)

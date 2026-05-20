@@ -3,29 +3,28 @@ using Eatah.Client.Services.Contracts;
 namespace Eatah.Client.Services;
 
 /// <summary>
-/// Tracks the user's active workspace (Personal or Household) and the list of
-/// available workspaces. The active workspace ID is sent as the
-/// <c>X-Eatah-Workspace</c> header by <see cref="WorkspaceHeaderHandler"/>.
+/// Tracks the user's household (each user has at most one). The active workspace ID is
+/// sent as the <c>X-Eatah-Workspace</c> header by <see cref="WorkspaceHeaderHandler"/>.
+/// Subscribes to the chat hub so household rename events from other members appear live.
 /// </summary>
-public sealed class WorkspaceState
+public sealed class WorkspaceState : IDisposable
 {
     private readonly ApiClient _api;
-    private List<WorkspaceResponse> _workspaces = [];
-    private Guid? _currentWorkspaceId;
+    private readonly ChatHubService _hub;
+    private WorkspaceResponse? _current;
     private bool _initialized;
+    private Guid? _joinedHubGroup;
 
-    public WorkspaceState(ApiClient api)
+    public WorkspaceState(ApiClient api, ChatHubService hub)
     {
         _api = api;
+        _hub = hub;
+        _hub.WorkspaceRenamed += OnWorkspaceRenamed;
+        _hub.Reconnected += OnHubReconnected;
     }
 
-    public IReadOnlyList<WorkspaceResponse> Workspaces => _workspaces;
-
-    public WorkspaceResponse? Current =>
-        _workspaces.FirstOrDefault(w => w.Id == _currentWorkspaceId)
-        ?? _workspaces.FirstOrDefault(w => w.Type == WorkspaceType.Personal);
-
-    public Guid? CurrentId => Current?.Id;
+    public WorkspaceResponse? Current => _current;
+    public Guid? CurrentId => _current?.Id;
 
     public event Action? OnChange;
 
@@ -40,14 +39,8 @@ public sealed class WorkspaceState
     {
         try
         {
-            _workspaces = await _api.GetWorkspacesAsync(ct);
-            // Default to household workspace if available, otherwise fall back to personal
-            if (_currentWorkspaceId is null || !_workspaces.Any(w => w.Id == _currentWorkspaceId))
-            {
-                var household = _workspaces.FirstOrDefault(w => w.Type == WorkspaceType.Household);
-                var personal = _workspaces.FirstOrDefault(w => w.Type == WorkspaceType.Personal);
-                _currentWorkspaceId = (household ?? personal)?.Id;
-            }
+            var list = await _api.GetWorkspacesAsync(ct);
+            SetCurrent(list.FirstOrDefault());
         }
         catch
         {
@@ -56,20 +49,60 @@ public sealed class WorkspaceState
         OnChange?.Invoke();
     }
 
-    public void SwitchTo(Guid workspaceId)
+    /// <summary>Updates the cached household locally (e.g. after rename). Triggers OnChange.</summary>
+    public void SetCurrent(WorkspaceResponse? workspace)
     {
-        if (_workspaces.Any(w => w.Id == workspaceId))
-        {
-            _currentWorkspaceId = workspaceId;
-            OnChange?.Invoke();
-        }
+        _current = workspace;
+        OnChange?.Invoke();
+        _ = SyncHubMembershipAsync();
     }
 
     public void Reset()
     {
-        _workspaces = [];
-        _currentWorkspaceId = null;
+        var previous = _joinedHubGroup;
+        _current = null;
         _initialized = false;
         OnChange?.Invoke();
+        if (previous is Guid id)
+        {
+            _joinedHubGroup = null;
+            _ = _hub.LeaveWorkspaceAsync(id);
+        }
+    }
+
+    private async Task SyncHubMembershipAsync()
+    {
+        var target = _current?.Id;
+        if (_joinedHubGroup == target) return;
+
+        if (_joinedHubGroup is Guid old)
+        {
+            await _hub.LeaveWorkspaceAsync(old);
+        }
+        _joinedHubGroup = target;
+        if (target is Guid id)
+        {
+            await _hub.JoinWorkspaceAsync(id);
+        }
+    }
+
+    private void OnWorkspaceRenamed(Guid workspaceId, string name)
+    {
+        if (_current is null || _current.Id != workspaceId) return;
+        _current = _current with { Name = name };
+        OnChange?.Invoke();
+    }
+
+    private void OnHubReconnected()
+    {
+        // After reconnect, SignalR drops all group memberships server-side. Re-join.
+        _joinedHubGroup = null;
+        _ = SyncHubMembershipAsync();
+    }
+
+    public void Dispose()
+    {
+        _hub.WorkspaceRenamed -= OnWorkspaceRenamed;
+        _hub.Reconnected -= OnHubReconnected;
     }
 }

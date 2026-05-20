@@ -29,7 +29,7 @@ public static class DataSeeder
         var existing = await userManager.FindByEmailAsync(DevUserEmail);
         if (existing is not null)
         {
-            await EnsurePersonalWorkspaceAsync(context, existing.Id, existing.DisplayName, cancellationToken);
+            await EnsureDefaultHouseholdAsync(context, existing.Id, cancellationToken);
             return;
         }
 
@@ -48,23 +48,22 @@ public static class DataSeeder
             throw new InvalidOperationException(
                 "Failed to seed dev user: " + string.Join("; ", result.Errors.Select(e => e.Description)));
         }
-        await EnsurePersonalWorkspaceAsync(context, user.Id, user.DisplayName, cancellationToken);
+        await EnsureDefaultHouseholdAsync(context, user.Id, cancellationToken);
     }
 
     /// <summary>
-    /// Idempotently ensures the user has a Personal workspace. Safe to call repeatedly.
+    /// Idempotently ensures the user belongs to a household. Safe to call repeatedly.
     /// </summary>
-    public static async Task EnsurePersonalWorkspaceAsync(EatahDbContext context, Guid userId, string displayName, CancellationToken cancellationToken = default)
+    public static async Task EnsureDefaultHouseholdAsync(EatahDbContext context, Guid userId, CancellationToken cancellationToken = default)
     {
-        var hasPersonal = await context.WorkspaceMembers
-            .AnyAsync(m => m.UserId == userId && m.Workspace.Type == WorkspaceType.Personal, cancellationToken);
-        if (hasPersonal) return;
+        var hasHousehold = await context.WorkspaceMembers
+            .AnyAsync(m => m.UserId == userId, cancellationToken);
+        if (hasHousehold) return;
 
         var ws = new Workspace
         {
             Id = Guid.NewGuid(),
-            Name = "Personligt",
-            Type = WorkspaceType.Personal,
+            Name = "Mitt hushåll",
             Members =
             [
                 new WorkspaceMember { UserId = userId, Role = MemberRole.Owner }

@@ -4,7 +4,7 @@ namespace Eatah.Api.Common;
 /// Request-scoped workspace context. <see cref="CurrentWorkspaceId"/> is null until
 /// <see cref="Eatah.Api.Middleware.WorkspaceResolutionMiddleware"/> resolves it (based on the
 /// <c>X-Eatah-Workspace</c> header validated against the user's memberships, or
-/// falls back to the user's Personal workspace).
+/// falls back to the user's household if any).
 /// </summary>
 public interface IWorkspaceContext
 {

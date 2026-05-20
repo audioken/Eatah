@@ -1,6 +1,8 @@
 using Eatah.Api.Common;
+using Eatah.Api.Features.Chat;
 using Eatah.Domain.Entities;
 using Eatah.Infrastructure.Persistence;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Eatah.Api.Features.Workspaces;
@@ -9,11 +11,13 @@ public class WorkspaceService
 {
     private readonly IWorkspaceRepository _repo;
     private readonly EatahDbContext _db;
+    private readonly IHubContext<ChatHub> _hub;
 
-    public WorkspaceService(IWorkspaceRepository repo, EatahDbContext db)
+    public WorkspaceService(IWorkspaceRepository repo, EatahDbContext db, IHubContext<ChatHub> hub)
     {
         _repo = repo;
         _db = db;
+        _hub = hub;
     }
 
     public async Task<List<WorkspaceResponse>> GetForUserAsync(Guid userId, CancellationToken ct)
@@ -24,17 +28,16 @@ public class WorkspaceService
 
     public async Task<Result<WorkspaceResponse>> CreateHouseholdAsync(Guid userId, string name, CancellationToken ct)
     {
-        if (await _repo.HasHouseholdAsync(userId, ct))
+        if (await _repo.HasAnyAsync(userId, ct))
         {
             return Error.Conflict(ErrorCodes.WorkspaceHouseholdAlreadyExists,
-                "You already belong to a household workspace.");
+                "You already belong to a household.");
         }
 
         var workspace = new Workspace
         {
             Id = Guid.NewGuid(),
             Name = name.Trim(),
-            Type = WorkspaceType.Household,
             Members =
             [
                 new WorkspaceMember { UserId = userId, Role = MemberRole.Owner }
@@ -47,23 +50,20 @@ public class WorkspaceService
     public async Task<Result> LeaveHouseholdAsync(Guid userId, CancellationToken ct)
     {
         var membership = await _db.WorkspaceMembers
-            .Include(m => m.Workspace).ThenInclude(w => w.Members)
-            .FirstOrDefaultAsync(m => m.UserId == userId && m.Workspace.Type == WorkspaceType.Household, ct);
+            .FirstOrDefaultAsync(m => m.UserId == userId, ct);
         if (membership is null)
         {
-            return Error.NotFound(ErrorCodes.WorkspaceNotFound, "You don't belong to any household workspace.");
+            return Error.NotFound(ErrorCodes.WorkspaceNotFound, "You don't belong to any household.");
         }
 
         _db.WorkspaceMembers.Remove(membership);
         await _db.SaveChangesAsync(ct);
 
-        // Cascade-delete the household if it has no remaining members.
+        // If the household has no remaining members, delete it (cascades all workspace-scoped data).
         var remaining = await _db.WorkspaceMembers.CountAsync(m => m.WorkspaceId == membership.WorkspaceId, ct);
         if (remaining == 0)
         {
-            var ws = await _db.Workspaces.FirstAsync(w => w.Id == membership.WorkspaceId, ct);
-            _db.Workspaces.Remove(ws);
-            await _db.SaveChangesAsync(ct);
+            await DeleteWorkspaceCascadeAsync(membership.WorkspaceId, ct);
         }
         return Result.Success();
     }
@@ -72,48 +72,83 @@ public class WorkspaceService
         Guid userId, Guid workspaceId, string name, CancellationToken ct)
     {
         var ws = await _repo.GetByIdAsync(workspaceId, ct);
-        if (ws is null) return Error.NotFound(ErrorCodes.WorkspaceNotFound, "Workspace not found.");
+        if (ws is null) return Error.NotFound(ErrorCodes.WorkspaceNotFound, "Household not found.");
         var member = ws.Members.FirstOrDefault(m => m.UserId == userId);
         if (member is null)
         {
-            return Error.Forbidden(ErrorCodes.WorkspaceAccessDenied, "You are not a member of this workspace.");
-        }
-        if (ws.Type == WorkspaceType.Personal)
-        {
-            return Error.Conflict(ErrorCodes.WorkspacePersonalProtected, "Personal workspaces cannot be renamed.");
+            return Error.Forbidden(ErrorCodes.WorkspaceAccessDenied, "You are not a member of this household.");
         }
         ws.Name = name.Trim();
         await _repo.SaveChangesAsync(ct);
+
+        // Broadcast so other members see the new name without reloading.
+        await _hub.Clients.Group($"workspace:{ws.Id}")
+            .SendAsync("WorkspaceRenamed", new { workspaceId = ws.Id, name = ws.Name }, ct);
+
         return ToResponse(ws, userId);
     }
 
     /// <summary>
-    /// Creates the Personal workspace for a freshly confirmed user. Idempotent.
+    /// Ensures the user has a household. Idempotent — creates "Mitt hushåll" with the user as owner if missing.
     /// </summary>
-    public async Task EnsurePersonalAsync(Guid userId, string displayName, CancellationToken ct)
+    public async Task EnsureDefaultHouseholdAsync(Guid userId, CancellationToken ct)
     {
-        var existing = await _db.WorkspaceMembers
-            .AnyAsync(m => m.UserId == userId && m.Workspace.Type == WorkspaceType.Personal, ct);
-        if (existing) return;
+        if (await _repo.HasAnyAsync(userId, ct)) return;
 
-        var personal = new Workspace
+        var household = new Workspace
         {
             Id = Guid.NewGuid(),
-            Name = "Personligt",
-            Type = WorkspaceType.Personal,
+            Name = "Mitt hushåll",
             Members =
             [
                 new WorkspaceMember { UserId = userId, Role = MemberRole.Owner }
             ]
         };
-        await _db.Workspaces.AddAsync(personal, ct);
+        await _db.Workspaces.AddAsync(household, ct);
         await _db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Deletes a workspace and all data scoped to it. Used both when the last member leaves
+    /// and when an invitee joins another household (their existing household is replaced).
+    /// </summary>
+    public async Task DeleteWorkspaceCascadeAsync(Guid workspaceId, CancellationToken ct)
+    {
+        // Order matters: child tables before parents to satisfy FK constraints that aren't ON DELETE CASCADE.
+        // (Workspace itself doesn't cascade to workspace-scoped tables; those FKs are pure data references.)
+
+        // Shopping list
+        await _db.ShoppingItems.Where(x => x.WorkspaceId == workspaceId).ExecuteDeleteAsync(ct);
+
+        // Pantry (PantryItemMealCoverage cascades from PantryItem)
+        await _db.PantryItems.Where(x => x.WorkspaceId == workspaceId).ExecuteDeleteAsync(ct);
+
+        // Weekly plans (DayPlan cascades from WeeklyPlan)
+        await _db.WeeklyPlans.Where(x => x.WorkspaceId == workspaceId).ExecuteDeleteAsync(ct);
+
+        // Chat (messages, reactions, participants cascade from ChatThread)
+        await _db.ChatThreads.Where(x => x.WorkspaceId == workspaceId).ExecuteDeleteAsync(ct);
+
+        // Diet profiles (rules cascade) — only workspace-scoped ones; system profiles have WorkspaceId == null.
+        await _db.DietProfiles.Where(x => x.WorkspaceId == workspaceId).ExecuteDeleteAsync(ct);
+
+        // Meals (ingredients cascade) — workspace-scoped only
+        await _db.Meals.Where(x => x.WorkspaceId == workspaceId).ExecuteDeleteAsync(ct);
+
+        // User-created master ingredients in this workspace
+        await _db.IngredientMaster.Where(x => x.WorkspaceId == workspaceId).ExecuteDeleteAsync(ct);
+
+        // Friend requests pointing at this household (any status). Lets us drop the workspace cleanly.
+        await _db.FriendRequests.Where(x => x.HouseholdWorkspaceId == workspaceId).ExecuteDeleteAsync(ct);
+
+        // Finally the workspace itself (WorkspaceMembers cascade from Workspace).
+        await _db.Workspaces.Where(x => x.Id == workspaceId).ExecuteDeleteAsync(ct);
     }
 
     internal static WorkspaceResponse ToResponse(Workspace w, Guid currentUserId)
     {
         var me = w.Members.FirstOrDefault(m => m.UserId == currentUserId);
         return new WorkspaceResponse(
-            w.Id, w.Name, w.Type, w.Members.Count, me?.Role == MemberRole.Owner);
+            w.Id, w.Name, w.Members.Count, me?.Role == MemberRole.Owner);
     }
 }

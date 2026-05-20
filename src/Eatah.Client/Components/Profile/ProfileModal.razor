@@ -71,6 +71,83 @@
             }
         </section>
 
+        @* ── Household ── *@
+        <section class="eatah-profile-modal__section">
+            <h3 class="eatah-profile-modal__section-title">Hushåll</h3>
+            @if (Workspaces.Current is { } household)
+            {
+                <div class="eatah-profile-modal__field-row">
+                    <div class="eatah-profile-modal__field">
+                        <label>Namn</label>
+                        @if (_editingHousehold)
+                        {
+                            <input class="eatah-profile-modal__input" @bind="_newHouseholdName" @bind:event="oninput"
+                                   placeholder="@household.Name" />
+                        }
+                        else
+                        {
+                            <span>@household.Name</span>
+                        }
+                    </div>
+                    <button type="button" class="eatah-profile-modal__edit-btn" @onclick="ToggleEditHousehold"
+                            title="Redigera hushållsnamn">
+                        <Icon Name="@(_editingHousehold ? "close" : "edit")" Size="18" />
+                    </button>
+                </div>
+
+                @if (_editingHousehold)
+                {
+                    <button type="button" class="eatah-profile-modal__btn eatah-profile-modal__btn--primary"
+                            disabled="@_saving" @onclick="SaveHouseholdNameAsync">
+                        @(_saving ? "Sparar..." : "Spara namn")
+                    </button>
+                }
+
+                <p class="eatah-profile-modal__danger-desc">
+                    @household.MemberCount @(household.MemberCount == 1 ? "medlem" : "medlemmar")
+                </p>
+
+                @if (!_confirmingLeave)
+                {
+                    <button type="button" class="eatah-profile-modal__btn eatah-profile-modal__btn--ghost"
+                            @onclick="() => _confirmingLeave = true">
+                        Lämna hushållet
+                    </button>
+                }
+                else
+                {
+                    <p class="eatah-profile-modal__danger-desc">
+                        Om du lämnar hushållet förlorar du tillgång till dess matplan, köplista och chatt.
+                    </p>
+                    <div class="eatah-profile-modal__danger-actions">
+                        <button type="button" class="eatah-profile-modal__btn eatah-profile-modal__btn--ghost"
+                                @onclick="() => _confirmingLeave = false">
+                            Avbryt
+                        </button>
+                        <button type="button" class="eatah-profile-modal__btn eatah-profile-modal__btn--danger"
+                                disabled="@_saving" @onclick="LeaveHouseholdAsync">
+                            @(_saving ? "Lämnar..." : "Bekräfta")
+                        </button>
+                    </div>
+                }
+            }
+            else
+            {
+                <p class="eatah-profile-modal__danger-desc">Du tillhör inget hushåll just nu.</p>
+                <div class="eatah-profile-modal__field-row">
+                    <div class="eatah-profile-modal__field">
+                        <label>Namn på nytt hushåll</label>
+                        <input class="eatah-profile-modal__input" @bind="_newHouseholdName" @bind:event="oninput"
+                               placeholder="Mitt hushåll" />
+                    </div>
+                </div>
+                <button type="button" class="eatah-profile-modal__btn eatah-profile-modal__btn--primary"
+                        disabled="@_saving" @onclick="CreateHouseholdAsync">
+                    @(_saving ? "Skapar..." : "Skapa hushåll")
+                </button>
+            }
+        </section>
+
         @* ── Password ── *@
         <section class="eatah-profile-modal__section">
             <button type="button" class="eatah-profile-modal__section-toggle" @onclick="TogglePassword">
@@ -206,10 +283,17 @@
     private bool _confirmingDelete;
     private string _deletePassword = "";
 
+    private bool _editingHousehold;
+    private bool _confirmingLeave;
+    private string _newHouseholdName = "";
+
     protected override async Task OnInitializedAsync()
     {
+        Workspaces.OnChange += OnWorkspaceChanged;
         try { _friends = await Api.GetFriendsAsync(); } catch { }
     }
+
+    private void OnWorkspaceChanged() => InvokeAsync(StateHasChanged);
 
     private void Close() => Modals.Close(Instance!);
 
@@ -382,5 +466,86 @@
         }
     }
 
-    public void Dispose() => _searchCts?.Cancel();
+    private void ToggleEditHousehold()
+    {
+        _editingHousehold = !_editingHousehold;
+        if (_editingHousehold) _newHouseholdName = Workspaces.Current?.Name ?? "";
+    }
+
+    private async Task SaveHouseholdNameAsync()
+    {
+        if (Workspaces.Current is not { } current) return;
+        var name = _newHouseholdName.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            _error = "Hushållets namn får inte vara tomt.";
+            return;
+        }
+        _saving = true;
+        _error = null;
+        try
+        {
+            var updated = await Api.RenameWorkspaceAsync(current.Id, name);
+            if (updated is not null) Workspaces.SetCurrent(updated);
+            _editingHousehold = false;
+            Toasts.Show("Hushållets namn uppdaterades.");
+        }
+        catch
+        {
+            _error = "Kunde inte byta namn. Försök igen.";
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task LeaveHouseholdAsync()
+    {
+        _saving = true;
+        _error = null;
+        try
+        {
+            await Api.LeaveHouseholdAsync();
+            _confirmingLeave = false;
+            await Workspaces.RefreshAsync();
+            Toasts.Show("Du har lämnat hushållet.");
+        }
+        catch
+        {
+            _error = "Kunde inte lämna hushållet. Försök igen.";
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task CreateHouseholdAsync()
+    {
+        var name = string.IsNullOrWhiteSpace(_newHouseholdName) ? "Mitt hushåll" : _newHouseholdName.Trim();
+        _saving = true;
+        _error = null;
+        try
+        {
+            var created = await Api.CreateHouseholdAsync(name);
+            if (created is not null) Workspaces.SetCurrent(created);
+            _newHouseholdName = "";
+            Toasts.Show("Hushållet skapades.");
+        }
+        catch
+        {
+            _error = "Kunde inte skapa hushåll. Försök igen.";
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        _searchCts?.Cancel();
+        Workspaces.OnChange -= OnWorkspaceChanged;
+    }
 }

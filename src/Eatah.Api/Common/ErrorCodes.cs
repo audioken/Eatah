@@ -46,7 +46,6 @@ public static class ErrorCodes
     public const string WorkspaceNotFound = "workspace_not_found";
     public const string WorkspaceAccessDenied = "workspace_access_denied";
     public const string WorkspaceHouseholdAlreadyExists = "workspace_household_already_exists";
-    public const string WorkspacePersonalProtected = "workspace_personal_protected";
     public const string WorkspaceNotResolved = "workspace_not_resolved";
 
     // Friends / Notifications
@@ -54,7 +53,6 @@ public static class ErrorCodes
     public const string FriendRequestAlreadyPending = "friend_request_already_pending";
     public const string FriendRequestSelf = "friend_request_self";
     public const string FriendRequestCannotInviteHouseholdMember = "friend_request_cannot_invite_household_member";
-    public const string FriendRequestNoHousehold = "friend_request_no_household";
     public const string NotificationNotFound = "notification_not_found";
     public const string NotificationAccessDenied = "notification_access_denied";
 

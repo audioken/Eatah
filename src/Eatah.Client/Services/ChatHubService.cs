@@ -39,6 +39,9 @@ public sealed class ChatHubService : IAsyncDisposable
     public event Action<Guid>? MessageDeleted;
     public event Action<Guid, IReadOnlyList<ChatReactionGroupResponse>>? ReactionUpdated;
 
+    /// <summary>Fired when the household has been renamed by any member (current user included).</summary>
+    public event Action<Guid, string>? WorkspaceRenamed;
+
     /// <summary>Fired after the hub (re)connects. Subscribers should re-join their thread groups.</summary>
     public event Action? Reconnected;
 
@@ -120,6 +123,31 @@ public sealed class ChatHubService : IAsyncDisposable
         }
     }
 
+    public async Task JoinWorkspaceAsync(Guid workspaceId, CancellationToken ct = default)
+    {
+        var connected = await EnsureConnectedAsync(ct);
+        if (!connected || _connection is null) return;
+
+        try
+        {
+            await _connection.InvokeAsync("JoinWorkspace", workspaceId.ToString(), ct);
+            _logger.LogDebug("ChatHub: joined workspace {WorkspaceId}", workspaceId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "ChatHub: JoinWorkspace failed for {WorkspaceId}", workspaceId);
+        }
+    }
+
+    public async Task LeaveWorkspaceAsync(Guid workspaceId)
+    {
+        if (_connection?.State == HubConnectionState.Connected)
+        {
+            try { await _connection.InvokeAsync("LeaveWorkspace", workspaceId.ToString()); }
+            catch (Exception ex) { _logger.LogDebug(ex, "ChatHub: LeaveWorkspace failed"); }
+        }
+    }
+
     private void EnsureConnectionBuilt()
     {
         if (_connection is not null) return;
@@ -153,6 +181,8 @@ public sealed class ChatHubService : IAsyncDisposable
         _connection.On<Guid>("MessageDeleted", id => MessageDeleted?.Invoke(id));
         _connection.On<ReactionUpdatePayload>("ReactionUpdated", payload =>
             ReactionUpdated?.Invoke(payload.MessageId, payload.Reactions));
+        _connection.On<WorkspaceRenamedPayload>("WorkspaceRenamed", payload =>
+            WorkspaceRenamed?.Invoke(payload.WorkspaceId, payload.Name));
 
         _connection.Reconnecting += ex =>
         {
@@ -229,4 +259,5 @@ public sealed class ChatHubService : IAsyncDisposable
     }
 
     private record ReactionUpdatePayload(Guid MessageId, IReadOnlyList<ChatReactionGroupResponse> Reactions);
+    private record WorkspaceRenamedPayload(Guid WorkspaceId, string Name);
 }
