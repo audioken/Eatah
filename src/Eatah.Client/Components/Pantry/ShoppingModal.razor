@@ -168,8 +168,10 @@
                                                                 var itemSelClass = isSelected ? "eatah-shopping-item--selected" : "";
                                                                 var btnSelClass = isSelected ? "eatah-shopping-item__select--active" : "";
                                                                 var groupedCount = GetMealCount(item.Notes);
-                                                                <div class="eatah-shopping-item eatah-shopping-item--unchecked @itemSelClass">
+                                                                <div class="eatah-shopping-item eatah-shopping-item--unchecked @itemSelClass cursor-pointer"
+                                                                     @onclick="() => ToggleShoppingSelection(item.Id)">
                                                                     <button type="button" class="eatah-shopping-item__select @btnSelClass"
+                                                                            @onclick:stopPropagation="true"
                                                                             @onclick="() => ToggleShoppingSelection(item.Id)">
                                                                         @if (isSelected)
                                                                         {
@@ -186,6 +188,7 @@
                                                                         </div>
                                                                     </div>
                                                                     <button type="button" class="eatah-shopping-item__remove" title="Ta bort"
+                                                                            @onclick:stopPropagation="true"
                                                                             @onclick="() => RemoveFromShoppingAsync(item)">
                                                                         <Icon Name="close" Size="12" />
                                                                     </button>
@@ -211,16 +214,17 @@
                                 </div>
                                 @foreach (var item in ShoppingState.Items.Where(s => s.IsChecked))
                                 {
-                                    <div class="eatah-shopping-item eatah-shopping-item--checked">
+                                    <div class="eatah-shopping-item eatah-shopping-item--checked cursor-pointer"
+                                         @onclick="() => UncheckItemAsync(item)">
                                         <button type="button" class="eatah-shopping-item__check eatah-shopping-item__check--done"
-                                                title="Avmarkera" @onclick="() => UncheckItemAsync(item)">
+                                                title="Avmarkera" @onclick:stopPropagation="true" @onclick="() => UncheckItemAsync(item)">
                                             <Icon Name="check" Size="10" />
                                         </button>
                                         <div class="eatah-shopping-item__body">
                                             <span class="eatah-shopping-item__name">@item.Name</span>
                                         </div>
                                         <button type="button" class="eatah-shopping-item__remove" title="Ta bort"
-                                                @onclick="() => RemoveFromShoppingAsync(item)">
+                                                @onclick:stopPropagation="true" @onclick="() => RemoveFromShoppingAsync(item)">
                                             <Icon Name="close" Size="12" />
                                         </button>
                                     </div>
