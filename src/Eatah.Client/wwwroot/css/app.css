@@ -2550,63 +2550,37 @@ body.eatah-modal-open {
     position: fixed;
     inset: 0;
     z-index: 200;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.55);
     backdrop-filter: blur(2px);
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     justify-content: center;
-    padding-bottom: calc(var(--navbar-height) + env(safe-area-inset-bottom, 0px));
+    padding: 16px;
+    padding-top: calc(var(--header-height) + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 16px);
+    padding-bottom: calc(var(--navbar-height) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) + 16px);
+    animation: eatah-fade-in 0.15s ease-out;
 }
 
-/* Chat panel */
+/* Chat panel – same visual language as .eatah-modal */
 .eatah-chat-panel {
+    background: linear-gradient(180deg, #f0f6f0 0%, #d8e4d8 100%);
+    color: var(--color-text-dark);
+    border-radius: 18px;
     width: 100%;
-    max-width: 640px;
-    height: 65dvh;
-    background: #1a1a28;
-    border-radius: 20px 20px 0 0;
+    max-width: 560px;
+    height: 72dvh;
+    max-height: calc(100dvh - var(--header-height) - var(--navbar-height) - var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) - var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) - 32px);
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.55);
-    border-top: 1px solid rgba(255, 255, 255, 0.07);
-    border-left: 1px solid rgba(255, 255, 255, 0.04);
-    border-right: 1px solid rgba(255, 255, 255, 0.04);
-}
-
-@media (min-width: 640px) {
-    .eatah-chat-overlay {
-        align-items: center;
-        padding-bottom: 0;
-    }
-    .eatah-chat-panel {
-        border-radius: 16px;
-        height: 60dvh;
-        max-height: 560px;
-        border: 1px solid rgba(255, 255, 255, 0.07);
-    }
-}
-
-/* Panel header */
-.eatah-chat-panel__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 9px 14px 8px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    flex-shrink: 0;
-}
-
-.eatah-chat-panel__title {
-    font-size: 14px;
-    font-weight: 700;
-    color: #fff;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+    animation: eatah-slide-up 0.2s ease-out;
 }
 
 .eatah-chat-panel__close {
     background: transparent;
     border: none;
-    color: rgba(255, 255, 255, 0.5);
+    color: rgba(51, 62, 47, 0.45);
     cursor: pointer;
     padding: 4px;
     border-radius: 8px;
@@ -2617,7 +2591,7 @@ body.eatah-modal-open {
 }
 
 .eatah-chat-panel__close:hover {
-    color: #fff;
+    color: var(--color-text-dark);
 }
 
 /* Panel body - horizontal layout */
@@ -2631,11 +2605,11 @@ body.eatah-modal-open {
 .eatah-chat-panel__sidebar {
     width: 148px;
     flex-shrink: 0;
-    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    border-right: 1px solid rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    background: rgba(0, 0, 0, 0.15);
+    background: rgba(0, 0, 0, 0.04);
 }
 
 @media (min-width: 480px) {
@@ -2649,14 +2623,12 @@ body.eatah-modal-open {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 10px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 14px 14px 12px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
     flex-shrink: 0;
-    font-size: 11px;
+    font-size: 16px;
     font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.45);
+    color: var(--color-text-dark);
 }
 
 /* Thread list */
@@ -2671,8 +2643,8 @@ body.eatah-modal-open {
     width: 100%;
     display: flex;
     align-items: center;
-    gap: 7px;
-    padding: 6px 8px;
+    gap: 8px;
+    padding: 8px 10px;
     background: transparent;
     cursor: pointer;
     border: none;
@@ -2682,29 +2654,29 @@ body.eatah-modal-open {
 }
 
 .eatah-chat-thread-item:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(0, 0, 0, 0.05);
 }
 
 .eatah-chat-thread-item--active {
-    background: rgba(34, 197, 94, 0.1);
-    border-left-color: var(--color-brand, #22c55e);
+    background: rgba(90, 174, 0, 0.12);
+    border-left-color: var(--color-brand);
 }
 
 .eatah-chat-thread-item__avatar {
-    width: 26px;
-    height: 26px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.09);
+    background: rgba(0, 0, 0, 0.08);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    color: rgba(255, 255, 255, 0.55);
+    color: rgba(51, 62, 47, 0.55);
 }
 
 .eatah-chat-thread-item__avatar--group {
-    background: rgba(34, 197, 94, 0.18);
-    color: var(--color-brand, #22c55e);
+    background: rgba(90, 174, 0, 0.15);
+    color: var(--color-brand);
 }
 
 .eatah-chat-thread-item__info {
@@ -2718,7 +2690,7 @@ body.eatah-modal-open {
 .eatah-chat-thread-item__name {
     font-size: 12px;
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--color-text-dark);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2726,7 +2698,7 @@ body.eatah-modal-open {
 
 .eatah-chat-thread-item__preview {
     font-size: 10px;
-    color: rgba(255, 255, 255, 0.38);
+    color: rgba(51, 62, 47, 0.5);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2737,7 +2709,7 @@ body.eatah-modal-open {
 .eatah-chat-panel__loading,
 .eatah-chat-panel__empty {
     font-size: 12px;
-    color: rgba(255, 255, 255, 0.4);
+    color: rgba(51, 62, 47, 0.45);
     text-align: center;
     padding: 16px 8px;
 }
@@ -2755,18 +2727,17 @@ body.eatah-modal-open {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 8px 12px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    font-size: 13px;
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    font-size: 14px;
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--color-text-dark);
     flex-shrink: 0;
-    background: rgba(0, 0, 0, 0.1);
 }
 
 .eatah-chat-panel__thread-icon {
     flex-shrink: 0;
-    opacity: 0.7;
+    opacity: 0.55;
 }
 
 .eatah-chat-panel__empty {
@@ -2775,7 +2746,7 @@ body.eatah-modal-open {
     align-items: center;
     justify-content: center;
     font-size: 13px;
-    color: rgba(255, 255, 255, 0.35);
+    color: rgba(51, 62, 47, 0.4);
 }
 
 /* Chat thread message area */
@@ -2793,11 +2764,13 @@ body.eatah-modal-open {
     display: flex;
     flex-direction: column;
     gap: 3px;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .eatah-chat-thread__loading,
 .eatah-chat-thread__empty {
-    color: rgba(255, 255, 255, 0.4);
+    color: rgba(51, 62, 47, 0.45);
     font-size: 13px;
     text-align: center;
     padding: 24px 0;
@@ -2820,43 +2793,55 @@ body.eatah-modal-open {
     align-items: flex-start;
 }
 
+/* Inner container – positions the context menu relative to the bubble */
+.eatah-chat-bubble-inner {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.eatah-chat-bubble-wrapper--mine .eatah-chat-bubble-inner {
+    align-items: flex-end;
+}
+
 .eatah-chat-bubble__author {
     font-size: 10px;
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.4);
+    color: rgba(51, 62, 47, 0.5);
     margin-bottom: 1px;
     padding: 0 4px;
 }
 
 /* Chat bubble */
 .eatah-chat-bubble {
-    padding: 6px 10px;
+    padding: 7px 11px;
     border-radius: 14px;
     font-size: 13px;
     line-height: 1.45;
     word-break: break-word;
     position: relative;
     user-select: none;
+    -webkit-user-select: none;
     cursor: default;
 }
 
 .eatah-chat-bubble--mine {
-    background: var(--color-brand, #22c55e);
+    background: var(--color-brand);
     color: #fff;
     border-bottom-right-radius: 3px;
-    box-shadow: 0 1px 4px rgba(34, 197, 94, 0.25);
+    box-shadow: 0 1px 4px rgba(90, 174, 0, 0.3);
 }
 
 .eatah-chat-bubble--theirs {
-    background: rgba(255, 255, 255, 0.09);
-    color: rgba(255, 255, 255, 0.88);
+    background: rgba(255, 255, 255, 0.65);
+    color: var(--color-text-dark);
     border-bottom-left-radius: 3px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .eatah-chat-bubble--deleted {
-    background: rgba(255, 255, 255, 0.05) !important;
-    color: rgba(255, 255, 255, 0.3) !important;
+    background: rgba(0, 0, 0, 0.06) !important;
+    color: rgba(51, 62, 47, 0.4) !important;
     font-style: italic;
 }
 
@@ -2868,7 +2853,7 @@ body.eatah-modal-open {
 
 .eatah-chat-bubble__timestamp {
     font-size: 10px;
-    opacity: 0.5;
+    color: rgba(51, 62, 47, 0.45);
     margin-top: 2px;
     padding: 0 6px;
 }
@@ -2900,7 +2885,7 @@ body.eatah-modal-open {
     align-items: center;
     gap: 8px;
     margin: 10px 0 6px;
-    color: rgba(255, 255, 255, 0.35);
+    color: rgba(51, 62, 47, 0.4);
     font-size: 10px;
     font-weight: 600;
     text-transform: uppercase;
@@ -2912,7 +2897,7 @@ body.eatah-modal-open {
     content: '';
     flex: 1;
     height: 1px;
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.1);
 }
 
 /* Reactions row */
@@ -2928,8 +2913,8 @@ body.eatah-modal-open {
     display: inline-flex;
     align-items: center;
     gap: 3px;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.07);
+    border: 1px solid rgba(0, 0, 0, 0.1);
     border-radius: 10px;
     padding: 1px 6px;
     font-size: 13px;
@@ -2938,26 +2923,34 @@ body.eatah-modal-open {
 }
 
 .eatah-chat-reaction--mine {
-    background: rgba(34, 197, 94, 0.2);
-    border-color: rgba(34, 197, 94, 0.4);
+    background: rgba(90, 174, 0, 0.15);
+    border-color: rgba(90, 174, 0, 0.35);
 }
 
 .eatah-chat-reaction__count {
     font-size: 11px;
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--color-text-dark);
 }
 
-/* Context menu */
+/* Context menu – positioned absolutely below the bubble via .eatah-chat-bubble-inner */
 .eatah-chat-context-menu {
-    position: fixed;
-    z-index: 300;
-    background: #1e1e2e;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 50;
+    margin-top: 4px;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 14px;
     padding: 6px;
-    min-width: 160px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    min-width: 170px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.eatah-chat-bubble-wrapper--mine .eatah-chat-context-menu {
+    left: auto;
+    right: 0;
 }
 
 .eatah-chat-context-menu__action {
@@ -2967,7 +2960,7 @@ body.eatah-modal-open {
     width: 100%;
     background: transparent;
     border: none;
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--color-text-dark);
     font-family: inherit;
     font-size: 14px;
     padding: 8px 10px;
@@ -2978,26 +2971,24 @@ body.eatah-modal-open {
 }
 
 .eatah-chat-context-menu__action:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.05);
 }
 
 .eatah-chat-context-menu__action--danger {
-    color: #f87171;
+    color: #dc2626;
 }
 
 .eatah-chat-context-menu__action--danger:hover {
-    background: rgba(248, 113, 113, 0.1);
+    background: rgba(220, 38, 38, 0.07);
 }
 
-/* Reaction picker */
+/* Reaction picker – embedded in the context menu */
 .eatah-reaction-picker {
     display: flex;
     gap: 4px;
-    background: #1e1e2e;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 24px;
-    padding: 6px 10px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    padding: 4px 4px 8px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    margin-bottom: 2px;
 }
 
 .eatah-reaction-picker__btn {
@@ -3024,10 +3015,10 @@ body.eatah-modal-open {
 }
 
 .eatah-chat-bubble__edit-input {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.15);
     border-radius: 8px;
-    color: #fff;
+    color: var(--color-text-dark);
     font-family: inherit;
     font-size: 14px;
     padding: 6px 8px;
@@ -3038,7 +3029,7 @@ body.eatah-modal-open {
 
 .eatah-chat-bubble__edit-input:focus {
     outline: none;
-    border-color: rgba(34, 197, 94, 0.5);
+    border-color: var(--color-brand);
 }
 
 .eatah-chat-bubble__edit-actions {
@@ -3047,8 +3038,8 @@ body.eatah-modal-open {
     justify-content: flex-end;
 }
 
-.eatah-chat-bubble__edit-btn {
-    background: rgba(255, 255, 255, 0.12);
+.eatah-chat-bubble__edit-save {
+    background: var(--color-brand);
     border: none;
     border-radius: 6px;
     color: #fff;
@@ -3057,39 +3048,42 @@ body.eatah-modal-open {
     font-weight: 600;
     padding: 4px 10px;
     cursor: pointer;
+    transition: opacity 0.12s;
+}
+
+.eatah-chat-bubble__edit-save:hover { opacity: 0.85; }
+
+.eatah-chat-bubble__edit-cancel {
+    background: rgba(0, 0, 0, 0.07);
+    border: none;
+    border-radius: 6px;
+    color: var(--color-text-dark);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+    cursor: pointer;
     transition: background 0.12s;
 }
 
-.eatah-chat-bubble__edit-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-}
-
-.eatah-chat-bubble__edit-btn--save {
-    background: var(--color-brand, #22c55e);
-    color: #fff;
-}
-
-.eatah-chat-bubble__edit-btn--save:hover {
-    background: #16a34a;
-}
+.eatah-chat-bubble__edit-cancel:hover { background: rgba(0, 0, 0, 0.12); }
 
 /* Compose bar */
 .eatah-chat-compose {
     display: flex;
     align-items: center;
     gap: 7px;
-    padding: 6px 10px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 8px 12px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
     flex-shrink: 0;
-    background: rgba(0, 0, 0, 0.1);
 }
 
 .eatah-chat-compose__input {
     flex: 1;
-    background: rgba(255, 255, 255, 0.07);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(0, 0, 0, 0.12);
     border-radius: 14px;
-    color: #fff;
+    color: var(--color-text-dark);
     font-family: inherit;
     font-size: 13px;
     padding: 7px 11px;
@@ -3102,15 +3096,15 @@ body.eatah-modal-open {
 
 .eatah-chat-compose__input:focus {
     outline: none;
-    border-color: rgba(34, 197, 94, 0.4);
+    border-color: rgba(90, 174, 0, 0.5);
 }
 
 .eatah-chat-compose__input::placeholder {
-    color: rgba(255, 255, 255, 0.3);
+    color: rgba(51, 62, 47, 0.4);
 }
 
 .eatah-chat-compose__send {
-    background: var(--color-brand, #22c55e);
+    background: var(--color-brand);
     border: none;
     border-radius: 50%;
     width: 34px;
@@ -3120,13 +3114,11 @@ body.eatah-modal-open {
     justify-content: center;
     cursor: pointer;
     flex-shrink: 0;
-    transition: background 0.15s, opacity 0.15s;
+    transition: opacity 0.15s;
     color: #fff;
 }
 
-.eatah-chat-compose__send:hover {
-    background: #16a34a;
-}
+.eatah-chat-compose__send:hover { opacity: 0.85; }
 
 .eatah-chat-compose__send:disabled {
     opacity: 0.4;

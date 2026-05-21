@@ -50,36 +50,56 @@
                         <span class="eatah-chat-bubble__author">@msg.AuthorDisplayName</span>
                     }
 
-                    <div class="@bubbleClass @(isDeleted ? "eatah-chat-bubble--deleted" : "")"
-                         @oncontextmenu="(e) => ShowReactionPicker(msg, e)" @oncontextmenu:preventDefault="true"
-                         @ontouchstart="(e) => OnTouchStart(msg, e)" @ontouchend="OnTouchEnd" @ontouchcancel="OnTouchEnd">
-                        @if (isDeleted)
-                        {
-                            <span class="eatah-chat-bubble__deleted-text">Raderat meddelande</span>
-                        }
-                        else if (_editingMessageId == msg.Id)
-                        {
-                            <div class="eatah-chat-bubble__edit">
-                                <input class="eatah-chat-bubble__edit-input" @bind="_editText" @bind:event="oninput"
-                                       @onkeydown="(e) => OnEditKeyDown(e, msg.Id)" />
-                                <div class="eatah-chat-bubble__edit-actions">
-                                    <button type="button" class="eatah-chat-bubble__edit-save"
-                                            @onclick="() => SubmitEditAsync(msg.Id)">
-                                        <Icon Name="check" Size="12" />
-                                    </button>
-                                    <button type="button" class="eatah-chat-bubble__edit-cancel" @onclick="CancelEdit">
-                                        <Icon Name="close" Size="12" />
-                                    </button>
-                                </div>
-                            </div>
-                        }
-                        else
-                        {
-                            <span class="eatah-chat-bubble__text">@msg.Text</span>
-                            @if (msg.EditedAt.HasValue)
+                    <div class="eatah-chat-bubble-inner">
+                        <div class="@bubbleClass @(isDeleted ? "eatah-chat-bubble--deleted" : "")"
+                             @oncontextmenu="(e) => ShowReactionPicker(msg, e)" @oncontextmenu:preventDefault="true"
+                             @ontouchstart="(e) => OnTouchStart(msg, e)" @ontouchend="OnTouchEnd" @ontouchcancel="OnTouchEnd">
+                            @if (isDeleted)
                             {
-                                <span class="eatah-chat-bubble__edited">(redigerat)</span>
+                                <span class="eatah-chat-bubble__deleted-text">Raderat meddelande</span>
                             }
+                            else if (_editingMessageId == msg.Id)
+                            {
+                                <div class="eatah-chat-bubble__edit">
+                                    <input class="eatah-chat-bubble__edit-input" @bind="_editText" @bind:event="oninput"
+                                           @onkeydown="(e) => OnEditKeyDown(e, msg.Id)" />
+                                    <div class="eatah-chat-bubble__edit-actions">
+                                        <button type="button" class="eatah-chat-bubble__edit-save"
+                                                @onclick="() => SubmitEditAsync(msg.Id)">
+                                            <Icon Name="check" Size="12" />
+                                        </button>
+                                        <button type="button" class="eatah-chat-bubble__edit-cancel" @onclick="CancelEdit">
+                                            <Icon Name="close" Size="12" />
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="eatah-chat-bubble__text">@msg.Text</span>
+                                @if (msg.EditedAt.HasValue)
+                                {
+                                    <span class="eatah-chat-bubble__edited">(redigerat)</span>
+                                }
+                            }
+                        </div>
+
+                        <!-- Context menu – absolutely positioned below the bubble -->
+                        @if (_reactionPickerMessageId == msg.Id)
+                        {
+                            <div class="eatah-chat-context-menu">
+                                <ReactionPicker OnPicked="(e) => PickReactionAsync(msg.Id, e)" OnDismiss="DismissReactionPicker" />
+                                @if (isMine && !isDeleted)
+                                {
+                                    <button type="button" class="eatah-chat-context-menu__action" @onclick="() => StartEdit(msg)">
+                                        <Icon Name="edit" Size="13" /> Redigera
+                                    </button>
+                                    <button type="button" class="eatah-chat-context-menu__action eatah-chat-context-menu__action--danger"
+                                            @onclick="() => DeleteMessageAsync(msg.Id)">
+                                        <Icon Name="trash" Size="13" /> Radera
+                                    </button>
+                                }
+                            </div>
                         }
                     </div>
 
@@ -98,24 +118,6 @@
                                 <button type="button" class="eatah-chat-reaction @(hasMyReaction ? "eatah-chat-reaction--mine" : "")"
                                         @onclick="() => ToggleReactionAsync(msg.Id, r.Emoji)">
                                     @r.Emoji <span class="eatah-chat-reaction__count">@r.Count</span>
-                                </button>
-                            }
-                        </div>
-                    }
-
-                    <!-- Context menu for own messages -->
-                    @if (_reactionPickerMessageId == msg.Id)
-                    {
-                        <div class="eatah-chat-context-menu">
-                            <ReactionPicker OnPicked="(e) => PickReactionAsync(msg.Id, e)" OnDismiss="DismissReactionPicker" />
-                            @if (isMine && !isDeleted)
-                            {
-                                <button type="button" class="eatah-chat-context-menu__action" @onclick="() => StartEdit(msg)">
-                                    <Icon Name="edit" Size="13" /> Redigera
-                                </button>
-                                <button type="button" class="eatah-chat-context-menu__action eatah-chat-context-menu__action--danger"
-                                        @onclick="() => DeleteMessageAsync(msg.Id)">
-                                    <Icon Name="trash" Size="13" /> Radera
                                 </button>
                             }
                         </div>
