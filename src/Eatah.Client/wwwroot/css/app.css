@@ -2403,7 +2403,7 @@ body.eatah-modal-open {
     width: 18px;
     height: 18px;
     border-radius: 5px;
-    border: 2px solid rgba(255, 255, 255, 0.4);
+    border: 2px solid rgba(0, 0, 0, 0.2);
     background: transparent;
     display: inline-flex;
     align-items: center;
@@ -2444,16 +2444,15 @@ body.eatah-modal-open {
 }
 
 .eatah-checklist-actions__btn--primary {
-    background: rgba(255, 255, 255, 0.25);
+    background: var(--color-brand);
     color: #fff;
-    backdrop-filter: blur(4px);
 }
 
 .eatah-checklist-actions__slot {
     width: 26px;
     height: 26px;
     border-radius: 50%;
-    border: 2px dashed rgba(255, 255, 255, 0.2);
+    border: 2px dashed rgba(0, 0, 0, 0.12);
     flex-shrink: 0;
 }
 

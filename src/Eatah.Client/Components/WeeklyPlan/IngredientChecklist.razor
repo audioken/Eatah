@@ -12,23 +12,22 @@
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
          style="padding-top: max(1rem, var(--header-height, 56px)); padding-bottom: max(1rem, var(--navbar-height, 82px));"
          @onclick="HandleClose">
-        <div class="w-full max-w-[420px] rounded-[20px] border border-black/10 font-kanit overflow-hidden"
-             style="background: linear-gradient(135deg, #839B7F 0%, #A8D1AA 91.83%); box-shadow: 0px 8px 24px rgba(0,0,0,0.35);"
-             @onclick:stopPropagation="true">
+        <div class="eatah-modal font-kanit" @onclick:stopPropagation="true">
 
             @* Header *@
-            <div class="px-5 pt-4 pb-3 flex items-center justify-between">
+            <div class="px-5 pt-4 pb-3 flex items-center justify-between flex-shrink-0">
                 <div>
-                    <div class="text-white font-medium text-[20px] leading-tight uppercase tracking-tight">
+                    <div class="font-bold text-[20px] leading-tight uppercase tracking-tight" style="color: var(--color-text-dark)">
                         Ingredienser
                     </div>
                     @if (!string.IsNullOrWhiteSpace(MealName))
                     {
-                        <div class="text-dayCardText font-medium text-[14px] leading-tight">@MealName</div>
+                        <div class="font-medium text-[14px] leading-tight" style="color: rgba(51,62,47,0.65)">@MealName</div>
                     }
                 </div>
                 <button type="button"
-                        class="inline-flex items-center justify-center w-[32px] h-[32px] rounded-full bg-white/30 hover:bg-white/50 text-white text-base"
+                        class="inline-flex items-center justify-center w-[32px] h-[32px] rounded-full bg-black/10 hover:bg-black/20 text-base"
+                        style="color: var(--color-text-dark)"
                         title="Stäng" @onclick="HandleClose">
                     ✕
                 </button>
@@ -37,11 +36,11 @@
             @* Two-column body *@
             @if (_isLoading)
             {
-                <div class="px-4 py-6 text-center text-white/90 text-sm">Laddar ingredienser…</div>
+                <div class="px-4 py-6 text-center text-sm" style="color: rgba(51,62,47,0.7)">Laddar ingredienser…</div>
             }
             else if (_ingredients is null || _ingredients.Count == 0)
             {
-                <div class="px-4 py-6 text-center text-white/90 text-sm">Inga ingredienser registrerade.</div>
+                <div class="px-4 py-6 text-center text-sm" style="color: rgba(51,62,47,0.7)">Inga ingredienser registrerade.</div>
             }
             else
             {
@@ -49,8 +48,8 @@
 
                     @* Left: Skafferi – ingredients already in pantry *@
                     <div>
-                        <div
-                            class="flex items-center gap-1.5 text-white/80 text-[11px] font-semibold uppercase tracking-wider mb-2 px-1">
+                        <div class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider mb-2 px-1"
+                             style="color: rgba(51,62,47,0.55)">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="@IconPaths.CheckViewBox" fill="currentColor"
                                  class="w-3 h-3">
                                 <path d="@IconPaths.CheckPath" />
@@ -59,33 +58,32 @@
                         </div>
                         @if (!PantryIngredients.Any())
                         {
-                            <div class="text-white/50 text-[12px] italic px-1 py-1">Ingenting ännu</div>
+                            <div class="text-[12px] italic px-1 py-1" style="color: rgba(51,62,47,0.4)">Ingenting ännu</div>
                         }
                         @foreach (var name in PantryIngredients)
                         {
                             var (pantryCovered, pantryTotal) = CheckState.GetCoverageFraction(name);
                             var sharedCount = pantryTotal > 0 ? pantryTotal : CheckState.GetSharedSessionCount(name);
-                            <div
-                                class="flex items-center gap-2 px-2 py-[6px] rounded-[10px] bg-white/25 border border-white/20 mb-1.5">
+                            <div class="flex items-center gap-2 px-2 py-[6px] rounded-[10px] bg-black/[0.06] border border-black/10 mb-1.5">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="@IconPaths.CheckViewBox" fill="#7CD331"
                                      class="w-[11px] h-[11px] flex-shrink-0">
                                     <path d="@IconPaths.CheckPath" />
                                 </svg>
-                                <span
-                                class="text-dayCardText/55 text-[13px] font-medium line-through leading-snug min-w-0 flex-1 truncate">@name</span>
+                                <span class="text-[13px] font-medium line-through leading-snug min-w-0 flex-1 truncate"
+                                      style="color: rgba(51,62,47,0.5)">@name</span>
                                 @if (pantryTotal > 1 && pantryCovered < pantryTotal)
                                 {
-                                    <span
-                                    class="shrink-0 text-[#F2A20C] text-[10px] font-semibold leading-none">@pantryCovered/@pantryTotal</span>
+                                    <span class="shrink-0 text-[#F2A20C] text-[10px] font-semibold leading-none">@pantryCovered/@pantryTotal</span>
                                 }
                                 else if (pantryTotal > 1)
                                 {
-                                    <span
-                                    class="shrink-0 text-white/50 text-[10px] font-semibold leading-none">@pantryTotal/@pantryTotal</span>
+                                    <span class="shrink-0 text-[10px] font-semibold leading-none"
+                                          style="color: rgba(51,62,47,0.4)">@pantryTotal/@pantryTotal</span>
                                 }
                                 else if (sharedCount > 1)
                                 {
-                                    <span class="shrink-0 text-white/50 text-[10px] font-semibold leading-none">(@sharedCount)</span>
+                                    <span class="shrink-0 text-[10px] font-semibold leading-none"
+                                          style="color: rgba(51,62,47,0.4)">(@sharedCount)</span>
                                 }
                             </div>
                         }
@@ -93,9 +91,9 @@
 
                     @* Right: Köp – ingredients not yet in pantry *@
                     <div>
-                        <div
-                            class="flex items-center gap-1.5 text-white/80 text-[11px] font-semibold uppercase tracking-wider mb-2 px-1">
-                            <Icon Name="basket" Size="12" CssClass="opacity-80" />
+                        <div class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider mb-2 px-1"
+                             style="color: rgba(51,62,47,0.55)">
+                            <Icon Name="basket" Size="12" />
                             Köp
                         </div>
                         @if (_selectedMissing.Count > 0)
@@ -112,14 +110,13 @@
                         }
                         @if (!MissingIngredients.Any())
                         {
-                            <div class="text-white/70 text-[12px] italic px-1 py-1">Allt klart ✓</div>
+                            <div class="text-[12px] italic px-1 py-1" style="color: rgba(51,62,47,0.5)">Allt klart ✓</div>
                         }
                         @foreach (var name in MissingIngredients)
                         {
                             var onList = _shoppingNames.Contains(name);
                             var isSelected = _selectedMissing.Contains(name);
-                            var rowClass = isSelected ? "bg-white/50 border-white/60" : onList ? "bg-white/35 border-white/30" :
-              "bg-white/15 border-white/10";
+                            var rowClass = isSelected ? "bg-[#5AAE00]/15 border-[#5AAE00]/30" : onList ? "bg-[#5AAE00]/10 border-[#5AAE00]/20" : "bg-black/[0.04] border-black/10";
                             var selectClass = isSelected ? "eatah-checklist-select--active" : "";
                             var textClass = isSelected ? "opacity-100" : onList ? "opacity-80" : "opacity-60";
                             var missingCount = CheckState.GetUncoveredSessionCount(name);
@@ -131,11 +128,12 @@
                                         <Icon Name="check" Size="9" />
                                     }
                                 </span>
-                                <span
-                                class="text-dayCardText text-[13px] font-medium leading-snug min-w-0 flex-1 truncate @textClass">@name</span>
+                                <span class="text-[13px] font-medium leading-snug min-w-0 flex-1 truncate @textClass"
+                                      style="color: var(--color-text-dark)">@name</span>
                                 @if (missingCount > 1)
                                 {
-                                    <span class="shrink-0 text-white/80 text-[10px] font-semibold leading-none">(@missingCount)</span>
+                                    <span class="shrink-0 text-[10px] font-semibold leading-none"
+                                          style="color: rgba(51,62,47,0.45)">(@missingCount)</span>
                                 }
                             </div>
                         }
