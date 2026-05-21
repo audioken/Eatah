@@ -557,18 +557,12 @@ h1:focus { outline: none; }
     backdrop-filter: blur(2px);
     z-index: 100;
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     justify-content: center;
     padding: 16px;
-    padding-top: calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 16px);
-    padding-bottom: calc(var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) + 16px);
+    padding-top: calc(var(--header-height) + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 16px);
+    padding-bottom: calc(var(--navbar-height) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) + 16px);
     animation: eatah-fade-in 0.15s ease-out;
-}
-
-@media (min-width: 640px) {
-    .eatah-modal-backdrop {
-        align-items: center;
-    }
 }
 
 .eatah-modal {
@@ -577,7 +571,7 @@ h1:focus { outline: none; }
     border-radius: 18px;
     width: 100%;
     max-width: 420px;
-    max-height: 90dvh;
+    max-height: calc(100dvh - var(--header-height) - var(--navbar-height) - var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) - var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) - 32px);
     display: flex;
     flex-direction: column;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
@@ -1119,7 +1113,8 @@ body.eatah-modal-open {
 .eatah-profile-modal {
     display: flex;
     flex-direction: column;
-    max-height: 90dvh;
+    flex: 1;
+    min-height: 0;
 }
 
 .eatah-profile-modal__header {
@@ -1830,7 +1825,7 @@ body.eatah-modal-open {
 }
 
 .eatah-shopping-modal .eatah-shopping-col {
-    max-height: calc(90dvh - 62px);
+    max-height: none;
 }
 
 /* Sync button */
@@ -1862,10 +1857,9 @@ body.eatah-modal-open {
 
 /* Two-column layout */
 .eatah-shopping-columns {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0;
-    align-items: start;
+    display: flex;
+    flex: 1;
+    min-height: 0;
     overflow: hidden;
 }
 
@@ -1879,7 +1873,7 @@ body.eatah-modal-open {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    max-height: calc(100dvh - var(--header-height) - var(--navbar-height) - 80px);
+    flex: 1;
 }
 
 .eatah-shopping-col__header {
