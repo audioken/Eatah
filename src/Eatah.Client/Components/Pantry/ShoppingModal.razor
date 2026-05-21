@@ -679,6 +679,7 @@
         {
             await Api.RemoveFromPantryAsync(item.Id);
             PantryState.RemoveItem(item.Id);
+            CheckState.RemovePantryName(item.Name);
 
             // Re-sync so any newly missing ingredient appears on the shopping list immediately
             ShoppingSync.TriggerSync();

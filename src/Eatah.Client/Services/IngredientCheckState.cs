@@ -100,6 +100,25 @@ public class IngredientCheckState
     }
 
     /// <summary>
+    /// Removes a single ingredient name from the pantry set without rebuilding the full set.
+    /// Call this after a successful RemoveFromPantry API call for real-time UI sync.
+    /// Also clears all coverage answers for this ingredient since they are no longer valid.
+    /// </summary>
+    public void RemovePantryName(string name)
+    {
+        _pantryNames.Remove(name);
+        foreach (var (mealId, ings) in _ingredients)
+        {
+            if (ings.Contains(name, StringComparer.OrdinalIgnoreCase))
+                GetChecked(mealId).Remove(name);
+        }
+        _coveredSessions.Remove(name);
+        _declinedSessions.Remove(name);
+        _pantryIngredientIds.Remove(name);
+        OnChange?.Invoke();
+    }
+
+    /// <summary>
     /// Returns true when all known ingredients for the meal are checked.
     /// Returns false when at least one is missing (or when ingredients are not yet known).
     /// </summary>
