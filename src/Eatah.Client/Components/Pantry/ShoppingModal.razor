@@ -240,15 +240,14 @@
 {
     <div class="fixed inset-0 z-[250] flex items-end sm:items-center justify-center bg-black/50 p-4"
          style="padding-bottom: max(1rem, var(--navbar-height, 64px));" @onclick="() => _coveragePopupOpen = false">
-        <div class="w-full max-w-[420px] rounded-[20px] border border-black/10 font-kanit overflow-hidden"
-             style="background: linear-gradient(135deg, #839B7F 0%, #A8D1AA 91.83%); box-shadow: 0px 8px 24px rgba(0,0,0,0.35);"
-             @onclick:stopPropagation="true">
+        <div class="eatah-modal font-kanit" @onclick:stopPropagation="true">
 
-            <div class="px-5 pt-4 pb-2">
-                <div class="text-white font-medium text-[18px] uppercase tracking-tight leading-tight">
+            <div class="px-5 pt-4 pb-2 flex-shrink-0">
+                <div class="font-bold text-[18px] uppercase tracking-tight leading-tight"
+                     style="color: var(--color-text-dark)">
                     Räcker till fler rätter?
                 </div>
-                <div class="text-white/75 text-[13px] mt-1">
+                <div class="text-[13px] mt-1" style="color: rgba(51,62,47,0.6)">
                     Bocka av vilka rätter ingrediensen räcker till.
                 </div>
             </div>
@@ -257,89 +256,97 @@
                 @foreach (var cov in _pendingCoverage)
                 {
                     <div>
-                        <div class="text-white font-semibold text-[14px] mb-1.5 px-1">@cov.Item.Name</div>
-                        @foreach (var session in cov.AllSessions)
+                        <div class="font-semibold text-[14px] mb-1.5 px-1" style="color: var(--color-text-dark)">@cov.Item.Name
+                        </div>
+                        @foreach (var weekGrp in cov.AllSessions.GroupBy(s => s.WeekNumber).OrderBy(g => g.Key ?? 9999))
                         {
-                            var isCovered = cov.CoveredSessionIds.Contains(session.DayPlanId);
-                            var isOrigin = session.DayPlanId == cov.OriginDayPlanId;
-                            var rowClass = isOrigin && isCovered
-                                ? "bg-white/45 border-white/60 ring-1 ring-white/40"
-                                : isCovered ? "bg-white/35 border-white/30" : "bg-white/15 border-white/10";
-                            <label class="flex items-center gap-2.5 px-3 py-2 rounded-[10px] border cursor-pointer mb-1 @rowClass">
-                                <input type="checkbox" class="w-4 h-4 accent-white cursor-pointer flex-shrink-0"
-                                       checked="@isCovered" @onchange="@(() => ToggleCoverage(cov, session.DayPlanId))" />
-                                <span class="text-dayCardText text-[13px] font-medium truncate">@session.DisplayLabel</span>
-                                @if (isOrigin)
-                                {
-                                    <span class="shrink-0 text-white/80 text-[10px] font-semibold uppercase tracking-wide">←
-                                        denna</span>
+                            <div class="font-extrabold text-[11px] uppercase tracking-[0.03em] px-[10px] py-[5px] rounded-[8px] mb-1.5"
+                                 style="background: rgba(0,0,0,0.07); color: rgba(51,62,47,0.55)">
+                                @GetCoverageWeekLabel(weekGrp.Key)
+                            </div>
+                            @foreach (var session in weekGrp)
+                            {
+                                var isCovered = cov.CoveredSessionIds.Contains(session.DayPlanId);
+                                var isOrigin = session.DayPlanId == cov.OriginDayPlanId;
+                                var rowClass = isOrigin && isCovered
+                                    ? "bg-[#5AAE00]/15 border-[#5AAE00]/30 ring-1 ring-[#5AAE00]/20"
+                                    : isCovered ? "bg-[#5AAE00]/10 border-[#5AAE00]/20" : "bg-black/[0.04] border-black/10";
+                                <label class="flex items-center gap-2.5 px-3 py-2 rounded-[10px] border cursor-pointer mb-1 @rowClass">
+                                    <input type="checkbox" class="w-4 h-4 cursor-pointer flex-shrink-0" checked="@isCovered"
+                                           @onchange="@(() => ToggleCoverage(cov, session.DayPlanId))" />
+                                    <span class="text-[13px] font-medium flex-1 min-w-0 truncate"
+                                          style="color: var(--color-text-dark)">@session.MealName</span>
+                                    <span class="eatah-shopping-group__day">@session.DayName</span>
+                                    @if (isOrigin)
+                                    {
+                                        <span class="shrink-0 text-[10px] font-semibold uppercase tracking-wide"
+                                              style="color: rgba(51,62,47,0.45)">← denna</span>
                                     }
                                 </label>
                             }
-                        </div>
-                    }
-                </div>
+                        }
+                    </div>
+                }
 
                 @{
                     var onlyOriginCovered = _pendingCoverage.All(cov =>
                         cov.OriginDayPlanId.HasValue &&
                         cov.CoveredSessionIds.Count == 1 &&
                         cov.CoveredSessionIds.Contains(cov.OriginDayPlanId.Value));
-                    var confirmBtnCls = onlyOriginCovered
-                        ? "flex-1 py-2.5 rounded-[12px] bg-white/25 hover:bg-white/40 text-white font-semibold text-[13px] uppercase tracking-wide"
-                        : "flex-1 py-2.5 rounded-[12px] bg-white/15 hover:bg-white/25 text-white font-medium text-[13px]";
                     var confirmBtnLabel = onlyOriginCovered ? "RÄCKER TILL DENNA" : "Spara urval";
                 }
                 <div class="px-4 pb-5 pt-2 flex gap-2">
                     <button type="button"
-                            class="flex-1 py-2.5 rounded-[12px] bg-white/30 hover:bg-white/45 text-white font-semibold text-[13px] uppercase tracking-wide"
+                            class="flex-1 eatah-modal-footer__btn eatah-modal-footer__btn--primary uppercase tracking-wide"
                             @onclick="CoverAllAndConfirmAsync">
                         Räcker till alla
                     </button>
-                    <button type="button" class="@confirmBtnCls" @onclick="ConfirmCoverageAsync">
+                    <button type="button" class="flex-1 eatah-modal-footer__btn eatah-modal-footer__btn--ghost"
+                            @onclick="ConfirmCoverageAsync">
                         @confirmBtnLabel
                     </button>
                 </div>
             </div>
         </div>
-    }
+    </div>
+}
 
-    @* Chat recipient picker dropdown *@
-    @if (_showChatDropdown)
-    {
-        <div class="eatah-chat-recipient-overlay" @onclick="() => _showChatDropdown = false">
-            <div class="eatah-chat-recipient-picker" @onclick:stopPropagation="true">
-                <div class="eatah-chat-recipient-picker__title">Skicka till&hellip;</div>
+@* Chat recipient picker dropdown *@
+@if (_showChatDropdown)
+{
+    <div class="eatah-chat-recipient-overlay" @onclick="() => _showChatDropdown = false">
+        <div class="eatah-chat-recipient-picker" @onclick:stopPropagation="true">
+            <div class="eatah-chat-recipient-picker__title">Skicka till&hellip;</div>
 
-                @* Household group chat *@
-                <button type="button" class="eatah-chat-recipient-item" @onclick="SendToGroupAsync">
-                    <div class="eatah-chat-recipient-item__avatar eatah-chat-recipient-item__avatar--group">
-                        <Icon Name="house" Size="14" />
+            @* Household group chat *@
+            <button type="button" class="eatah-chat-recipient-item" @onclick="SendToGroupAsync">
+                <div class="eatah-chat-recipient-item__avatar eatah-chat-recipient-item__avatar--group">
+                    <Icon Name="house" Size="14" />
+                </div>
+                <span class="eatah-chat-recipient-item__name">Hush&aring;llschatten</span>
+            </button>
+
+            @* Individual household members *@
+            @foreach (var member in _householdMembers)
+            {
+                var m = member;
+                <button type="button" class="eatah-chat-recipient-item" @onclick="() => SendToMemberAsync(m)">
+                    <div class="eatah-chat-recipient-item__avatar">
+                        <Icon Name="profile" Size="14" />
                     </div>
-                    <span class="eatah-chat-recipient-item__name">Hush&aring;llschatten</span>
+                    <span class="eatah-chat-recipient-item__name">@m.DisplayName</span>
                 </button>
+            }
 
-                @* Individual household members *@
-                @foreach (var member in _householdMembers)
-                {
-                    var m = member;
-                    <button type="button" class="eatah-chat-recipient-item" @onclick="() => SendToMemberAsync(m)">
-                        <div class="eatah-chat-recipient-item__avatar">
-                            <Icon Name="profile" Size="14" />
-                        </div>
-                        <span class="eatah-chat-recipient-item__name">@m.DisplayName</span>
-                    </button>
-                }
-
-                @if (_dropdownLoading)
-                {
-                    <div class="eatah-chat-recipient-picker__loading">Laddar&hellip;</div>
-                }
-            </div>
+            @if (_dropdownLoading)
+            {
+                <div class="eatah-chat-recipient-picker__loading">Laddar&hellip;</div>
+            }
         </div>
-    }
+    </div>
+}
 
-    @using System.Globalization
+@using System.Globalization
 
 @code {
     [CascadingParameter] private ModalInstance? ModalInstance { get; set; }
@@ -818,7 +825,7 @@
     }
 
     /// <summary>Rebuilds Notes keeping only parts whose DayPlanId is NOT in coveredDayPlans (and parts without DayPlanId).
-    Returns null if everything is covered.</summary>
+    /// Returns null if everything is covered.</summary>
     private static string? BuildRemainingNotesByDayPlan(string? originalNotes, HashSet<Guid> coveredDayPlans)
     {
         if (string.IsNullOrEmpty(originalNotes)) return null;
