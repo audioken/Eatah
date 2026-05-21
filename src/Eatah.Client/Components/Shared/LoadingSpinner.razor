@@ -1,0 +1,15 @@
+@namespace Eatah.Client.Components.Shared
+
+<div class="eatah-spinner @(IsAi ? "eatah-spinner--ai" : "") @(CssClass ?? string.Empty)">
+    <div class="eatah-spinner__ring"></div>
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <span class="eatah-spinner__label">@Label</span>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public bool IsAi { get; set; }
+    [Parameter] public string? CssClass { get; set; }
+}

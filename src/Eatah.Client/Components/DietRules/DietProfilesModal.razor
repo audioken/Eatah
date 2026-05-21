@@ -19,7 +19,8 @@
 
             @* Mode toggle *@
             <div class="eatah-diet-modal__mode-row">
-                <span class="eatah-diet-modal__mode-label @(!_manualMode ? "eatah-diet-modal__mode-label--active" : "")">
+                <span
+                    class="eatah-diet-modal__mode-label @(!_manualMode ? "eatah-diet-modal__mode-label--active" : "")">
                     <Icon Name="dice" Size="13" CssClass="eatah-diet-modal__mode-icon" />AI
                 </span>
                 <label class="eatah-diet-modal__switch" aria-label="Byt till manuellt läge">
@@ -34,7 +35,8 @@
             @if (!_manualMode)
             {
                 <p class="eatah-diet-modal__description">
-                    Ge profilen ett namn och beskriv ditt mål – t.ex. viktnedgång eller mer växtbaserat – så genereras reglerna av AI.
+                    Ge profilen ett namn och beskriv ditt mål – t.ex. viktnedgång eller mer växtbaserat – så genereras
+                    reglerna av AI.
                 </p>
             }
 
@@ -67,22 +69,18 @@
                                 <span class="eatah-diet-modal__stepper-label">Min</span>
                                 <div class="eatah-diet-modal__stepper">
                                     <button type="button" class="eatah-diet-modal__stepper-btn"
-                                            @onclick="() => AdjustMin(category, -1)"
-                                            disabled="@(min <= 0)">−</button>
+                                            @onclick="() => AdjustMin(category, -1)" disabled="@(min <= 0)">−</button>
                                     <span class="eatah-diet-modal__stepper-val">@min</span>
                                     <button type="button" class="eatah-diet-modal__stepper-btn"
-                                            @onclick="() => AdjustMin(category, +1)"
-                                            disabled="@(min >= 7)">+</button>
+                                            @onclick="() => AdjustMin(category, +1)" disabled="@(min >= 7)">+</button>
                                 </div>
                                 <span class="eatah-diet-modal__stepper-label eatah-diet-modal__stepper-label--max">Max</span>
                                 <div class="eatah-diet-modal__stepper">
                                     <button type="button" class="eatah-diet-modal__stepper-btn"
-                                            @onclick="() => AdjustMax(category, -1)"
-                                            disabled="@(max <= 0)">−</button>
+                                            @onclick="() => AdjustMax(category, -1)" disabled="@(max <= 0)">−</button>
                                     <span class="eatah-diet-modal__stepper-val">@max</span>
                                     <button type="button" class="eatah-diet-modal__stepper-btn"
-                                            @onclick="() => AdjustMax(category, +1)"
-                                            disabled="@(max >= 7)">+</button>
+                                            @onclick="() => AdjustMax(category, +1)" disabled="@(max >= 7)">+</button>
                                 </div>
                             </div>
                         </div>
@@ -97,17 +95,18 @@
 
             <button class="eatah-diet-modal__generate-btn" @onclick="SubmitAsync"
                     disabled="@(_busy || string.IsNullOrWhiteSpace(_name))">
-                @if (!_manualMode)
-                {
-                    <Icon Name="dice" Size="16" CssClass="eatah-diet-modal__generate-icon" />
-                }
                 @if (_busy)
                 {
-                    @(_manualMode ? "Sparar..." : "Genererar...")
+                    <span class="eatah-btn-spinner"></span>
+                    <span>@(_manualMode ? "Sparar…" : "Genererar…")</span>
                 }
                 else
                 {
-                    @(_manualMode ? "Spara profil" : "Generera profil")
+                    @if (!_manualMode)
+                    {
+                        <Icon Name="dice" Size="16" CssClass="eatah-diet-modal__generate-icon" />
+                    }
+                    <span>@(_manualMode ? "Spara profil" : "Generera profil")</span>
                 }
             </button>
         </section>
@@ -116,7 +115,7 @@
         <section class="eatah-diet-modal__section eatah-diet-modal__section--list">
             @if (_profiles is null)
             {
-                <p class="eatah-diet-modal__empty">Laddar...</p>
+                <LoadingSpinner IsAi="true" Label="Laddar profiler…" />
             }
             else if (_profiles.Count == 0)
             {

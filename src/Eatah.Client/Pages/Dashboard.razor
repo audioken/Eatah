@@ -32,7 +32,7 @@
 
 	@if (_isLoading)
 	{
-		<div class="p-8 text-center text-slate-500">Laddar veckoplan..</div>
+		<LoadingSpinner Label="Laddar veckoplan…" />
 	}
 	else if (_plan is null)
 	{
@@ -184,7 +184,8 @@
 					var minDay = DayIdx(today.DayOfWeek);
 					_cachedSessions[0] = plan.Days
 						.Where(d => d.Meal is not null && DayIdx(d.DayOfWeek) >= minDay)
-						.Select(d => new IngredientCheckState.ActiveSession(d.Id, d.Meal!.Id, d.Meal!.Name, DayIdx(d.DayOfWeek), ISOWeek.GetWeekOfYear(today)))
+						.Select(d => new IngredientCheckState.ActiveSession(d.Id, d.Meal!.Id, d.Meal!.Name, DayIdx(d.DayOfWeek),
+ISOWeek.GetWeekOfYear(today)))
 						.ToList();
 					updated = true;
 				}
@@ -201,7 +202,8 @@
 				{
 					_cachedSessions[1] = plan.Days
 						.Where(d => d.Meal is not null)
-						.Select(d => new IngredientCheckState.ActiveSession(d.Id, d.Meal!.Id, d.Meal!.Name, DayIdx(d.DayOfWeek), ISOWeek.GetWeekOfYear(next)))
+						.Select(d => new IngredientCheckState.ActiveSession(d.Id, d.Meal!.Id, d.Meal!.Name, DayIdx(d.DayOfWeek),
+ISOWeek.GetWeekOfYear(next)))
 						.ToList();
 					updated = true;
 				}

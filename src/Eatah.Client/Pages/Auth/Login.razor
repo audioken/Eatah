@@ -33,7 +33,14 @@
             }
 
             <button type="submit" class="eatah-auth-button" disabled="@_busy">
-                @(_busy ? "Loggar in…" : "Logga in")
+                @if (_busy)
+                {
+                    <span class="eatah-btn-spinner"></span><span>Loggar in…</span>
+                }
+                else
+                {
+                    <span>Logga in</span>
+                }
             </button>
         </form>
 

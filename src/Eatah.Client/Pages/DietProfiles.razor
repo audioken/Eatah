@@ -28,7 +28,14 @@
 		<div class="flex items-center gap-3">
 			<button class="px-4 py-2 bg-emerald-600 text-white rounded disabled:opacity-50" @onclick="GenerateAsync"
 					disabled="@(_busy || string.IsNullOrWhiteSpace(_name))">
-				@(_busy ? "Genererar..." : "Generera profil")
+				@if (_busy)
+				{
+					<span class="eatah-btn-spinner"></span><span>Genererar…</span>
+				}
+				else
+				{
+					<span>Generera profil</span>
+				}
 			</button>
 			@if (!string.IsNullOrEmpty(_error))
 			{
@@ -41,7 +48,7 @@
 		<h2 class="text-xl font-semibold mb-3">Befintliga profiler</h2>
 		@if (_profiles is null)
 		{
-			<p class="text-slate-500">Laddar...</p>
+			<LoadingSpinner Label="Laddar profiler…" />
 		}
 		else if (_profiles.Count == 0)
 		{

@@ -16,7 +16,7 @@
                 <div class="eatah-ai-preview__body">
                     @if (IsLoading)
                     {
-                        <p class="eatah-modal-notice eatah-modal-notice--loading">Genererar förslag…</p>
+                        <LoadingSpinner IsAi="true" Label="Genererar förslag…" />
                     }
                     else if (Error is not null)
                     {
@@ -52,8 +52,7 @@
                 </div>
 
                 <div class="eatah-modal-footer">
-                    <button type="button" class="eatah-modal-footer__btn eatah-modal-footer__btn--ghost"
-                            @onclick="Close">
+                    <button type="button" class="eatah-modal-footer__btn eatah-modal-footer__btn--ghost" @onclick="Close">
                         Avbryt
                     </button>
                     <button type="button" class="eatah-modal-footer__btn eatah-modal-footer__btn--primary"

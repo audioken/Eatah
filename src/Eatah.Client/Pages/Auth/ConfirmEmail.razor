@@ -41,7 +41,14 @@
                 }
 
                 <button type="submit" class="eatah-auth-button" disabled="@_busy">
-                    @(_busy ? "Skapar…" : "Skapa konto")
+                    @if (_busy)
+                    {
+                        <span class="eatah-btn-spinner"></span><span>Skapar…</span>
+                    }
+                    else
+                    {
+                        <span>Skapa konto</span>
+                    }
                 </button>
             </form>
         }

@@ -3479,3 +3479,64 @@ body.eatah-modal-open {
     opacity: 0.75;
 }
 
+/* ============================================================
+   Loading Spinner — shared component
+   ============================================================ */
+.eatah-spinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 40px 16px;
+}
+
+/* Default (page) variant — white on dark background */
+.eatah-spinner__ring {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.18);
+    border-top-color: rgba(255, 255, 255, 0.92);
+    animation: eatah-spin 0.75s linear infinite;
+}
+
+.eatah-spinner__label {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+}
+
+/* AI variant — inside light modal, branded green */
+.eatah-spinner--ai .eatah-spinner__ring {
+    width: 48px;
+    height: 48px;
+    border-color: rgba(90, 174, 0, 0.2);
+    border-top-color: var(--color-brand);
+    border-width: 3px;
+    box-shadow: 0 0 18px rgba(90, 174, 0, 0.3);
+    animation-duration: 1s;
+}
+
+.eatah-spinner--ai .eatah-spinner__label {
+    color: var(--color-text-dark);
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0.75;
+}
+
+/* Inline button spinner */
+.eatah-btn-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    animation: eatah-spin 0.6s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+    flex-shrink: 0;
+}
+
