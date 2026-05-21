@@ -1876,6 +1876,9 @@ body.eatah-modal-open {
     flex: 1;
 }
 
+.eatah-shopping-col--pantry { flex: 2; }
+.eatah-shopping-col--list   { flex: 3; }
+
 .eatah-shopping-col__header {
     display: flex;
     align-items: center;
@@ -1979,6 +1982,13 @@ body.eatah-modal-open {
 .eatah-shopping-item--checked .eatah-shopping-item__name {
     text-decoration: line-through;
     opacity: 0.55;
+}
+
+/* Pantry items: let the name wrap instead of truncating */
+.eatah-shopping-item--pantry .eatah-shopping-item__name {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
 }
 
 .eatah-shopping-item__name-row {
