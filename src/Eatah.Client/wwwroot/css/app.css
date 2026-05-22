@@ -1876,8 +1876,12 @@ body.eatah-modal-open {
     flex: 1;
 }
 
-.eatah-shopping-col--pantry { flex: 2; }
-.eatah-shopping-col--list   { flex: 3; }
+.eatah-shopping-col--pantry {
+    flex: 2;
+    background: rgba(242, 162, 12, 0.05);
+}
+
+.eatah-shopping-col--list { flex: 3; }
 
 .eatah-shopping-col__header {
     display: flex;
@@ -1965,8 +1969,8 @@ body.eatah-modal-open {
 }
 
 .eatah-shopping-item--pantry {
-    background: rgba(255, 255, 255, 0.45);
-    border-color: rgba(0, 0, 0, 0.06);
+    background: rgba(255, 249, 224, 0.75);
+    border-color: rgba(242, 162, 12, 0.2);
 }
 
 .eatah-shopping-item--checked {
@@ -2287,6 +2291,10 @@ body.eatah-modal-open {
 
 .eatah-shopping-category-label:first-child {
     padding-top: 2px;
+}
+
+.eatah-shopping-col--pantry .eatah-shopping-category-label {
+    color: rgba(160, 100, 0, 0.55);
 }
 
 .eatah-shopping-checked-divider {

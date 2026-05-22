@@ -54,34 +54,38 @@
                         }
                         else
                         {
-                            @foreach (var item in PantryState.Items)
+                            @foreach (var catGroup in PantryCategoryGroups)
                             {
-                                var (pCovered, pTotal) = CheckState.GetCoverageFraction(item.Name);
-                                var pantryCount = pTotal > 0 ? pTotal : CheckState.GetSharedSessionCount(item.Name);
-                                <div class="eatah-shopping-item eatah-shopping-item--pantry">
-                                    <div class="eatah-shopping-item__body">
-                                        <div class="eatah-shopping-item__name-row">
-                                            <span class="eatah-shopping-item__name">@item.Name</span>
-                                            @if (pTotal > 1 && pCovered < pTotal)
-                                            {
-                                                <span class="shrink-0 text-[#F2A20C] text-[11px] font-semibold">@pCovered/@pTotal</span>
-                                            }
-                                            else if (pTotal > 1)
-                                            {
-                                                <span class="eatah-shopping-item__count-badge">@pTotal/@pTotal</span>
-                                            }
-                                            else if (pantryCount > 1)
-                                            {
-                                                <span class="eatah-shopping-item__count-badge">(@pantryCount)</span>
-                                            }
+                                <div class="eatah-shopping-category-label">@catGroup.Label</div>
+                                @foreach (var item in catGroup.Items)
+                                {
+                                    var (pCovered, pTotal) = CheckState.GetCoverageFraction(item.Name);
+                                    var pantryCount = pTotal > 0 ? pTotal : CheckState.GetSharedSessionCount(item.Name);
+                                    <div class="eatah-shopping-item eatah-shopping-item--pantry">
+                                        <div class="eatah-shopping-item__body">
+                                            <div class="eatah-shopping-item__name-row">
+                                                <span class="eatah-shopping-item__name">@item.Name</span>
+                                                @if (pTotal > 1 && pCovered < pTotal)
+                                                {
+                                                    <span class="shrink-0 text-[#F2A20C] text-[11px] font-semibold">@pCovered/@pTotal</span>
+                                                }
+                                                else if (pTotal > 1)
+                                                {
+                                                    <span class="eatah-shopping-item__count-badge">@pTotal/@pTotal</span>
+                                                }
+                                                else if (pantryCount > 1)
+                                                {
+                                                    <span class="eatah-shopping-item__count-badge">(@pantryCount)</span>
+                                                }
+                                            </div>
+                                            <span class="eatah-shopping-item__meta">Tillagt @FormatDate(item.AddedAt)</span>
                                         </div>
-                                        <span class="eatah-shopping-item__meta">Tillagt @FormatDate(item.AddedAt)</span>
+                                        <button type="button" class="eatah-shopping-item__remove" title="Ta bort från skafferiet"
+                                                @onclick="() => RemoveFromPantryAsync(item)">
+                                            <Icon Name="close" Size="12" />
+                                        </button>
                                     </div>
-                                    <button type="button" class="eatah-shopping-item__remove" title="Ta bort från skafferiet"
-                                            @onclick="() => RemoveFromPantryAsync(item)">
-                                        <Icon Name="close" Size="12" />
-                                    </button>
-                                </div>
+                                }
                             }
                         }
                     </div>
@@ -437,6 +441,19 @@ TotalMealCount);
         CleanListGroups
             .GroupBy(i => i.Category ?? "Övrigt", StringComparer.OrdinalIgnoreCase)
             .Select(g => new CleanCategoryGroup(g.Key, g.OrderBy(i => i.Name).ToList()))
+            .OrderBy(g =>
+            {
+                var idx = Array.IndexOf(CategoryOrder, g.Label);
+                return idx >= 0 ? idx : CategoryOrder.Length;
+            })
+            .ToList();
+
+    private record PantryCategoryGroup(string Label, List<PantryItemResponse> Items);
+
+    private IList<PantryCategoryGroup> PantryCategoryGroups =>
+        PantryState.Items
+            .GroupBy(i => i.Category ?? "Övrigt", StringComparer.OrdinalIgnoreCase)
+            .Select(g => new PantryCategoryGroup(g.Key, g.OrderBy(i => i.Name).ToList()))
             .OrderBy(g =>
             {
                 var idx = Array.IndexOf(CategoryOrder, g.Label);
