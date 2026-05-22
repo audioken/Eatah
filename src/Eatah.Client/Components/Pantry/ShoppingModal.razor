@@ -65,11 +65,11 @@
                                         <div class="eatah-shopping-item__body">
                                             <div class="eatah-shopping-item__name-row">
                                                 <span class="eatah-shopping-item__name">@item.Name</span>
-                                                @if (pTotal > 1 && pCovered < pTotal)
+                                                @if (pTotal > 1 && pCovered > 0 && pCovered < pTotal)
                                                 {
                                                     <span class="shrink-0 text-[#F2A20C] text-[11px] font-semibold">@pCovered/@pTotal</span>
                                                 }
-                                                else if (pTotal > 1)
+                                                else if (pTotal > 1 && pCovered == pTotal)
                                                 {
                                                     <span class="eatah-shopping-item__count-badge">@pTotal/@pTotal</span>
                                                 }

@@ -98,16 +98,7 @@
 
 				@if (Day.Meal is not null)
 				{
-					if (AllIngredientsChecked)
-					{
-						<span
-							class="absolute -top-1 -right-1 inline-flex items-center justify-center w-[15px] h-[15px] rounded-full bg-[#7CD331]">
-							<svg xmlns="http://www.w3.org/2000/svg" viewBox="@IconPaths.CheckViewBox" fill="white" class="w-2 h-2">
-								<path d="@IconPaths.CheckPath" />
-							</svg>
-						</span>
-					}
-					else if (!CheckState.HasIngredients(Day.Meal.Id))
+					if (!CheckState.HasIngredients(Day.Meal.Id))
 					{
 						<span
 						class="absolute -top-1 -right-1 inline-flex items-center justify-center w-[15px] h-[15px] rounded-full bg-[#8D8D83] text-white text-[10px] leading-none font-bold">?</span>
@@ -116,6 +107,15 @@
 					{
 						<span
 						class="absolute -top-1 -right-1 inline-flex items-center justify-center w-[15px] h-[15px] rounded-full bg-[#F2A20C] text-white text-[10px] leading-none font-bold">!</span>
+					}
+					else if (AllIngredientsChecked)
+					{
+						<span
+							class="absolute -top-1 -right-1 inline-flex items-center justify-center w-[15px] h-[15px] rounded-full bg-[#7CD331]">
+							<svg xmlns="http://www.w3.org/2000/svg" viewBox="@IconPaths.CheckViewBox" fill="white" class="w-2 h-2">
+								<path d="@IconPaths.CheckPath" />
+							</svg>
+						</span>
 					}
 					else
 					{
