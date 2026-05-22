@@ -10,6 +10,7 @@
 @inject MealsStateService MealsCache
 @inject PantryStateService PantryCache
 @inject PantryCoverageStateService CoverageCache
+@inject ToastService Toasts
 @implements IDisposable
 
 <div class="max-w-[1000px] mx-auto">
@@ -361,6 +362,7 @@
 				CheckState.ClearCoverageForDayPlans([day.Id]);
 				WeeklyPlans.Set(updated);
 				ShoppingSync.TriggerSync();
+				Toasts.Show("Maträtten togs bort.");
 			}
 		}
 		catch (Exception ex)
@@ -386,6 +388,7 @@
 				CheckState.ClearCoverageForDayPlans(affectedIds);
 				WeeklyPlans.Set(updated);
 				ShoppingSync.TriggerSync();
+				Toasts.Show("Veckans måltider har slumpats.");
 			}
 		}
 		catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.MealsInsufficient)
@@ -413,9 +416,23 @@
 			var updated = await Api.RandomizeDayAsync(_plan.Id, day.DayOfWeek, profileId: ProfileState.SelectedProfileId);
 			if (updated is not null)
 			{
+				var dayLabel = day.DayOfWeek switch
+				{
+					DayOfWeek.Monday => "måndag",
+					DayOfWeek.Tuesday => "tisdag",
+					DayOfWeek.Wednesday => "onsdag",
+					DayOfWeek.Thursday => "torsdag",
+					DayOfWeek.Friday => "fredag",
+					DayOfWeek.Saturday => "lördag",
+					DayOfWeek.Sunday => "söndag",
+					_ => "dagen"
+				};
+				var newMeal = updated.Days.FirstOrDefault(d => d.DayOfWeek == day.DayOfWeek);
 				CheckState.ClearCoverageForDayPlans([day.Id]);
 				WeeklyPlans.Set(updated);
 				ShoppingSync.TriggerSync();
+				if (newMeal?.Meal is { } m)
+					Toasts.Show($"{m.Name} slumpades till {dayLabel}.");
 			}
 		}
 		catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.MealsInsufficient)
@@ -508,7 +525,12 @@
 						CheckState.ClearCoverageForDayPlans([targetDay.Id]);
 						WeeklyPlans.Set(updated);
 						ShoppingSync.TriggerSync();
+						Toasts.Show($"\u201e{created.Name}\u201d sparad och tilldelad.");
 					}
+				}
+				else
+				{
+					Toasts.Show($"\u201e{created.Name}\u201d sparad.");
 				}
 			}
 		}
@@ -545,6 +567,7 @@
 					CheckState.ClearCoverageForDayPlans([affectedId]);
 					WeeklyPlans.Set(updated);
 					ShoppingSync.TriggerSync();
+					Toasts.Show($"\u201e{created.Name}\u201d sparad och tilldelad.");
 				}
 			}
 		}

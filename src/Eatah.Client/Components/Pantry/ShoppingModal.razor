@@ -835,6 +835,7 @@ TotalMealCount);
                 ShoppingState.RemoveItem(shoppingItem.Id);
                 ShoppingSync.TriggerSync();
             }
+            Toasts.Show($"{ing.Name} lades till i skafferiet.");
         }
         catch (Exception ex)
         {
@@ -852,6 +853,7 @@ TotalMealCount);
 
             // Re-sync so any newly missing ingredient appears on the shopping list immediately
             ShoppingSync.TriggerSync();
+            Toasts.Show($"{item.Name} togs bort från skafferiet.");
         }
         catch (Exception ex)
         {
@@ -871,7 +873,10 @@ TotalMealCount);
         {
             var item = await Api.AddToShoppingListAsync(ing.Id);
             if (item is not null)
+            {
                 ShoppingState.AddOrUpdateItem(item);
+                Toasts.Show($"{ing.Name} lades till på köplistan.");
+            }
         }
         catch (Exception ex)
         {
@@ -926,6 +931,14 @@ TotalMealCount);
                 CheckState.AddPantryName(item.Name);
             }
             catch (Exception ex) { _error = ex.Message; }
+        }
+
+        if (normalItems.Count > 0)
+        {
+            var movedNames = string.Join(", ", normalItems.Select(i => i.Name));
+            Toasts.Show(normalItems.Count == 1
+                ? $"{movedNames} flyttades till skafferiet."
+                : $"{normalItems.Count} varor flyttades till skafferiet.");
         }
 
         // Show coverage popup for shared items
@@ -1058,6 +1071,7 @@ TotalMealCount);
         {
             await Api.RemoveFromShoppingListAsync(item.Id);
             ShoppingState.RemoveItem(item.Id);
+            Toasts.Show($"{item.Name} togs bort från köplistan.");
         }
         catch (Exception ex)
         {
@@ -1071,6 +1085,7 @@ TotalMealCount);
         {
             await Api.ClearCheckedShoppingItemsAsync();
             ShoppingState.RemoveChecked();
+            Toasts.Show("Inköpta varor rensades.");
         }
         catch (Exception ex)
         {

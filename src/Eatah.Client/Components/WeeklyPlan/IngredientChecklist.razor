@@ -271,38 +271,38 @@
         </div>
     }
 
-@* Chat recipient picker dropdown *@
-@if (_showChatDropdown)
-{
-    <div class="eatah-chat-recipient-overlay" @onclick="() => _showChatDropdown = false">
-        <div class="eatah-chat-recipient-picker" @onclick:stopPropagation="true">
-            <div class="eatah-chat-recipient-picker__title">Skicka till&hellip;</div>
+    @* Chat recipient picker dropdown *@
+    @if (_showChatDropdown)
+    {
+        <div class="eatah-chat-recipient-overlay" @onclick="() => _showChatDropdown = false">
+            <div class="eatah-chat-recipient-picker" @onclick:stopPropagation="true">
+                <div class="eatah-chat-recipient-picker__title">Skicka till&hellip;</div>
 
-            <button type="button" class="eatah-chat-recipient-item" @onclick="SendToGroupAsync">
-                <div class="eatah-chat-recipient-item__avatar eatah-chat-recipient-item__avatar--group">
-                    <Icon Name="house" Size="14" />
-                </div>
-                <span class="eatah-chat-recipient-item__name">Hush&aring;llschatten</span>
-            </button>
-
-            @foreach (var member in _householdMembers)
-            {
-                var m = member;
-                <button type="button" class="eatah-chat-recipient-item" @onclick="() => SendToMemberAsync(m)">
-                    <div class="eatah-chat-recipient-item__avatar">
-                        <Icon Name="profile" Size="14" />
+                <button type="button" class="eatah-chat-recipient-item" @onclick="SendToGroupAsync">
+                    <div class="eatah-chat-recipient-item__avatar eatah-chat-recipient-item__avatar--group">
+                        <Icon Name="house" Size="14" />
                     </div>
-                    <span class="eatah-chat-recipient-item__name">@m.DisplayName</span>
+                    <span class="eatah-chat-recipient-item__name">Hush&aring;llschatten</span>
                 </button>
-            }
 
-            @if (_dropdownLoading)
-            {
-                <div class="eatah-chat-recipient-picker__loading">Laddar&hellip;</div>
-            }
+                @foreach (var member in _householdMembers)
+                {
+                    var m = member;
+                    <button type="button" class="eatah-chat-recipient-item" @onclick="() => SendToMemberAsync(m)">
+                        <div class="eatah-chat-recipient-item__avatar">
+                            <Icon Name="profile" Size="14" />
+                        </div>
+                        <span class="eatah-chat-recipient-item__name">@m.DisplayName</span>
+                    </button>
+                }
+
+                @if (_dropdownLoading)
+                {
+                    <div class="eatah-chat-recipient-picker__loading">Laddar&hellip;</div>
+                }
+            </div>
         </div>
-    </div>
-}
+    }
 
 @code {
     [Parameter] public bool IsOpen { get; set; }
@@ -479,6 +479,8 @@
             CheckState.MarkCoverage(ingredientName, dpId, covers);
             // Resync so the shopping list reflects the new coverage decision.
             ShoppingSync.TriggerSync();
+            if (covers)
+                Toasts.Show($"{ingredientName} i skafferiet räcker till denna rätten.");
         }
         catch
         {
@@ -594,7 +596,12 @@
         }
 
         if (normalItems.Count > 0)
+        {
             ShoppingSync.TriggerSync();
+            Toasts.Show(normalItems.Count == 1
+                ? $"{normalItems[0].Name} lades till i skafferiet."
+                : $"{normalItems.Count} ingredienser lades till i skafferiet.");
+        }
 
         if (sharedPending.Count > 0)
         {
@@ -630,6 +637,7 @@
     private async Task ConfirmCoverageAsync()
     {
         _coveragePopupOpen = false;
+        var addedToMissing = new List<string>();
         foreach (var coverage in _pendingCoverage)
         {
             try
@@ -642,6 +650,7 @@
                 {
                     PantryState.AddItem(pantryItem);
                     CheckState.AddPantryName(coverage.IngredientName);
+                    addedToMissing.Add(coverage.IngredientName);
                 }
 
                 // Persist coverage answers per session so the pending question won't be re-asked.
@@ -678,6 +687,11 @@
         }
         _pendingCoverage.Clear();
         ShoppingSync.TriggerSync();
+
+        if (addedToMissing.Count == 1)
+            Toasts.Show("1 ingrediens lades till i skafferiet.");
+        else if (addedToMissing.Count > 1)
+            Toasts.Show($"{addedToMissing.Count} ingredienser lades till i skafferiet.");
     }
 
     private static int GetMealCount(string? notes)

@@ -1,5 +1,6 @@
 @page "/meals"
 @inject ApiClient Api
+@inject ToastService Toasts
 
 <div class="max-w-6xl mx-auto">
 	<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
@@ -114,6 +115,7 @@ result.CookingTimeMinutes));
 				if (created is not null)
 				{
 					_meals = [.. _meals, created];
+					Toasts.Show($"\u201e{created.Name}\u201d sparad.");
 				}
 			}
 			else
@@ -123,6 +125,7 @@ result.Ingredients, result.CookingTimeMinutes));
 				if (updated is not null)
 				{
 					_meals = _meals.Select(m => m.Id == updated.Id ? updated : m).ToList();
+					Toasts.Show($"\u201e{updated.Name}\u201d uppdaterad.");
 				}
 			}
 			CloseForm();
@@ -157,6 +160,7 @@ result.Ingredients, result.CookingTimeMinutes));
 		{
 			await Api.DeleteMealAsync(target.Id);
 			_meals = _meals.Where(m => m.Id != target.Id).ToList();
+			Toasts.Show($"\u201e{target.Name}\u201d borttagen.");
 		}
 		catch (Exception ex)
 		{
