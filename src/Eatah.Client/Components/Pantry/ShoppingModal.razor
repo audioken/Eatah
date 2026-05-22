@@ -132,35 +132,39 @@
                         {
                             @if (_cleanListMode)
                             {
-                                @* Clean flat view – deduplicated by ingredient, sorted alphabetically *@
-                                @foreach (var group in CleanListGroups)
+                                @* Clean list – grouped by ingredient category, alphabetical within *@
+                                @foreach (var catGroup in CleanCategoryGroups)
                                 {
-                                    var isGroupSelected = IsCleanGroupSelected(group);
-                                    var cleanItemSel = isGroupSelected ? "eatah-shopping-item--selected" : "";
-                                    var cleanBtnSel = isGroupSelected ? "eatah-shopping-item__select--active" : "";
-                                    <div class="eatah-shopping-item eatah-shopping-item--unchecked @cleanItemSel cursor-pointer"
-                                         @onclick="() => ToggleCleanGroupSelection(group)">
-                                        <button type="button" class="eatah-shopping-item__select @cleanBtnSel"
-                                                @onclick:stopPropagation="true" @onclick="() => ToggleCleanGroupSelection(group)">
-                                            @if (isGroupSelected)
-                                            {
-                                                <Icon Name="check" Size="10" />
-                                            }
-                                        </button>
-                                        <div class="eatah-shopping-item__body">
-                                            <div class="eatah-shopping-item__name-row">
-                                                <span class="eatah-shopping-item__name">@group.Name</span>
-                                                @if (group.TotalMealCount > 1)
+                                    <div class="eatah-shopping-category-label">@catGroup.Label</div>
+                                    @foreach (var group in catGroup.Items)
+                                    {
+                                        var isGroupSelected = IsCleanGroupSelected(group);
+                                        var cleanItemSel = isGroupSelected ? "eatah-shopping-item--selected" : "";
+                                        var cleanBtnSel = isGroupSelected ? "eatah-shopping-item__select--active" : "";
+                                        <div class="eatah-shopping-item eatah-shopping-item--unchecked @cleanItemSel cursor-pointer"
+                                             @onclick="() => ToggleCleanGroupSelection(group)">
+                                            <button type="button" class="eatah-shopping-item__select @cleanBtnSel"
+                                                    @onclick:stopPropagation="true" @onclick="() => ToggleCleanGroupSelection(group)">
+                                                @if (isGroupSelected)
                                                 {
-                                                    <span class="eatah-shopping-item__count-badge">(@group.TotalMealCount)</span>
+                                                    <Icon Name="check" Size="10" />
                                                 }
+                                            </button>
+                                            <div class="eatah-shopping-item__body">
+                                                <div class="eatah-shopping-item__name-row">
+                                                    <span class="eatah-shopping-item__name">@group.Name</span>
+                                                    @if (group.TotalMealCount > 1)
+                                                    {
+                                                        <span class="eatah-shopping-item__count-badge">(@group.TotalMealCount)</span>
+                                                    }
+                                                </div>
                                             </div>
+                                            <button type="button" class="eatah-shopping-item__remove" title="Ta bort"
+                                                    @onclick:stopPropagation="true" @onclick="() => RemoveCleanGroupAsync(group)">
+                                                <Icon Name="close" Size="12" />
+                                            </button>
                                         </div>
-                                        <button type="button" class="eatah-shopping-item__remove" title="Ta bort"
-                                                @onclick:stopPropagation="true" @onclick="() => RemoveCleanGroupAsync(group)">
-                                            <Icon Name="close" Size="12" />
-                                        </button>
-                                    </div>
+                                    }
                                 }
                             }
                             else
@@ -402,7 +406,20 @@
     // List mode: false = detailed week/day view, true = clean flat deduplicated view
     private bool _cleanListMode;
 
-    private record CleanListItem(string Name, Guid IngredientId, List<ShoppingItemResponse> Items, int TotalMealCount);
+    private record CleanListItem(string Name, Guid IngredientId, string? Category, List<ShoppingItemResponse> Items, int
+TotalMealCount);
+    private record CleanCategoryGroup(string Label, List<CleanListItem> Items);
+
+    private static readonly string[] CategoryOrder =
+    [
+        "Frukt & Grönt",
+        "Mejeri & Ägg",
+        "Kött & Fågel",
+        "Fisk & Skaldjur",
+        "Baljväxter & Frön",
+        "Skafferi",
+        "Övrigt"
+    ];
 
     private IList<CleanListItem> CleanListGroups =>
         ShoppingState.Items
@@ -411,9 +428,20 @@
             .Select(g => new CleanListItem(
                 g.Key,
                 g.First().IngredientId,
+                g.First().Category,
                 g.ToList(),
                 g.Sum(s => Math.Max(1, GetMealCount(s.Notes)))))
-            .OrderBy(c => c.Name)
+            .ToList();
+
+    private IList<CleanCategoryGroup> CleanCategoryGroups =>
+        CleanListGroups
+            .GroupBy(i => i.Category ?? "Övrigt", StringComparer.OrdinalIgnoreCase)
+            .Select(g => new CleanCategoryGroup(g.Key, g.OrderBy(i => i.Name).ToList()))
+            .OrderBy(g =>
+            {
+                var idx = Array.IndexOf(CategoryOrder, g.Label);
+                return idx >= 0 ? idx : CategoryOrder.Length;
+            })
             .ToList();
 
     private bool IsCleanGroupSelected(CleanListItem group) =>

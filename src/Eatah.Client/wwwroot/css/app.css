@@ -2276,6 +2276,19 @@ body.eatah-modal-open {
 }
 
 /* Checked-items divider */
+.eatah-shopping-category-label {
+    padding: 8px 4px 3px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: rgba(0, 0, 0, 0.38);
+}
+
+.eatah-shopping-category-label:first-child {
+    padding-top: 2px;
+}
+
 .eatah-shopping-checked-divider {
     display: flex;
     align-items: center;
