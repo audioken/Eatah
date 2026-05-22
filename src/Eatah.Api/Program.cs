@@ -1,6 +1,8 @@
 using System.Reflection;
+using System.Security.Claims;
 using System.Threading.RateLimiting;
 using Eatah.Api.Common;
+using Microsoft.AspNetCore.HttpOverrides;
 using Eatah.Api.Features.AI;
 using Eatah.Api.Features.Auth;
 using Eatah.Api.Features.Chat;
@@ -111,22 +113,49 @@ if (!string.IsNullOrWhiteSpace(dbConnectionString))
     healthChecks.AddNpgSql(dbConnectionString, name: "postgres", tags: new[] { "ready" });
 }
 
+// Trust X-Forwarded-* headers from reverse proxies (Render, nginx, etc.) so the
+// real client IP is exposed via HttpContext.Connection.RemoteIpAddress instead of
+// the proxy's loopback address. Without this, every request from every device looks
+// like it comes from the same IP and they all share one rate-limit bucket — leading
+// to spurious 429s. KnownNetworks/KnownProxies are intentionally cleared because the
+// upstream proxies are not on the same network as the API container.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    // Partition by authenticated user when available, otherwise the (now-real) client IP.
+    // This prevents members of the same household behind a NAT from sharing a bucket,
+    // and gives each user their own quota across devices.
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+    {
+        var userId = httpContext.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+        var key = !string.IsNullOrEmpty(userId)
+            ? $"user:{userId}"
+            : $"ip:{httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown"}";
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: key,
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 100,
+                PermitLimit = 300,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst
-            }));
+            });
+    });
 });
 
 var app = builder.Build();
+
+// MUST run before authentication and rate limiting so downstream middleware sees
+// the real client IP and scheme from X-Forwarded-* headers set by the reverse proxy.
+app.UseForwardedHeaders();
 
 app.UseSerilogRequestLogging();
 app.UseExceptionHandler();

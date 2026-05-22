@@ -19,6 +19,7 @@ public interface IRealtimeNotifier
     Task ShoppingListChangedAsync(Guid workspaceId, CancellationToken ct = default);
     Task PantryChangedAsync(Guid workspaceId, CancellationToken ct = default);
     Task WeeklyPlanChangedAsync(Guid workspaceId, Guid planId, int year, int weekNumber, CancellationToken ct = default);
+    Task MealsChangedAsync(Guid workspaceId, CancellationToken ct = default);
 }
 
 public sealed class RealtimeNotifier : IRealtimeNotifier
@@ -41,4 +42,8 @@ public sealed class RealtimeNotifier : IRealtimeNotifier
     public Task WeeklyPlanChangedAsync(Guid workspaceId, Guid planId, int year, int weekNumber, CancellationToken ct = default) =>
         _hub.Clients.Group($"workspace:{workspaceId}")
             .SendAsync("WeeklyPlanChanged", new { workspaceId, planId, year, weekNumber }, ct);
+
+    public Task MealsChangedAsync(Guid workspaceId, CancellationToken ct = default) =>
+        _hub.Clients.Group($"workspace:{workspaceId}")
+            .SendAsync("MealsChanged", new { workspaceId }, ct);
 }

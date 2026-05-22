@@ -6,7 +6,10 @@
 @inject IngredientCheckState CheckState
 @inject ShoppingSyncService ShoppingSync
 @inject Eatah.Client.Services.DietProfileState ProfileState
-@inject ChatHubService Hub
+@inject WeeklyPlanStateService WeeklyPlans
+@inject MealsStateService MealsCache
+@inject PantryStateService PantryCache
+@inject PantryCoverageStateService CoverageCache
 @implements IDisposable
 
 <div class="max-w-[1000px] mx-auto">
@@ -31,13 +34,16 @@
 		</div>
 	}
 
-	@if (_isLoading)
+	@if (_plan is null)
 	{
-		<LoadingSpinner Label="Laddar veckoplan…" />
-	}
-	else if (_plan is null)
-	{
-		<div class="p-8 text-center text-slate-500">Ingen veckoplan kunde laddas.</div>
+		@if (_isLoading)
+		{
+			<LoadingSpinner Label="Laddar veckoplan…" />
+		}
+		else
+		{
+			<div class="p-8 text-center text-slate-500">Ingen veckoplan kunde laddas.</div>
+		}
 	}
 	else
 	{
@@ -62,26 +68,30 @@
 		  OnSubmit="SaveAiMealAndAssignAsync" OnClose="CloseAiSaveForm" />
 
 @code {
-	private WeeklyPlanResponse? _plan;
-	private List<MealResponse>? _meals;
 	private DayPlanResponse? _selectedDay;
 	private bool _selectorOpen;
-	private bool _isLoading = true;
+	private bool _isLoading = true; // only true while we have NOTHING to show yet (cold load)
 	private string? _error;
 	private int _weekOffset = 0; // -1 = förra veckan, 0 = denna vecka, +1 = nästa vecka
 								 // Sessions keyed by week offset (0 = current, 1 = next). Merging both gives global badge counts
 								 // that match the shopping-sync scope (current week from today + next week all days).
 	private readonly Dictionary<int, List<IngredientCheckState.ActiveSession>> _cachedSessions = new();
 
-	private int _viewedWeekNumber
+	// All view data is sourced from the singleton state caches. Pages just observe them —
+	// SignalR-driven background refreshes update the caches and the OnChanged events trigger
+	// re-renders, so navigation between weeks never causes a spinner/blink once warmed up.
+	private (int Year, int Week) _viewedKey
 	{
 		get
 		{
-			if (_plan is not null) return _plan.WeekNumber;
 			var target = DateTime.UtcNow.Date.AddDays(_weekOffset * 7);
-			return ISOWeek.GetWeekOfYear(target);
+			return (ISOWeek.GetYear(target), ISOWeek.GetWeekOfYear(target));
 		}
 	}
+
+	private WeeklyPlanResponse? _plan => WeeklyPlans.TryGet(_viewedKey.Year, _viewedKey.Week);
+	private IReadOnlyList<MealResponse>? _meals => MealsCache.IsLoaded ? MealsCache.Items : null;
+	private int _viewedWeekNumber => _plan?.WeekNumber ?? _viewedKey.Week;
 
 	private DayPlanResponse? _aiTargetDay;
 	private AiGeneratedMealResponse? _aiMeal;
@@ -106,35 +116,77 @@
 	protected override async Task OnInitializedAsync()
 	{
 		Workspaces.OnChange += OnWorkspaceChanged;
-		Hub.WeeklyPlanChanged += OnWeeklyPlanChanged;
+		WeeklyPlans.OnChanged += OnWeeklyPlanCacheChanged;
+		MealsCache.OnChanged += OnMealsCacheChanged;
+		PantryCache.OnChanged += OnPantryCacheChanged;
+		CoverageCache.OnChanged += OnCoverageCacheChanged;
 		await LoadAsync();
 	}
 
 	public void Dispose()
 	{
 		Workspaces.OnChange -= OnWorkspaceChanged;
-		Hub.WeeklyPlanChanged -= OnWeeklyPlanChanged;
+		WeeklyPlans.OnChanged -= OnWeeklyPlanCacheChanged;
+		MealsCache.OnChanged -= OnMealsCacheChanged;
+		PantryCache.OnChanged -= OnPantryCacheChanged;
+		CoverageCache.OnChanged -= OnCoverageCacheChanged;
 		Header.Clear();
 	}
 
-	private void OnWeeklyPlanChanged(Guid workspaceId, Guid planId, int year, int weekNumber)
+	private void OnWeeklyPlanCacheChanged(int year, int week)
 	{
-		// Ignore events for other workspaces.
-		if (Workspaces.CurrentId != workspaceId) return;
-		_ = InvokeAsync(async () =>
+		// Any cached week changed (mutation, SignalR refresh, or workspace clear).
+		// Cheap — recompute sessions from caches and re-render.
+		_ = InvokeAsync(() =>
 		{
-			await LoadAsync();
+			RefreshActiveMeals();
+			StateHasChanged();
+		});
+	}
+
+	private void OnMealsCacheChanged() => _ = InvokeAsync(StateHasChanged);
+
+	private void OnPantryCacheChanged()
+	{
+		_ = InvokeAsync(() =>
+		{
+			SyncPantryToCheckState();
+			StateHasChanged();
+		});
+	}
+
+	private void OnCoverageCacheChanged()
+	{
+		_ = InvokeAsync(() =>
+		{
+			SyncCoverageToCheckState();
 			StateHasChanged();
 		});
 	}
 
 	private void OnWorkspaceChanged()
 	{
+		// RealtimeSyncService.OnWorkspaceChanged has just cleared every cache for the
+		// previous workspace, so we need to repopulate for the new one. Mark loading so
+		// the spinner appears (cache is genuinely empty now).
+		_isLoading = true;
 		_ = InvokeAsync(async () =>
 		{
 			await LoadAsync();
 			StateHasChanged();
 		});
+	}
+
+	private void SyncPantryToCheckState()
+	{
+		var pantry = PantryCache.Items;
+		CheckState.SetPantryItems(pantry.Select(p => p.Name));
+		CheckState.SetPantryIngredientIds(pantry.Select(p => (p.Name, p.IngredientId)));
+	}
+
+	private void SyncCoverageToCheckState()
+	{
+		CheckState.SetCoverage(CoverageCache.Items.Select(c => (c.IngredientId, c.DayPlanId, c.Covers)));
 	}
 
 	private void UpdateHeader()
@@ -144,26 +196,26 @@
 
 	private async Task LoadAsync()
 	{
-		_isLoading = true;
 		_error = null;
+		// Only show the spinner if we have nothing at all to render — otherwise the
+		// cached plan stays visible while we refresh in the background.
+		_isLoading = _plan is null;
 		try
 		{
-			var target = DateTime.UtcNow.Date.AddDays(_weekOffset * 7);
-			var (year, week) = (ISOWeek.GetYear(target), ISOWeek.GetWeekOfYear(target));
-			var planTask = Api.GetWeeklyPlanByWeekAsync(year, week);
-			var mealsTask = Api.GetMealsAsync();
-			var pantryTask = Api.GetPantryAsync();
-			var coverageTask = Api.GetPantryCoverageAsync();
-			await Task.WhenAll(planTask, mealsTask, pantryTask, coverageTask);
-			_plan = await planTask;
-			_meals = await mealsTask;
-			var pantry = await pantryTask;
-			CheckState.SetPantryItems(pantry.Select(p => p.Name));
-			CheckState.SetPantryIngredientIds(pantry.Select(p => (p.Name, p.IngredientId)));
-			CheckState.SetCoverage((await coverageTask).Select(c => (c.IngredientId, c.DayPlanId, c.Covers)));
+			var (year, week) = _viewedKey;
+			// Every EnsureLoadedAsync returns the cached value instantly if present and
+			// deduplicates concurrent fetches. Only the first time after sign-in or after a
+			// workspace switch does this actually go to the network.
+			await Task.WhenAll(
+				WeeklyPlans.EnsureLoadedAsync(year, week),
+				MealsCache.EnsureLoadedAsync(),
+				PantryCache.EnsureLoadedAsync(),
+				CoverageCache.EnsureLoadedAsync());
+			SyncPantryToCheckState();
+			SyncCoverageToCheckState();
 			RefreshActiveMeals();
-			// Fire-and-forget: pre-warm the other week's sessions so cross-week badge counts
-			// are accurate immediately when the checklist opens, without blocking page load.
+			// Pre-warm sibling weeks so badge counts are accurate immediately — fire-and-forget,
+			// non-blocking. Cached weeks are no-ops.
 			_ = PrewarmPartnerWeeksAsync();
 		}
 		catch (Exception ex)
@@ -180,53 +232,40 @@
 	private static int DayIdx(DayOfWeek d) => d == DayOfWeek.Sunday ? 6 : (int)d - 1;
 
 	/// <summary>
-	/// Ensures sessions for both offset=0 (current week from today) and offset=1 (next week)
-	/// are cached and merged into CheckState. Called fire-and-forget after LoadAsync so the
-	/// checklist badge counts reflect both weeks without blocking the initial render.
+	/// Ensures offset=0 (current week) and offset=1 (next week) are present in the cache and
+	/// rebuilds the merged ActiveSession list for CheckState. Cache hits are instant.
 	/// </summary>
 	private async Task PrewarmPartnerWeeksAsync()
 	{
 		var today = DateTime.UtcNow.Date;
-		var updated = false;
-		if (!_cachedSessions.ContainsKey(0))
+		var (curYear, curWeek) = (ISOWeek.GetYear(today), ISOWeek.GetWeekOfYear(today));
+		var next = today.AddDays(7);
+		var (nextYear, nextWeek) = (ISOWeek.GetYear(next), ISOWeek.GetWeekOfYear(next));
+
+		try { await WeeklyPlans.EnsureLoadedAsync(curYear, curWeek); }
+		catch { /* badge counts degrade gracefully */ }
+		try { await WeeklyPlans.EnsureLoadedAsync(nextYear, nextWeek); }
+		catch { /* badge counts degrade gracefully */ }
+
+		var cur = WeeklyPlans.TryGet(curYear, curWeek);
+		if (cur is not null)
 		{
-			try
-			{
-				var plan = await Api.GetWeeklyPlanByWeekAsync(ISOWeek.GetYear(today), ISOWeek.GetWeekOfYear(today));
-				if (plan is not null)
-				{
-					var minDay = DayIdx(today.DayOfWeek);
-					_cachedSessions[0] = plan.Days
-						.Where(d => d.Meal is not null && DayIdx(d.DayOfWeek) >= minDay)
-						.Select(d => new IngredientCheckState.ActiveSession(d.Id, d.Meal!.Id, d.Meal!.Name, DayIdx(d.DayOfWeek),
-ISOWeek.GetWeekOfYear(today)))
-						.ToList();
-					updated = true;
-				}
-			}
-			catch { /* non-critical — badge counts degrade gracefully */ }
+			var minDay = DayIdx(today.DayOfWeek);
+			_cachedSessions[0] = cur.Days
+				.Where(d => d.Meal is not null && DayIdx(d.DayOfWeek) >= minDay)
+				.Select(d => new IngredientCheckState.ActiveSession(d.Id, d.Meal!.Id, d.Meal!.Name, DayIdx(d.DayOfWeek), curWeek))
+				.ToList();
 		}
-		if (!_cachedSessions.ContainsKey(1))
+		var nxt = WeeklyPlans.TryGet(nextYear, nextWeek);
+		if (nxt is not null)
 		{
-			try
-			{
-				var next = today.AddDays(7);
-				var plan = await Api.GetWeeklyPlanByWeekAsync(ISOWeek.GetYear(next), ISOWeek.GetWeekOfYear(next));
-				if (plan is not null)
-				{
-					_cachedSessions[1] = plan.Days
-						.Where(d => d.Meal is not null)
-						.Select(d => new IngredientCheckState.ActiveSession(d.Id, d.Meal!.Id, d.Meal!.Name, DayIdx(d.DayOfWeek),
-ISOWeek.GetWeekOfYear(next)))
-						.ToList();
-					updated = true;
-				}
-			}
-			catch { /* non-critical */ }
+			_cachedSessions[1] = nxt.Days
+				.Where(d => d.Meal is not null)
+				.Select(d => new IngredientCheckState.ActiveSession(d.Id, d.Meal!.Id, d.Meal!.Name, DayIdx(d.DayOfWeek), nextWeek))
+				.ToList();
 		}
-		if (updated)
-			CheckState.SetActiveSessions(
-				new[] { 0, 1 }.Where(_cachedSessions.ContainsKey).SelectMany(o => _cachedSessions[o]));
+		CheckState.SetActiveSessions(
+			new[] { 0, 1 }.Where(_cachedSessions.ContainsKey).SelectMany(o => _cachedSessions[o]));
 	}
 
 	private void RefreshActiveMeals()
@@ -250,23 +289,18 @@ ISOWeek.GetWeekOfYear(next)))
 	private async Task NavigateWeekAsync(int delta)
 	{
 		_weekOffset = Math.Clamp(_weekOffset + delta, -1, 1);
-		_isLoading = true;
-		_plan = null;
 		_error = null;
+		// Cache-first: if the week is already loaded the swap is instant — no spinner, no flicker.
+		// Only the very first time we visit a previously-unseen week does this hit the network.
+		var (year, week) = _viewedKey;
 		try
 		{
-			var target = DateTime.UtcNow.Date.AddDays(_weekOffset * 7);
-			var (year, week) = (ISOWeek.GetYear(target), ISOWeek.GetWeekOfYear(target));
-			_plan = await Api.GetWeeklyPlanByWeekAsync(year, week);
+			await WeeklyPlans.EnsureLoadedAsync(year, week);
 			RefreshActiveMeals();
 		}
 		catch (Exception ex)
 		{
 			_error = $"Kunde inte ladda veckoplanen: {ex.Message}";
-		}
-		finally
-		{
-			_isLoading = false;
 		}
 	}
 
@@ -296,8 +330,9 @@ ISOWeek.GetWeekOfYear(next)))
 			if (updated is not null)
 			{
 				CheckState.ClearCoverageForDayPlans([affectedId]);
-				_plan = updated;
-				RefreshActiveMeals();
+				// Push the authoritative state into the cache so the computed _plan picks it up
+				// and OnChanged subscribers re-render.
+				WeeklyPlans.Set(updated);
 				ShoppingSync.TriggerSync();
 			}
 		}
@@ -324,8 +359,7 @@ ISOWeek.GetWeekOfYear(next)))
 			if (updated is not null)
 			{
 				CheckState.ClearCoverageForDayPlans([day.Id]);
-				_plan = updated;
-				RefreshActiveMeals();
+				WeeklyPlans.Set(updated);
 				ShoppingSync.TriggerSync();
 			}
 		}
@@ -350,8 +384,7 @@ ISOWeek.GetWeekOfYear(next)))
 			if (updated is not null)
 			{
 				CheckState.ClearCoverageForDayPlans(affectedIds);
-				_plan = updated;
-				RefreshActiveMeals();
+				WeeklyPlans.Set(updated);
 				ShoppingSync.TriggerSync();
 			}
 		}
@@ -381,8 +414,7 @@ ISOWeek.GetWeekOfYear(next)))
 			if (updated is not null)
 			{
 				CheckState.ClearCoverageForDayPlans([day.Id]);
-				_plan = updated;
-				RefreshActiveMeals();
+				WeeklyPlans.Set(updated);
 				ShoppingSync.TriggerSync();
 			}
 		}
@@ -467,15 +499,14 @@ ISOWeek.GetWeekOfYear(next)))
 				result.Name, result.Category, result.Ingredients, result.CookingTimeMinutes));
 			if (created is not null)
 			{
-				_meals = _meals is null ? [created] : [.. _meals, created];
+				MealsCache.AddOrUpdate(created);
 				if (_plan is not null && targetDay is not null)
 				{
 					var updated = await Api.AssignMealAsync(_plan.Id, targetDay.DayOfWeek, created.Id);
 					if (updated is not null)
 					{
 						CheckState.ClearCoverageForDayPlans([targetDay.Id]);
-						_plan = updated;
-						RefreshActiveMeals();
+						WeeklyPlans.Set(updated);
 						ShoppingSync.TriggerSync();
 					}
 				}
@@ -506,14 +537,13 @@ ISOWeek.GetWeekOfYear(next)))
 				result.Name, result.Category, result.Ingredients, result.CookingTimeMinutes));
 			if (created is not null)
 			{
-				_meals = _meals is null ? [created] : [.. _meals, created];
+				MealsCache.AddOrUpdate(created);
 				var affectedId = _selectedDay.Id;
 				var updated = await Api.AssignMealAsync(_plan.Id, _selectedDay.DayOfWeek, created.Id);
 				if (updated is not null)
 				{
 					CheckState.ClearCoverageForDayPlans([affectedId]);
-					_plan = updated;
-					RefreshActiveMeals();
+					WeeklyPlans.Set(updated);
 					ShoppingSync.TriggerSync();
 				}
 			}

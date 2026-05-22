@@ -2,35 +2,42 @@ namespace Eatah.Client.Services;
 
 /// <summary>
 /// Singleton that listens for workspace-scoped invalidation events from
-/// <see cref="ChatHubService"/> and refetches the affected caches
-/// (<see cref="PantryStateService"/>, <see cref="ShoppingStateService"/>)
-/// when changes happen in the currently active workspace.
+/// <see cref="ChatHubService"/> and silently refreshes the affected client caches
+/// when the change happened in the currently active workspace. It also clears
+/// every cache on workspace switch so cross-tenant data never leaks into the UI.
 /// <para>
-/// Started once at app boot via <see cref="Start"/>. Cross-workspace events
-/// are ignored so we never refetch data for a household the user isn't viewing.
+/// Refreshes are stale-while-revalidate: caches only refetch if already loaded,
+/// so unopened pages don't trigger network traffic. Cross-workspace events are
+/// ignored.
 /// </para>
 /// </summary>
 public sealed class RealtimeSyncService : IDisposable
 {
     private readonly ChatHubService _hub;
-    private readonly ApiClient _api;
     private readonly WorkspaceState _workspace;
     private readonly PantryStateService _pantry;
     private readonly ShoppingStateService _shopping;
+    private readonly WeeklyPlanStateService _weeklyPlans;
+    private readonly MealsStateService _meals;
+    private readonly PantryCoverageStateService _coverage;
     private bool _started;
 
     public RealtimeSyncService(
         ChatHubService hub,
-        ApiClient api,
         WorkspaceState workspace,
         PantryStateService pantry,
-        ShoppingStateService shopping)
+        ShoppingStateService shopping,
+        WeeklyPlanStateService weeklyPlans,
+        MealsStateService meals,
+        PantryCoverageStateService coverage)
     {
         _hub = hub;
-        _api = api;
         _workspace = workspace;
         _pantry = pantry;
         _shopping = shopping;
+        _weeklyPlans = weeklyPlans;
+        _meals = meals;
+        _coverage = coverage;
     }
 
     public void Start()
@@ -39,44 +46,49 @@ public sealed class RealtimeSyncService : IDisposable
         _started = true;
         _hub.PantryChanged += OnPantryChanged;
         _hub.ShoppingListChanged += OnShoppingChanged;
+        _hub.WeeklyPlanChanged += OnWeeklyPlanChanged;
+        _hub.MealsChanged += OnMealsChanged;
+        _workspace.OnChange += OnWorkspaceChanged;
     }
 
     private void OnPantryChanged(Guid workspaceId)
     {
         if (_workspace.CurrentId != workspaceId) return;
-        _ = RefetchPantryAsync();
+        _ = _pantry.RefreshIfLoadedAsync();
+        // Pantry contents drive coverage — refresh that too if anyone is watching.
+        _ = _coverage.RefreshIfLoadedAsync();
     }
 
     private void OnShoppingChanged(Guid workspaceId)
     {
         if (_workspace.CurrentId != workspaceId) return;
-        _ = RefetchShoppingAsync();
+        _ = _shopping.RefreshIfLoadedAsync();
     }
 
-    private async Task RefetchPantryAsync()
+    private void OnWeeklyPlanChanged(Guid workspaceId, Guid planId, int year, int weekNumber)
     {
-        try
-        {
-            var items = await _api.GetPantryAsync();
-            _pantry.SetPantry(items);
-        }
-        catch
-        {
-            // Network/auth blips are non-fatal — caches stay as-is.
-        }
+        if (_workspace.CurrentId != workspaceId) return;
+        _ = _weeklyPlans.RefreshIfCachedAsync(year, weekNumber);
+        // A plan change also affects coverage (which day-plans are covered by pantry).
+        _ = _coverage.RefreshIfLoadedAsync();
     }
 
-    private async Task RefetchShoppingAsync()
+    private void OnMealsChanged(Guid workspaceId)
     {
-        try
-        {
-            var items = await _api.GetShoppingListAsync();
-            _shopping.SetShopping(items);
-        }
-        catch
-        {
-            // Network/auth blips are non-fatal — caches stay as-is.
-        }
+        if (_workspace.CurrentId != workspaceId) return;
+        _ = _meals.RefreshIfLoadedAsync();
+    }
+
+    private void OnWorkspaceChanged()
+    {
+        // Workspace switched (or signed out). All cached data belongs to the previous
+        // workspace and must not bleed into the new one. Clearing fires OnChanged on
+        // each cache so any open page will re-read (and re-fetch lazily) for the new ws.
+        _pantry.Clear();
+        _shopping.Clear();
+        _weeklyPlans.Clear();
+        _meals.Clear();
+        _coverage.Clear();
     }
 
     public void Dispose()
@@ -84,6 +96,9 @@ public sealed class RealtimeSyncService : IDisposable
         if (!_started) return;
         _hub.PantryChanged -= OnPantryChanged;
         _hub.ShoppingListChanged -= OnShoppingChanged;
+        _hub.WeeklyPlanChanged -= OnWeeklyPlanChanged;
+        _hub.MealsChanged -= OnMealsChanged;
+        _workspace.OnChange -= OnWorkspaceChanged;
         _started = false;
     }
 }

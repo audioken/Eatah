@@ -51,6 +51,9 @@ public sealed class ChatHubService : IAsyncDisposable
     /// <summary>Workspace weekly plan mutated. Args: workspaceId, planId, year, weekNumber.</summary>
     public event Action<Guid, Guid, int, int>? WeeklyPlanChanged;
 
+    /// <summary>Workspace's meal catalog mutated (create/update/delete) by any member. Args: workspaceId.</summary>
+    public event Action<Guid>? MealsChanged;
+
     /// <summary>Fired after the hub (re)connects. Subscribers should re-join their thread groups.</summary>
     public event Action? Reconnected;
 
@@ -198,6 +201,8 @@ public sealed class ChatHubService : IAsyncDisposable
             PantryChanged?.Invoke(payload.WorkspaceId));
         _connection.On<WeeklyPlanChangedPayload>("WeeklyPlanChanged", payload =>
             WeeklyPlanChanged?.Invoke(payload.WorkspaceId, payload.PlanId, payload.Year, payload.WeekNumber));
+        _connection.On<MealsChangedPayload>("MealsChanged", payload =>
+            MealsChanged?.Invoke(payload.WorkspaceId));
 
         _connection.Reconnecting += ex =>
         {
@@ -276,6 +281,7 @@ public sealed class ChatHubService : IAsyncDisposable
     private record ReactionUpdatePayload(Guid MessageId, IReadOnlyList<ChatReactionGroupResponse> Reactions);
     private record WorkspaceRenamedPayload(Guid WorkspaceId, string Name);
     private record ShoppingListChangedPayload(Guid WorkspaceId);
+    private record MealsChangedPayload(Guid WorkspaceId);
     private record PantryChangedPayload(Guid WorkspaceId);
     private record WeeklyPlanChangedPayload(Guid WorkspaceId, Guid PlanId, int Year, int WeekNumber);
 }

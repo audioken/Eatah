@@ -8,11 +8,13 @@ namespace Eatah.Api.Tests.Unit;
 public class MealServiceTests
 {
     private readonly Mock<IMealRepository> _repo = new();
+    private readonly Mock<IRealtimeNotifier> _notifier = new();
+    private readonly Mock<IWorkspaceContext> _workspace = new();
     private readonly MealService _sut;
 
     public MealServiceTests()
     {
-        _sut = new MealService(_repo.Object);
+        _sut = new MealService(_repo.Object, _notifier.Object, _workspace.Object);
     }
 
     [Fact]

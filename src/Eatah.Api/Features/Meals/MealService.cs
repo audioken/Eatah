@@ -6,10 +6,14 @@ namespace Eatah.Api.Features.Meals;
 public class MealService
 {
     private readonly IMealRepository _repository;
+    private readonly IRealtimeNotifier _notifier;
+    private readonly IWorkspaceContext _workspace;
 
-    public MealService(IMealRepository repository)
+    public MealService(IMealRepository repository, IRealtimeNotifier notifier, IWorkspaceContext workspace)
     {
         _repository = repository;
+        _notifier = notifier;
+        _workspace = workspace;
     }
 
     public async Task<List<MealResponse>> GetAllAsync(CancellationToken cancellationToken)
@@ -40,6 +44,7 @@ public class MealService
         };
 
         await _repository.AddAsync(meal, cancellationToken);
+        await _notifier.MealsChangedAsync(_workspace.RequireCurrent(), cancellationToken);
         return ToResponse(meal);
     }
 
@@ -61,12 +66,17 @@ public class MealService
 
         await _repository.ReplaceIngredientsAndUpdateAsync(meal, newIngredients, cancellationToken);
         meal.Ingredients = newIngredients;
+        await _notifier.MealsChangedAsync(_workspace.RequireCurrent(), cancellationToken);
         return ToResponse(meal);
     }
 
     public async Task<Result> DeleteAsync(Guid id, CancellationToken cancellationToken)
     {
         var deleted = await _repository.DeleteAsync(id, cancellationToken);
+        if (deleted)
+        {
+            await _notifier.MealsChangedAsync(_workspace.RequireCurrent(), cancellationToken);
+        }
         return deleted ? Result.Success() : MealErrors.NotFound(id);
     }
 

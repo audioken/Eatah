@@ -26,6 +26,9 @@ public static class MauiProgram
 		builder.Services.AddSingleton<DietProfileState>();
 		builder.Services.AddSingleton<PantryStateService>();
 		builder.Services.AddSingleton<ShoppingStateService>();
+		builder.Services.AddSingleton<WeeklyPlanStateService>();
+		builder.Services.AddSingleton<MealsStateService>();
+		builder.Services.AddSingleton<PantryCoverageStateService>();
 		builder.Services.AddSingleton<ShoppingSyncService>();
 		builder.Services.AddSingleton<RealtimeSyncService>();
 		builder.Services.AddSingleton<ModalService>();
