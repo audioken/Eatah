@@ -10,6 +10,8 @@ public static class ErrorCodes
     // Generic
     public const string ValidationError = "VALIDATION_ERROR";
     public const string Unexpected = "UNEXPECTED_ERROR";
+    /// <summary>Returned (HTTP 409) when an optimistic concurrency check fails — another workspace member modified the resource between read and write.</summary>
+    public const string ConcurrencyConflict = "concurrency_conflict";
 
     // Meals
     public const string MealNotFound = "MEAL_NOT_FOUND";

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Eatah.Client.Services;
 using Eatah.WebClient;
 using Eatah.WebClient.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -14,6 +15,7 @@ builder.Services.AddSingleton<DietProfileState>();
 builder.Services.AddSingleton<PantryStateService>();
 builder.Services.AddSingleton<ShoppingStateService>();
 builder.Services.AddSingleton<ShoppingSyncService>();
+builder.Services.AddSingleton<RealtimeSyncService>();
 builder.Services.AddSingleton<ModalService>();
 builder.Services.AddSingleton<ToastService>();
 builder.Services.AddSingleton<HeaderState>();
@@ -43,5 +45,7 @@ builder.Services.AddHttpClient<ApiClient>(client =>
     .AddHttpMessageHandler<WorkspaceHeaderHandler>()
     .AddHttpMessageHandler<LoadingHttpMessageHandler>();
 
-await builder.Build().RunAsync();
+var host = builder.Build();
+host.Services.GetRequiredService<RealtimeSyncService>().Start();
+await host.RunAsync();
 

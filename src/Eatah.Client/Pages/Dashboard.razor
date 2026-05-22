@@ -6,6 +6,7 @@
 @inject IngredientCheckState CheckState
 @inject ShoppingSyncService ShoppingSync
 @inject Eatah.Client.Services.DietProfileState ProfileState
+@inject ChatHubService Hub
 @implements IDisposable
 
 <div class="max-w-[1000px] mx-auto">
@@ -105,13 +106,26 @@
 	protected override async Task OnInitializedAsync()
 	{
 		Workspaces.OnChange += OnWorkspaceChanged;
+		Hub.WeeklyPlanChanged += OnWeeklyPlanChanged;
 		await LoadAsync();
 	}
 
 	public void Dispose()
 	{
 		Workspaces.OnChange -= OnWorkspaceChanged;
+		Hub.WeeklyPlanChanged -= OnWeeklyPlanChanged;
 		Header.Clear();
+	}
+
+	private void OnWeeklyPlanChanged(Guid workspaceId, Guid planId, int year, int weekNumber)
+	{
+		// Ignore events for other workspaces.
+		if (Workspaces.CurrentId != workspaceId) return;
+		_ = InvokeAsync(async () =>
+		{
+			await LoadAsync();
+			StateHasChanged();
+		});
 	}
 
 	private void OnWorkspaceChanged()

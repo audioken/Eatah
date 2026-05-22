@@ -52,11 +52,13 @@ public class PantryService
 {
     private readonly EatahDbContext _db;
     private readonly IWorkspaceContext _ws;
+    private readonly IRealtimeNotifier _realtime;
 
-    public PantryService(EatahDbContext db, IWorkspaceContext ws)
+    public PantryService(EatahDbContext db, IWorkspaceContext ws, IRealtimeNotifier realtime)
     {
         _db = db;
         _ws = ws;
+        _realtime = realtime;
     }
 
     public async Task<List<PantryItemResponse>> GetAllAsync(CancellationToken ct)
@@ -88,6 +90,7 @@ public class PantryService
         };
         _db.PantryItems.Add(entity);
         await _db.SaveChangesAsync(ct);
+        await _realtime.PantryChangedAsync(wsId, ct);
         return new PantryItemResponse(entity.Id, ing.Id, ing.Name, ing.Category, entity.AddedAt);
     }
 
@@ -98,6 +101,7 @@ public class PantryService
         if (entity is null) return Error.NotFound(ErrorCodes.PantryItemNotFound, "Pantry item not found.");
         _db.PantryItems.Remove(entity);
         await _db.SaveChangesAsync(ct);
+        await _realtime.PantryChangedAsync(wsId, ct);
         return Result.Success();
     }
 
@@ -146,6 +150,7 @@ public class PantryService
             existing.AnsweredAt = DateTime.UtcNow;
         }
         await _db.SaveChangesAsync(ct);
+        await _realtime.PantryChangedAsync(wsId, ct);
         return new PantryCoverageResponse(ingredientId, dayPlanId, covers);
     }
 }
@@ -154,11 +159,15 @@ public class ShoppingListService
 {
     private readonly EatahDbContext _db;
     private readonly IWorkspaceContext _ws;
+    private readonly IRealtimeNotifier _realtime;
+    private readonly WorkspaceLockProvider _locks;
 
-    public ShoppingListService(EatahDbContext db, IWorkspaceContext ws)
+    public ShoppingListService(EatahDbContext db, IWorkspaceContext ws, IRealtimeNotifier realtime, WorkspaceLockProvider locks)
     {
         _db = db;
         _ws = ws;
+        _realtime = realtime;
+        _locks = locks;
     }
 
     public async Task<List<ShoppingItemResponse>> GetAllAsync(CancellationToken ct)
@@ -184,6 +193,7 @@ public class ShoppingListService
             if (existing.IsChecked) { existing.IsChecked = false; existing.AddedAt = DateTime.UtcNow; }
             if (notes is not null) existing.Notes = notes;
             await _db.SaveChangesAsync(ct);
+            await _realtime.ShoppingListChangedAsync(wsId, ct);
             return new ShoppingItemResponse(existing.Id, ing.Id, ing.Name, ing.Category, existing.IsChecked, existing.AddedAt, existing.Notes);
         }
         var entity = new ShoppingItem
@@ -197,6 +207,7 @@ public class ShoppingListService
         };
         _db.ShoppingItems.Add(entity);
         await _db.SaveChangesAsync(ct);
+        await _realtime.ShoppingListChangedAsync(wsId, ct);
         return new ShoppingItemResponse(entity.Id, ing.Id, ing.Name, ing.Category, false, entity.AddedAt, entity.Notes);
     }
 
@@ -227,6 +238,8 @@ public class ShoppingListService
         }
 
         await _db.SaveChangesAsync(ct);
+        await _realtime.ShoppingListChangedAsync(wsId, ct);
+        if (isChecked) await _realtime.PantryChangedAsync(wsId, ct);
         return Result.Success();
     }
 
@@ -237,6 +250,7 @@ public class ShoppingListService
         if (entity is null) return Error.NotFound(ErrorCodes.ShoppingItemNotFound, "Shopping item not found.");
         _db.ShoppingItems.Remove(entity);
         await _db.SaveChangesAsync(ct);
+        await _realtime.ShoppingListChangedAsync(wsId, ct);
         return Result.Success();
     }
 
@@ -246,6 +260,7 @@ public class ShoppingListService
         await _db.ShoppingItems
             .Where(s => s.WorkspaceId == wsId && s.IsChecked)
             .ExecuteDeleteAsync(ct);
+        await _realtime.ShoppingListChangedAsync(wsId, ct);
     }
 
     /// <summary>
@@ -263,6 +278,10 @@ public class ShoppingListService
     public async Task<Result<List<ShoppingItemResponse>>> SyncFromWeeklyPlanAsync(Guid planId, CancellationToken ct, DayOfWeek? fromDayInclusive = null)
     {
         var wsId = _ws.RequireCurrent();
+
+        // Serialize concurrent syncs for the same workspace — otherwise two clients can race
+        // and produce duplicate/inconsistent shopping rows. xmin still protects across instances.
+        using var _lock = await _locks.AcquireAsync(WorkspaceLockProvider.ScopeShoppingSync, wsId, ct);
 
         var plan = await _db.WeeklyPlans
             .AsNoTracking()
@@ -431,6 +450,7 @@ public class ShoppingListService
         }
 
         await _db.SaveChangesAsync(ct);
+        await _realtime.ShoppingListChangedAsync(wsId, ct);
         return await GetAllAsync(ct);
     }
 

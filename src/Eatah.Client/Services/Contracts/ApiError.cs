@@ -20,6 +20,8 @@ public static class ApiErrorCodes
 {
     public const string ValidationError = "validation_error";
     public const string Unexpected = "unexpected_error";
+    /// <summary>HTTP 409 — another workspace member modified the resource before our write.</summary>
+    public const string ConcurrencyConflict = "concurrency_conflict";
 
     public const string MealNotFound = "meal_not_found";
     public const string MealsInsufficient = "meals_insufficient";

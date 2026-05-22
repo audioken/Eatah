@@ -42,6 +42,15 @@ public sealed class ChatHubService : IAsyncDisposable
     /// <summary>Fired when the household has been renamed by any member (current user included).</summary>
     public event Action<Guid, string>? WorkspaceRenamed;
 
+    /// <summary>Workspace's shopping list mutated by any member. Args: workspaceId.</summary>
+    public event Action<Guid>? ShoppingListChanged;
+
+    /// <summary>Workspace's pantry mutated by any member. Args: workspaceId.</summary>
+    public event Action<Guid>? PantryChanged;
+
+    /// <summary>Workspace weekly plan mutated. Args: workspaceId, planId, year, weekNumber.</summary>
+    public event Action<Guid, Guid, int, int>? WeeklyPlanChanged;
+
     /// <summary>Fired after the hub (re)connects. Subscribers should re-join their thread groups.</summary>
     public event Action? Reconnected;
 
@@ -183,6 +192,12 @@ public sealed class ChatHubService : IAsyncDisposable
             ReactionUpdated?.Invoke(payload.MessageId, payload.Reactions));
         _connection.On<WorkspaceRenamedPayload>("WorkspaceRenamed", payload =>
             WorkspaceRenamed?.Invoke(payload.WorkspaceId, payload.Name));
+        _connection.On<ShoppingListChangedPayload>("ShoppingListChanged", payload =>
+            ShoppingListChanged?.Invoke(payload.WorkspaceId));
+        _connection.On<PantryChangedPayload>("PantryChanged", payload =>
+            PantryChanged?.Invoke(payload.WorkspaceId));
+        _connection.On<WeeklyPlanChangedPayload>("WeeklyPlanChanged", payload =>
+            WeeklyPlanChanged?.Invoke(payload.WorkspaceId, payload.PlanId, payload.Year, payload.WeekNumber));
 
         _connection.Reconnecting += ex =>
         {
@@ -260,4 +275,7 @@ public sealed class ChatHubService : IAsyncDisposable
 
     private record ReactionUpdatePayload(Guid MessageId, IReadOnlyList<ChatReactionGroupResponse> Reactions);
     private record WorkspaceRenamedPayload(Guid WorkspaceId, string Name);
+    private record ShoppingListChangedPayload(Guid WorkspaceId);
+    private record PantryChangedPayload(Guid WorkspaceId);
+    private record WeeklyPlanChangedPayload(Guid WorkspaceId, Guid PlanId, int Year, int WeekNumber);
 }

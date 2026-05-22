@@ -30,6 +30,8 @@ public class PantryItemConfiguration : IEntityTypeConfiguration<PantryItem>
         b.Property(x => x.AddedAt).HasColumnName("added_at").HasDefaultValueSql("NOW()");
         b.HasOne(x => x.Ingredient).WithMany().HasForeignKey(x => x.IngredientId).OnDelete(DeleteBehavior.Restrict);
         b.HasIndex(x => new { x.WorkspaceId, x.IngredientId }).IsUnique();
+        // Optimistic concurrency: detect concurrent updates from other workspace members.
+        b.UseXminAsConcurrencyToken();
     }
 }
 
@@ -47,6 +49,7 @@ public class PantryItemMealCoverageConfiguration : IEntityTypeConfiguration<Pant
         b.HasOne(x => x.PantryItem).WithMany().HasForeignKey(x => x.PantryItemId).OnDelete(DeleteBehavior.Cascade);
         b.HasOne<DayPlan>().WithMany().HasForeignKey(x => x.DayPlanId).OnDelete(DeleteBehavior.Cascade);
         b.HasIndex(x => new { x.PantryItemId, x.DayPlanId }).IsUnique();
+        b.UseXminAsConcurrencyToken();
     }
 }
 
@@ -64,5 +67,6 @@ public class ShoppingItemConfiguration : IEntityTypeConfiguration<ShoppingItem>
         b.Property(x => x.Notes).HasColumnName("notes").HasMaxLength(2000);
         b.HasOne(x => x.Ingredient).WithMany().HasForeignKey(x => x.IngredientId).OnDelete(DeleteBehavior.Restrict);
         b.HasIndex(x => new { x.WorkspaceId, x.IngredientId }).IsUnique();
+        b.UseXminAsConcurrencyToken();
     }
 }

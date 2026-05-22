@@ -56,7 +56,7 @@ Eatah.sln
 │   │   │   ├── Friends/        # Friend requests + foodbuddies via shared households
 │   │   │   ├── Notifications/  # Per-user notifikationer (jsonb payload)
 │   │   │   ├── Pantry/         # IngredientMaster + PantryItem + ShoppingItem
-│   │   │   └── Chat/           # Group-trådar per workspace (REST, ingen SignalR ännu)
+│   │   │   └── Chat/           # Group-trådar per workspace (SignalR ChatHub för chat + realtidsbroadcast)
 │   │   ├── Middleware/         # GlobalExceptionHandler + WorkspaceResolutionMiddleware
 │   │   └── Program.cs
 │   ├── Eatah.Domain/           # Entiteter, enums, value objects (INGA beroenden)
@@ -474,6 +474,51 @@ System-ägda entiteter (`WorkspaceId == null`) är seedade default-data som alla
 ### Testning
 
 Integrationstest-factoryn anropar `DataSeeder.EnsurePersonalWorkspaceAsync` så testanvändaren alltid har en aktiv workspace. `TestAuthHandler.TestUserId` är fix.
+
+## Realtid & concurrency (multi-user workspaces)
+
+Workspace-data kan muteras samtidigt av flera medlemmar (matplan, köplista, skafferi). Tre lager skyddar konsekvensen:
+
+### 1. Optimistic concurrency (xmin)
+
+Entiteter som muteras av flera samtidigt har PostgreSQL `xmin` som concurrency token via `b.UseXminAsConcurrencyToken()` (helper i `Infrastructure/Persistence/Configurations/NpgsqlBuilderExtensions.cs`). Aktiv på: `PantryItem`, `PantryItemMealCoverage`, `ShoppingItem`, `WeeklyPlan`, `DayPlan`.
+
+En konflikt (`DbUpdateConcurrencyException`) mappas av `GlobalExceptionHandler` till **HTTP 409** med `errorCode: concurrency_conflict`. Klienten reagerar genom att refetcha — realtidssyncen (se nedan) gör detta automatiskt.
+
+Lägg `UseXminAsConcurrencyToken()` på nya entiteter som flera workspace-medlemmar kan mutera samtidigt.
+
+### 2. Per-workspace mutation locks
+
+`WorkspaceLockProvider` (singleton i `Common/`) ger korta in-process locks per `(scope, workspaceId)` för operationer där två klienter inte får köra parallellt även med xmin (multi-step mutationer, batch-skrivningar):
+
+```csharp
+using var _lock = await _locks.AcquireAsync(WorkspaceLockProvider.ScopeRandomize, wsId, ct);
+// ... multi-step mutation ...
+```
+
+Använt av: `WeeklyPlanService.RandomizeAsync` / `RandomizeDayAsync` (scope `randomize`), `ShoppingListService.SyncFromWeeklyPlanAsync` / `SyncFromCurrentWeeklyPlanAsync` (scope `shopping_sync`).
+
+Gäller endast inom en process — antar single-instance deployment. xmin sköter cross-instance integritet.
+
+### 3. Realtidsbroadcast (SignalR)
+
+`IRealtimeNotifier` (`Common/RealtimeNotifier.cs`) skickar **lättviktiga invalidations-events** via `ChatHub` till gruppen `workspace:{id}`. Klienten är redan medlem (joinas av `WorkspaceState`).
+
+Events och payload:
+
+- `ShoppingListChanged` → `{ workspaceId }`
+- `PantryChanged` → `{ workspaceId }`
+- `WeeklyPlanChanged` → `{ workspaceId, planId, year, weekNumber }`
+
+**Regel:** Anropa lämplig `_notifier.XxxChangedAsync(wsId, ct)` efter varje `SaveChangesAsync` som muterar en av dessa entiteter. Skicka inte hela payloaden — klienten refetchar.
+
+På klienten:
+
+- `ChatHubService` exponerar events `ShoppingListChanged`, `PantryChanged`, `WeeklyPlanChanged`.
+- `RealtimeSyncService` (singleton, startad i `MauiProgram` / `Program.cs`) prenumererar och refetchar `PantryStateService` / `ShoppingStateService` när eventet gäller aktiv workspace.
+- Sidor som visar veckoplan (t.ex. `Dashboard.razor`) prenumererar själva på `Hub.WeeklyPlanChanged` och kallar `LoadAsync()`.
+
+Cross-workspace events ignoreras alltid (`Workspaces.CurrentId != workspaceId`).
 
 ## Felhantering
 

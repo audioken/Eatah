@@ -41,6 +41,9 @@ public class WeeklyPlanConfiguration : IEntityTypeConfiguration<WeeklyPlan>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(w => new { w.WorkspaceId, w.Year, w.WeekNumber }).IsUnique();
+
+        // Optimistic concurrency: protects against concurrent edits from other workspace members.
+        builder.UseXminAsConcurrencyToken();
     }
 }
 
@@ -70,5 +73,7 @@ public class DayPlanConfiguration : IEntityTypeConfiguration<DayPlan>
             .WithMany()
             .HasForeignKey(d => d.MealId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        builder.UseXminAsConcurrencyToken();
     }
 }

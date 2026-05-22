@@ -24,19 +24,28 @@ public class WeeklyPlanService
     private readonly IDietProfileRepository _profileRepository;
     private readonly IRandomMealGenerator _generator;
     private readonly ILogger<WeeklyPlanService> _logger;
+    private readonly IRealtimeNotifier _realtime;
+    private readonly IWorkspaceContext _ws;
+    private readonly WorkspaceLockProvider _locks;
 
     public WeeklyPlanService(
         IWeeklyPlanRepository repository,
         IMealRepository mealRepository,
         IDietProfileRepository profileRepository,
         IRandomMealGenerator generator,
-        ILogger<WeeklyPlanService> logger)
+        ILogger<WeeklyPlanService> logger,
+        IRealtimeNotifier realtime,
+        IWorkspaceContext ws,
+        WorkspaceLockProvider locks)
     {
         _repository = repository;
         _mealRepository = mealRepository;
         _profileRepository = profileRepository;
         _generator = generator;
         _logger = logger;
+        _realtime = realtime;
+        _ws = ws;
+        _locks = locks;
     }
 
     public async Task<WeeklyPlanResponse> GetCurrentAsync(CancellationToken cancellationToken)
@@ -79,6 +88,7 @@ public class WeeklyPlanService
 
         plan.DietProfileId = request.ProfileId;
         await _repository.SaveChangesAsync(cancellationToken);
+        await BroadcastChangedAsync(plan, cancellationToken);
         return ToResponse(plan);
     }
 
@@ -92,6 +102,7 @@ public class WeeklyPlanService
 
         var plan = BuildEmptyPlan(request.Year, request.WeekNumber);
         await _repository.AddAsync(plan, cancellationToken);
+        await BroadcastChangedAsync(plan, cancellationToken);
         return ToResponse(plan);
     }
 
@@ -129,6 +140,7 @@ public class WeeklyPlanService
 
         // Reload with tracked meal to ensure response includes category/name.
         var refreshed = await _repository.GetByIdAsync(planId, cancellationToken);
+        await BroadcastChangedAsync(refreshed!, cancellationToken);
         return ToResponse(refreshed!);
     }
 
@@ -156,6 +168,7 @@ public class WeeklyPlanService
         day.Meal = null;
 
         await _repository.SaveChangesAsync(cancellationToken);
+        await BroadcastChangedAsync(plan, cancellationToken);
         return ToResponse(plan);
     }
 
@@ -164,6 +177,11 @@ public class WeeklyPlanService
         RandomizeWeeklyPlanRequest request,
         CancellationToken cancellationToken)
     {
+        var wsId = _ws.RequireCurrent();
+        // Serialize concurrent randomizations for the same workspace so two simultaneous
+        // "slumpa"-clicks don’t produce a half-overwritten plan.
+        using var _lock = await _locks.AcquireAsync(WorkspaceLockProvider.ScopeRandomize, wsId, cancellationToken);
+
         var plan = await _repository.GetByIdAsync(planId, cancellationToken);
         if (plan is null)
         {
@@ -229,6 +247,7 @@ public class WeeklyPlanService
         }
 
         await _repository.SaveChangesAsync(cancellationToken);
+        await BroadcastChangedAsync(plan, cancellationToken);
 
         return BuildResponseFromMealLookup(plan, meals);
     }
@@ -239,6 +258,9 @@ public class WeeklyPlanService
         RandomizeDayRequest request,
         CancellationToken cancellationToken)
     {
+        var wsId = _ws.RequireCurrent();
+        using var _lock = await _locks.AcquireAsync(WorkspaceLockProvider.ScopeRandomize, wsId, cancellationToken);
+
         var plan = await _repository.GetByIdAsync(planId, cancellationToken);
         if (plan is null)
         {
@@ -281,8 +303,16 @@ public class WeeklyPlanService
         day.MealId = chosen?.Id;
 
         await _repository.SaveChangesAsync(cancellationToken);
+        await BroadcastChangedAsync(plan, cancellationToken);
 
         return BuildResponseFromMealLookup(plan, meals);
+    }
+
+    private async Task BroadcastChangedAsync(Eatah.Domain.Entities.WeeklyPlan plan, CancellationToken ct)
+    {
+        var wsId = _ws.CurrentWorkspaceId;
+        if (wsId is null) return;
+        await _realtime.WeeklyPlanChangedAsync(wsId.Value, plan.Id, plan.Year, plan.WeekNumber, ct);
     }
 
     private static Eatah.Domain.Entities.WeeklyPlan BuildEmptyPlan(int year, int week)

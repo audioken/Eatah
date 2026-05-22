@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Threading.RateLimiting;
+using Eatah.Api.Common;
 using Eatah.Api.Features.AI;
 using Eatah.Api.Features.Auth;
 using Eatah.Api.Features.Chat;
@@ -63,6 +64,10 @@ builder.Services.AddPantryFeature();
 builder.Services.AddChatFeature();
 
 builder.Services.AddSignalR();
+
+// Realtime broadcast + per-workspace mutation locks.
+builder.Services.AddSingleton<WorkspaceLockProvider>();
+builder.Services.AddScoped<IRealtimeNotifier, RealtimeNotifier>();
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();

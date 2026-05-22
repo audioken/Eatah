@@ -27,6 +27,7 @@ public static class MauiProgram
 		builder.Services.AddSingleton<PantryStateService>();
 		builder.Services.AddSingleton<ShoppingStateService>();
 		builder.Services.AddSingleton<ShoppingSyncService>();
+		builder.Services.AddSingleton<RealtimeSyncService>();
 		builder.Services.AddSingleton<ModalService>();
 		builder.Services.AddSingleton<ToastService>();
 		builder.Services.AddSingleton<HeaderState>();
@@ -67,6 +68,11 @@ public static class MauiProgram
 			ApiClientOptions.GetBaseAddress(),
 			sp.GetRequiredService<ILoggerFactory>()));
 
-		return builder.Build();
+		var app = builder.Build();
+		// Subscribe to workspace-scoped invalidation events from the chat hub
+		// so the pantry/shopping caches stay in sync with mutations from other
+		// household members.
+		app.Services.GetRequiredService<RealtimeSyncService>().Start();
+		return app;
 	}
 }
