@@ -1974,6 +1974,28 @@ body.eatah-modal-open {
     border-color: rgba(0, 0, 0, 0.06);
 }
 
+.eatah-shopping-item--on-list {
+    border-color: rgba(90, 174, 0, 0.4);
+}
+
+/* Items inside the ingredient checklist grid: override semi-transparent
+   base so the green modal gradient does not bleed through */
+.eatah-checklist-body .eatah-shopping-item {
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.eatah-checklist-body .eatah-shopping-item--checked {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.eatah-checklist-body .eatah-shopping-item--selected {
+    background: rgba(90, 174, 0, 0.14);
+}
+
+.eatah-checklist-body .eatah-shopping-item--on-list {
+    background: rgba(255, 255, 255, 0.9);
+}
+
 .eatah-shopping-item__body {
     flex: 1;
     min-width: 0;
@@ -2103,6 +2125,13 @@ body.eatah-modal-open {
     gap: 6px;
     padding: 6px 8px 4px;
     flex-shrink: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    /* hide scrollbar visually but keep scroll behaviour */
+    scrollbar-width: none;
+}
+.eatah-shopping-actions::-webkit-scrollbar {
+    display: none;
 }
 
 .eatah-shopping-actions__btn {

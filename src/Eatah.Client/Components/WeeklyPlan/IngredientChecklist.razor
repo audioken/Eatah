@@ -6,6 +6,9 @@
 @inject PantryStateService PantryState
 @inject ShoppingStateService ShoppingState
 @inject ShoppingSyncService ShoppingSync
+@inject ToastService Toasts
+@inject WorkspaceState WorkspaceState
+@inject ChatState ChatState
 
 @if (IsOpen)
 {
@@ -45,7 +48,7 @@
             }
             else
             {
-                <div class="grid grid-cols-2 gap-2 px-3 pb-4 max-h-[60vh] overflow-y-auto">
+                <div class="eatah-checklist-body grid grid-cols-2 gap-2 px-3 pb-4 max-h-[60vh] overflow-y-auto">
 
                     @* Left: Skafferi – ingredients already in pantry *@
                     <div>
@@ -65,29 +68,28 @@
                         {
                             var (pantryCovered, pantryTotal) = CheckState.GetCoverageFraction(name);
                             var sharedCount = pantryTotal > 0 ? pantryTotal : CheckState.GetSharedSessionCount(name);
-                            <div
-                                class="flex items-center gap-2 px-2 py-[6px] rounded-[10px] bg-black/[0.06] border border-black/10 mb-1.5">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="@IconPaths.CheckViewBox" fill="#7CD331"
-                                     class="w-[11px] h-[11px] flex-shrink-0">
-                                    <path d="@IconPaths.CheckPath" />
-                                </svg>
-                                <span class="text-[13px] font-medium line-through leading-snug min-w-0 flex-1 truncate"
-                                      style="color: rgba(51,62,47,0.5)">@name</span>
-                                @if (pantryTotal > 1 && pantryCovered > 0 && pantryCovered < pantryTotal)
-                                {
-                                    <span
-                                    class="shrink-0 text-[#F2A20C] text-[10px] font-semibold leading-none">@pantryCovered/@pantryTotal</span>
-                                }
-                                else if (pantryTotal > 1 && pantryCovered == pantryTotal)
-                                {
-                                    <span class="shrink-0 text-[10px] font-semibold leading-none"
-                                          style="color: rgba(51,62,47,0.4)">@pantryTotal/@pantryTotal</span>
-                                }
-                                else if (sharedCount > 1)
-                                {
-                                    <span class="shrink-0 text-[10px] font-semibold leading-none"
-                                          style="color: rgba(51,62,47,0.4)">(@sharedCount)</span>
-                                }
+                            <div class="eatah-shopping-item eatah-shopping-item--checked">
+                                <span class="eatah-shopping-item__check eatah-shopping-item__check--done">
+                                    <Icon Name="check" Size="10" />
+                                </span>
+                                <div class="eatah-shopping-item__body">
+                                    <div class="eatah-shopping-item__name-row">
+                                        <span class="eatah-shopping-item__name">@name</span>
+                                        @if (pantryTotal > 1 && pantryCovered > 0 && pantryCovered < pantryTotal)
+                                        {
+                                            <span
+                                            class="shrink-0 text-[#F2A20C] text-[11px] font-semibold">@pantryCovered/@pantryTotal</span>
+                                        }
+                                        else if (pantryTotal > 1 && pantryCovered == pantryTotal)
+                                        {
+                                            <span class="eatah-shopping-item__count-badge">@pantryTotal/@pantryTotal</span>
+                                        }
+                                        else if (sharedCount > 1)
+                                        {
+                                            <span class="eatah-shopping-item__count-badge">(@sharedCount)</span>
+                                        }
+                                    </div>
+                                </div>
                             </div>
                         }
                     </div>
@@ -101,14 +103,22 @@
                         </div>
                         @if (_selectedMissing.Count > 0)
                         {
-                            <div class="eatah-checklist-actions mb-2">
-                                <button type="button" class="eatah-checklist-actions__btn eatah-checklist-actions__btn--primary"
+                            <div class="eatah-shopping-actions mb-2">
+                                <button type="button" class="eatah-shopping-actions__btn eatah-shopping-actions__btn--primary"
                                         @onclick="MoveSelectedToPantryAsync">
-                                    <Icon Name="arrow-left" Size="12" />
+                                    <Icon Name="arrow-left" Size="13" />
                                     <span>Till skafferi</span>
                                 </button>
-                                <div class="eatah-checklist-actions__slot" />
-                                <div class="eatah-checklist-actions__slot" />
+                                <button type="button" class="eatah-shopping-actions__btn eatah-shopping-actions__btn--chat"
+                                        @onclick="() => OpenChatDropdown('i')" title="Jag köper dessa">
+                                    <Icon Name="chat" Size="13" />
+                                    <span>Jag köper</span>
+                                </button>
+                                <button type="button" class="eatah-shopping-actions__btn eatah-shopping-actions__btn--chat"
+                                        @onclick="() => OpenChatDropdown('k')" title="Be någon köpa dessa">
+                                    <Icon Name="chat" Size="13" />
+                                    <span>Kan du köpa?</span>
+                                </button>
                             </div>
                         }
                         @if (!MissingIngredients.Any())
@@ -119,25 +129,28 @@
                         {
                             var onList = _shoppingNames.Contains(name);
                             var isSelected = _selectedMissing.Contains(name);
-                            var rowClass = isSelected ? "bg-[#5AAE00]/15 border-[#5AAE00]/30" : onList ? "bg-[#5AAE00]/10 border-[#5AAE00]/20" : "bg-black/[0.04] border-black/10";
-                            var selectClass = isSelected ? "eatah-checklist-select--active" : "";
-                            var textClass = isSelected ? "opacity-100" : onList ? "opacity-80" : "opacity-60";
+                            var itemClass = isSelected ? "eatah-shopping-item--selected" : onList ? "eatah-shopping-item--on-list" :
+                "";
+                            var btnClass = isSelected ? "eatah-shopping-item__select--active" : "";
                             var missingCount = CheckState.GetUncoveredSessionCount(name);
-                            <div class="flex items-center gap-1.5 px-2 py-[6px] rounded-[10px] border mb-1.5 cursor-pointer @rowClass"
+                            <div class="eatah-shopping-item @itemClass cursor-pointer"
                                  @onclick="() => ToggleMissingSelection(name)">
-                                <span class="eatah-checklist-select @selectClass">
+                                <button type="button" class="eatah-shopping-item__select @btnClass" @onclick:stopPropagation="true"
+                                        @onclick="() => ToggleMissingSelection(name)">
                                     @if (isSelected)
                                     {
-                                        <Icon Name="check" Size="9" />
+                                        <Icon Name="check" Size="10" />
                                     }
-                                </span>
-                                <span class="text-[13px] font-medium leading-snug min-w-0 flex-1 truncate @textClass"
-                                      style="color: var(--color-text-dark)">@name</span>
-                                @if (missingCount > 1)
-                                {
-                                    <span class="shrink-0 text-[10px] font-semibold leading-none"
-                                          style="color: rgba(51,62,47,0.45)">(@missingCount)</span>
-                                }
+                                </button>
+                                <div class="eatah-shopping-item__body">
+                                    <div class="eatah-shopping-item__name-row">
+                                        <span class="eatah-shopping-item__name">@name</span>
+                                        @if (missingCount > 1)
+                                        {
+                                            <span class="eatah-shopping-item__count-badge">(@missingCount)</span>
+                                        }
+                                    </div>
+                                </div>
                             </div>
                         }
                     </div>
@@ -198,22 +211,15 @@
                     }
                 </div>
 
-                @{
-                    var onlyOriginCovered = _pendingCoverage.All(cov =>
-                        cov.OriginDayPlanId.HasValue &&
-                        cov.CoveredSessionIds.Count == 1 &&
-                        cov.CoveredSessionIds.Contains(cov.OriginDayPlanId.Value));
-                    var confirmBtnLabel = onlyOriginCovered ? "RÄCKER TILL DENNA" : "Spara urval";
-                }
-                <div class="px-4 pb-5 pt-2 flex gap-2">
-                    <button type="button"
-                            class="flex-1 eatah-modal-footer__btn eatah-modal-footer__btn--primary uppercase tracking-wide"
-                            @onclick="CoverAllAndConfirmAsync">
-                        Räcker till alla
+                <div class="px-4 pb-5 pt-2 flex flex-col gap-2">
+                    <button type="button" class="w-full py-2.5 rounded-[10px] text-[13px] font-semibold tracking-wide"
+                            style="background: rgba(0,0,0,0.06); color: rgba(51,62,47,0.65)" @onclick="ToggleSelectAll">
+                        @(AllCovered ? "Avmarkera alla" : "Markera alla")
                     </button>
-                    <button type="button" class="flex-1 eatah-modal-footer__btn eatah-modal-footer__btn--ghost"
+                    <button type="button"
+                            class="w-full eatah-modal-footer__btn eatah-modal-footer__btn--primary uppercase tracking-wide"
                             @onclick="ConfirmCoverageAsync">
-                        @confirmBtnLabel
+                        Spara
                     </button>
                 </div>
             </div>
@@ -265,6 +271,39 @@
         </div>
     }
 
+@* Chat recipient picker dropdown *@
+@if (_showChatDropdown)
+{
+    <div class="eatah-chat-recipient-overlay" @onclick="() => _showChatDropdown = false">
+        <div class="eatah-chat-recipient-picker" @onclick:stopPropagation="true">
+            <div class="eatah-chat-recipient-picker__title">Skicka till&hellip;</div>
+
+            <button type="button" class="eatah-chat-recipient-item" @onclick="SendToGroupAsync">
+                <div class="eatah-chat-recipient-item__avatar eatah-chat-recipient-item__avatar--group">
+                    <Icon Name="house" Size="14" />
+                </div>
+                <span class="eatah-chat-recipient-item__name">Hush&aring;llschatten</span>
+            </button>
+
+            @foreach (var member in _householdMembers)
+            {
+                var m = member;
+                <button type="button" class="eatah-chat-recipient-item" @onclick="() => SendToMemberAsync(m)">
+                    <div class="eatah-chat-recipient-item__avatar">
+                        <Icon Name="profile" Size="14" />
+                    </div>
+                    <span class="eatah-chat-recipient-item__name">@m.DisplayName</span>
+                </button>
+            }
+
+            @if (_dropdownLoading)
+            {
+                <div class="eatah-chat-recipient-picker__loading">Laddar&hellip;</div>
+            }
+        </div>
+    </div>
+}
+
 @code {
     [Parameter] public bool IsOpen { get; set; }
     [Parameter] public Guid? DayPlanId { get; set; }
@@ -310,6 +349,13 @@
     private List<string> _pendingMealCoverage = [];
     private Guid? _pendingCoverageDayPlanId;
     private bool _isLoading;
+
+    // Chat dropdown state
+    private bool _showChatDropdown;
+    private bool _dropdownLoading;
+    private char _pendingChatType;
+    private List<WorkspaceMemberResponse> _householdMembers = [];
+
     // Re-load when EITHER (DayPlanId, MealId) changes so opening a different DayCard
     // for the same meal still re-checks pending coverage for that specific session.
     private (Guid? DayPlanId, Guid? MealId) _loadedFor;
@@ -563,12 +609,22 @@
             coverage.CoveredSessionIds.Add(dayPlanId);
     }
 
-    private async Task CoverAllAndConfirmAsync()
+    private bool AllCovered => _pendingCoverage.All(cov =>
+        cov.AllSessions.All(s => cov.CoveredSessionIds.Contains(s.DayPlanId)));
+
+    private void ToggleSelectAll()
     {
-        foreach (var cov in _pendingCoverage)
-            foreach (var s in cov.AllSessions)
-                cov.CoveredSessionIds.Add(s.DayPlanId);
-        await ConfirmCoverageAsync();
+        if (AllCovered)
+        {
+            foreach (var cov in _pendingCoverage)
+                cov.CoveredSessionIds.Clear();
+        }
+        else
+        {
+            foreach (var cov in _pendingCoverage)
+                foreach (var s in cov.AllSessions)
+                    cov.CoveredSessionIds.Add(s.DayPlanId);
+        }
     }
 
     private async Task ConfirmCoverageAsync()
@@ -695,6 +751,77 @@
             })
             .ToList();
         return remaining.Count > 0 ? string.Join(", ", remaining) : null;
+    }
+
+    private async Task OpenChatDropdown(char type)
+    {
+        if (!_selectedMissing.Any()) return;
+
+        if (WorkspaceState.Current is null || WorkspaceState.Current.MemberCount < 2)
+        {
+            Toasts.Show("Bjud in någon till hushållet för att använda chatten.");
+            return;
+        }
+
+        _pendingChatType = type;
+        _showChatDropdown = true;
+
+        if (!_householdMembers.Any())
+        {
+            _dropdownLoading = true;
+            try { _householdMembers = await Api.GetWorkspaceMembersAsync(); }
+            catch { }
+            _dropdownLoading = false;
+        }
+    }
+
+    private async Task SendToGroupAsync()
+    {
+        _showChatDropdown = false;
+        var message = BuildChatMessage(_pendingChatType == 'i' ? "Jag köper" : "Kan du köpa");
+        if (message is null) return;
+
+        try
+        {
+            var groupThread = await Api.GetOrCreateGroupThreadAsync();
+            if (groupThread is null) { Toasts.Show("Kunde inte hitta hushållschatten."); return; }
+
+            await Api.SendChatMessageAsync(groupThread.Id, message);
+            Toasts.Show("Meddelande skickat till Hushållschatten 💬");
+            var summary = new ChatThreadSummaryResponse(groupThread.Id, groupThread.WorkspaceId, "Group", null, null, null, null);
+            ChatState.Open(summary);
+        }
+        catch
+        {
+            Toasts.Show("Kunde inte skicka meddelande.");
+        }
+    }
+
+    private async Task SendToMemberAsync(WorkspaceMemberResponse member)
+    {
+        _showChatDropdown = false;
+        var message = BuildChatMessage(_pendingChatType == 'i' ? "Jag köper" : "Kan du köpa");
+        if (message is null) return;
+
+        try
+        {
+            var thread = await Api.GetOrCreateDirectThreadAsync(member.UserId);
+            if (thread is null) { Toasts.Show("Kunde inte öppna chatten."); return; }
+
+            await Api.SendChatMessageAsync(thread.Id, message);
+            Toasts.Show($"Meddelande skickat till {member.DisplayName} 💬");
+            ChatState.Open(thread);
+        }
+        catch
+        {
+            Toasts.Show("Kunde inte skicka meddelande.");
+        }
+    }
+
+    private string? BuildChatMessage(string prefix)
+    {
+        if (!_selectedMissing.Any()) return null;
+        return $"{prefix}: {string.Join(", ", _selectedMissing)}";
     }
 
     public void Dispose()

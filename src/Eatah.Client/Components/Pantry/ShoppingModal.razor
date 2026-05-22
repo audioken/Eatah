@@ -381,22 +381,15 @@
                     </div>
                 }
 
-                @{
-                    var onlyOriginCovered = _pendingCoverage.All(cov =>
-                        cov.OriginDayPlanId.HasValue &&
-                        cov.CoveredSessionIds.Count == 1 &&
-                        cov.CoveredSessionIds.Contains(cov.OriginDayPlanId.Value));
-                    var confirmBtnLabel = onlyOriginCovered ? "RÄCKER TILL DENNA" : "Spara urval";
-                }
-                <div class="px-4 pb-5 pt-2 flex gap-2">
-                    <button type="button"
-                            class="flex-1 eatah-modal-footer__btn eatah-modal-footer__btn--primary uppercase tracking-wide"
-                            @onclick="CoverAllAndConfirmAsync">
-                        Räcker till alla
+                <div class="px-4 pb-5 pt-2 flex flex-col gap-2">
+                    <button type="button" class="w-full py-2.5 rounded-[10px] text-[13px] font-semibold tracking-wide"
+                            style="background: rgba(0,0,0,0.06); color: rgba(51,62,47,0.65)" @onclick="ToggleSelectAll">
+                        @(AllCovered ? "Avmarkera alla" : "Markera alla")
                     </button>
-                    <button type="button" class="flex-1 eatah-modal-footer__btn eatah-modal-footer__btn--ghost"
+                    <button type="button"
+                            class="w-full eatah-modal-footer__btn eatah-modal-footer__btn--primary uppercase tracking-wide"
                             @onclick="ConfirmCoverageAsync">
-                        @confirmBtnLabel
+                        Spara
                     </button>
                 </div>
             </div>
@@ -951,12 +944,22 @@ TotalMealCount);
             coverage.CoveredSessionIds.Add(dayPlanId);
     }
 
-    private async Task CoverAllAndConfirmAsync()
+    private bool AllCovered => _pendingCoverage.All(cov =>
+        cov.AllSessions.All(s => cov.CoveredSessionIds.Contains(s.DayPlanId)));
+
+    private void ToggleSelectAll()
     {
-        foreach (var cov in _pendingCoverage)
-            foreach (var s in cov.AllSessions)
-                cov.CoveredSessionIds.Add(s.DayPlanId);
-        await ConfirmCoverageAsync();
+        if (AllCovered)
+        {
+            foreach (var cov in _pendingCoverage)
+                cov.CoveredSessionIds.Clear();
+        }
+        else
+        {
+            foreach (var cov in _pendingCoverage)
+                foreach (var s in cov.AllSessions)
+                    cov.CoveredSessionIds.Add(s.DayPlanId);
+        }
     }
 
     private async Task ConfirmCoverageAsync()
