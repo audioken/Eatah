@@ -191,59 +191,100 @@
                                             <div class="eatah-shopping-week__body">
                                                 @foreach (var mealGroup in weekGroup.MealGroups)
                                                 {
-                                                    var groupKey = GetMealGroupKey(mealGroup.MealName, weekKey, mealGroup.DayIndex);
-                                                    var isExpanded = _expandedGroups.Contains(groupKey);
-                                                    <div class="eatah-shopping-group">
-                                                        <button type="button" class="eatah-shopping-group__header"
-                                                                @onclick="() => ToggleGroup(groupKey)">
-                                                            <Icon Name="@(isExpanded ? "angle-down-solid" : "angle-right-solid")" Size="10"
-                                                                  CssClass="eatah-shopping-group__chevron" />
-                                                            <span class="eatah-shopping-group__name">@mealGroup.MealName</span>
-                                                            @if (mealGroup.DayIndex.HasValue)
+                                                    @if (mealGroup.MealName == "Övrigt" && !mealGroup.DayIndex.HasValue)
+                                                    {
+                                                        @* Manually added items – render directly without a nested meal-group expander *@
+                                                        <div class="eatah-shopping-group__items">
+                                                            @foreach (var view in mealGroup.Views)
                                                             {
-                                                                <span class="eatah-shopping-group__day">@GetDayName(mealGroup.DayIndex.Value)</span>
-                                                            }
-                                                            <span class="eatah-shopping-group__count">@mealGroup.Views.Count</span>
-                                                        </button>
-                                                        @if (isExpanded)
-                                                        {
-                                                            <div class="eatah-shopping-group__items">
-                                                                @foreach (var view in mealGroup.Views)
-                                                                {
-                                                                    var item = view.Item;
-                                                                    var isSelected = _selectedShoppingItems.Contains(item.Id);
-                                                                    var itemSelClass = isSelected ? "eatah-shopping-item--selected" : "";
-                                                                    var btnSelClass = isSelected ? "eatah-shopping-item__select--active" : "";
-                                                                    var groupedCount = GetMealCount(item.Notes);
-                                                                    <div class="eatah-shopping-item eatah-shopping-item--unchecked @itemSelClass cursor-pointer"
-                                                                         @onclick="() => ToggleShoppingSelection(item.Id)">
-                                                                        <button type="button" class="eatah-shopping-item__select @btnSelClass"
-                                                                                @onclick:stopPropagation="true"
-                                                                                @onclick="() => ToggleShoppingSelection(item.Id)">
-                                                                            @if (isSelected)
+                                                                var item = view.Item;
+                                                                var isSelected = _selectedShoppingItems.Contains(item.Id);
+                                                                var itemSelClass = isSelected ? "eatah-shopping-item--selected" : "";
+                                                                var btnSelClass = isSelected ? "eatah-shopping-item__select--active" : "";
+                                                                var groupedCount = GetMealCount(item.Notes);
+                                                                <div class="eatah-shopping-item eatah-shopping-item--unchecked @itemSelClass cursor-pointer"
+                                                                     @onclick="() => ToggleShoppingSelection(item.Id)">
+                                                                    <button type="button" class="eatah-shopping-item__select @btnSelClass"
+                                                                            @onclick:stopPropagation="true"
+                                                                            @onclick="() => ToggleShoppingSelection(item.Id)">
+                                                                        @if (isSelected)
+                                                                        {
+                                                                            <Icon Name="check" Size="10" />
+                                                                        }
+                                                                    </button>
+                                                                    <div class="eatah-shopping-item__body">
+                                                                        <div class="eatah-shopping-item__name-row">
+                                                                            <span class="eatah-shopping-item__name">@item.Name</span>
+                                                                            @if (groupedCount > 1)
                                                                             {
-                                                                                <Icon Name="check" Size="10" />
+                                                                                <span class="eatah-shopping-item__count-badge">(@groupedCount)</span>
                                                                             }
-                                                                        </button>
-                                                                        <div class="eatah-shopping-item__body">
-                                                                            <div class="eatah-shopping-item__name-row">
-                                                                                <span class="eatah-shopping-item__name">@item.Name</span>
-                                                                                @if (groupedCount > 1)
-                                                                                {
-                                                                                    <span class="eatah-shopping-item__count-badge">(@groupedCount)</span>
-                                                                                }
-                                                                            </div>
                                                                         </div>
-                                                                        <button type="button" class="eatah-shopping-item__remove" title="Ta bort"
-                                                                                @onclick:stopPropagation="true"
-                                                                                @onclick="() => RemoveFromShoppingAsync(item)">
-                                                                            <Icon Name="close" Size="12" />
-                                                                        </button>
                                                                     </div>
+                                                                    <button type="button" class="eatah-shopping-item__remove" title="Ta bort"
+                                                                            @onclick:stopPropagation="true" @onclick="() => RemoveFromShoppingAsync(item)">
+                                                                        <Icon Name="close" Size="12" />
+                                                                    </button>
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        var groupKey = GetMealGroupKey(mealGroup.MealName, weekKey, mealGroup.DayIndex);
+                                                        var isExpanded = _expandedGroups.Contains(groupKey);
+                                                        <div class="eatah-shopping-group">
+                                                            <button type="button" class="eatah-shopping-group__header"
+                                                                    @onclick="() => ToggleGroup(groupKey)">
+                                                                <Icon Name="@(isExpanded ? "angle-down-solid" : "angle-right-solid")" Size="10"
+                                                                      CssClass="eatah-shopping-group__chevron" />
+                                                                <span class="eatah-shopping-group__name">@mealGroup.MealName</span>
+                                                                @if (mealGroup.DayIndex.HasValue)
+                                                                {
+                                                                    <span class="eatah-shopping-group__day">@GetDayName(mealGroup.DayIndex.Value)</span>
                                                                 }
-                                                            </div>
-                                                        }
-                                                    </div>
+                                                                <span class="eatah-shopping-group__count">@mealGroup.Views.Count</span>
+                                                            </button>
+                                                            @if (isExpanded)
+                                                            {
+                                                                <div class="eatah-shopping-group__items">
+                                                                    @foreach (var view in mealGroup.Views)
+                                                                    {
+                                                                        var item = view.Item;
+                                                                        var isSelected = _selectedShoppingItems.Contains(item.Id);
+                                                                        var itemSelClass = isSelected ? "eatah-shopping-item--selected" : "";
+                                                                        var btnSelClass = isSelected ? "eatah-shopping-item__select--active" : "";
+                                                                        var groupedCount = GetMealCount(item.Notes);
+                                                                        <div class="eatah-shopping-item eatah-shopping-item--unchecked @itemSelClass cursor-pointer"
+                                                                             @onclick="() => ToggleShoppingSelection(item.Id)">
+                                                                            <button type="button" class="eatah-shopping-item__select @btnSelClass"
+                                                                                    @onclick:stopPropagation="true"
+                                                                                    @onclick="() => ToggleShoppingSelection(item.Id)">
+                                                                                @if (isSelected)
+                                                                                {
+                                                                                    <Icon Name="check" Size="10" />
+                                                                                }
+                                                                            </button>
+                                                                            <div class="eatah-shopping-item__body">
+                                                                                <div class="eatah-shopping-item__name-row">
+                                                                                    <span class="eatah-shopping-item__name">@item.Name</span>
+                                                                                    @if (groupedCount > 1)
+                                                                                    {
+                                                                                        <span class="eatah-shopping-item__count-badge">(@groupedCount)</span>
+                                                                                    }
+                                                                                </div>
+                                                                            </div>
+                                                                            <button type="button" class="eatah-shopping-item__remove" title="Ta bort"
+                                                                                    @onclick:stopPropagation="true"
+                                                                                    @onclick="() => RemoveFromShoppingAsync(item)">
+                                                                                <Icon Name="close" Size="12" />
+                                                                            </button>
+                                                                        </div>
+                                                                    }
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    }
                                                 }
                                             </div>
                                         }
@@ -751,6 +792,12 @@ TotalMealCount);
 
     private async Task AddToPantryAsync(IngredientResponse ing)
     {
+        if (PantryState.Items.Any(p => p.IngredientId == ing.Id))
+        {
+            Toasts.Show($"{ing.Name} finns redan i skafferiet.");
+            return;
+        }
+
         var shoppingItem = ShoppingState.Items.FirstOrDefault(s => s.IngredientId == ing.Id && !s.IsChecked);
 
         // If the shopping note still references multiple sessions, ask which ones the pantry covers.
@@ -821,6 +868,12 @@ TotalMealCount);
 
     private async Task AddToShoppingAsync(IngredientResponse ing)
     {
+        if (ShoppingState.Items.Any(s => s.IngredientId == ing.Id))
+        {
+            Toasts.Show($"{ing.Name} finns redan på köplistan.");
+            return;
+        }
+
         try
         {
             var item = await Api.AddToShoppingListAsync(ing.Id);
