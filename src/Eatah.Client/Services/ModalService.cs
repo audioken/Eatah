@@ -14,6 +14,13 @@ public sealed class ModalService
 
     public event Action? OnChange;
 
+    /// <summary>
+    /// Raised when a close is requested. The subscriber (ModalHost) plays the exit
+    /// animation before calling <see cref="Close"/>. Falls back to <see cref="CloseTop"/>
+    /// when no subscriber is registered.
+    /// </summary>
+    public event Action<ModalInstance>? CloseRequested;
+
     public ModalInstance Show<TComponent>(IDictionary<string, object?>? parameters = null)
         where TComponent : ComponentBase
     {
@@ -34,6 +41,20 @@ public sealed class ModalService
     {
         if (_stack.Count == 0) return;
         Close(_stack[^1], result);
+    }
+
+    /// <summary>
+    /// Requests the top modal to close. If <see cref="CloseRequested"/> has a subscriber
+    /// (ModalHost), the subscriber handles the animation before calling <see cref="Close"/>.
+    /// </summary>
+    public void RequestCloseTop(object? result = null)
+    {
+        if (_stack.Count == 0) return;
+        var top = _stack[^1];
+        if (CloseRequested is not null)
+            CloseRequested.Invoke(top);
+        else
+            Close(top, result);
     }
 }
 

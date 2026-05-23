@@ -569,7 +569,7 @@ h1:focus { outline: none; }
     padding: 16px;
     padding-top: calc(var(--header-height) + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 16px);
     padding-bottom: calc(var(--navbar-height) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) + 16px);
-    animation: eatah-fade-in 0.15s ease-out;
+    animation: eatah-fade-in 0.25s ease-out;
 }
 
 .eatah-modal {
@@ -583,7 +583,8 @@ h1:focus { outline: none; }
     flex-direction: column;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
     overflow: hidden;
-    animation: eatah-slide-up 0.2s ease-out;
+    transform-origin: 50% 110%;
+    animation: eatah-enter 0.42s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @keyframes eatah-fade-in {
@@ -594,6 +595,42 @@ h1:focus { outline: none; }
 @keyframes eatah-slide-up {
     from { transform: translateY(20px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes eatah-enter {
+    0%   { transform: translateY(72px) scale(0.25); opacity: 0; }
+    60%  { opacity: 1; }
+    100% { transform: translateY(0)   scale(1);    opacity: 1; }
+}
+
+@keyframes eatah-leave {
+    from { transform: translateY(0)    scale(1);    opacity: 1; }
+    to   { transform: translateY(60px) scale(0.2);  opacity: 0; }
+}
+
+@keyframes eatah-fade-out {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+}
+
+/* Closing animations */
+.eatah-modal--closing {
+    animation: eatah-leave 0.2s cubic-bezier(0.4, 0, 1, 1) forwards !important;
+    pointer-events: none;
+}
+
+.eatah-modal-backdrop--closing {
+    animation: eatah-fade-out 0.2s ease-in forwards !important;
+    pointer-events: none;
+}
+
+.eatah-chat-overlay--closing {
+    animation: eatah-fade-out 0.2s ease-in forwards !important;
+    pointer-events: none;
+}
+
+.eatah-chat-overlay--closing .eatah-chat-panel {
+    animation: eatah-leave 0.2s cubic-bezier(0.4, 0, 1, 1) forwards;
 }
 
 body.eatah-modal-open {
@@ -2638,7 +2675,7 @@ body.eatah-modal-open {
     padding: 16px;
     padding-top: calc(var(--header-height) + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 16px);
     padding-bottom: calc(var(--navbar-height) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) + 16px);
-    animation: eatah-fade-in 0.15s ease-out;
+    animation: eatah-fade-in 0.25s ease-out;
 }
 
 .eatah-chat-overlay--hidden {
@@ -2658,7 +2695,8 @@ body.eatah-modal-open {
     flex-direction: column;
     overflow: hidden;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
-    animation: eatah-slide-up 0.2s ease-out;
+    transform-origin: 50% 110%;
+    animation: eatah-enter 0.42s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .eatah-chat-panel__close {

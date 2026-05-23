@@ -697,7 +697,7 @@ TotalMealCount);
         WorkspaceState.OnChange -= OnWorkspaceChanged;
     }
 
-    private void Close() => Modals.CloseTop();
+    private void Close() => Modals.RequestCloseTop();
 
     private void OnPantryChanged() => InvokeAsync(StateHasChanged);
     private void OnShoppingChanged() => InvokeAsync(StateHasChanged);

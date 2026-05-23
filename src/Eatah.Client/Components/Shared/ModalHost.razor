@@ -5,10 +5,12 @@
 
 @if (Modals.Stack.Count > 0)
 {
-    <div class="eatah-modal-backdrop" @onclick="OnBackdropClick">
+    <div class="eatah-modal-backdrop @(_closingInstance != null ? "eatah-modal-backdrop--closing" : "")"
+         @onclick="OnBackdropClick">
         @foreach (var instance in Modals.Stack)
         {
-            <div class="eatah-modal" @onclick:stopPropagation="true">
+            <div class="eatah-modal @(instance == _closingInstance ? "eatah-modal--closing" : "")"
+                 @onclick:stopPropagation="true">
                 <CascadingValue Value="instance" IsFixed="true">
                     <DynamicComponent Type="instance.ComponentType" Parameters="instance.Parameters" />
                 </CascadingValue>
@@ -19,10 +21,12 @@
 
 @code {
     private bool _bodyLocked;
+    private ModalInstance? _closingInstance;
 
     protected override void OnInitialized()
     {
         Modals.OnChange += OnModalsChanged;
+        Modals.CloseRequested += OnCloseRequested;
     }
 
     private async void OnModalsChanged()
@@ -49,13 +53,26 @@
         });
     }
 
+    private async void OnCloseRequested(ModalInstance instance)
+    {
+        await InvokeAsync(async () =>
+        {
+            _closingInstance = instance;
+            StateHasChanged();
+            await Task.Delay(200);
+            _closingInstance = null;
+            Modals.Close(instance);
+        });
+    }
+
     private void OnBackdropClick()
     {
-        Modals.CloseTop();
+        Modals.RequestCloseTop();
     }
 
     public void Dispose()
     {
         Modals.OnChange -= OnModalsChanged;
+        Modals.CloseRequested -= OnCloseRequested;
     }
 }

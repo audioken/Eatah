@@ -6,7 +6,8 @@
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
-<div class="eatah-chat-overlay @(!ChatState.IsOpen ? "eatah-chat-overlay--hidden" : "")" @onclick="CloseIfBackdrop">
+<div class="eatah-chat-overlay @(!ChatState.IsOpen ? "eatah-chat-overlay--hidden" : "") @(_isClosing ? "eatah-chat-overlay--closing" : "")"
+     @onclick="CloseIfBackdrop">
     <div class="eatah-chat-panel" @onclick:stopPropagation="true">
 
         <div class="eatah-chat-panel__body">
@@ -15,7 +16,7 @@
             <div class="eatah-chat-panel__sidebar">
                 <div class="eatah-chat-panel__sidebar-header">
                     <span>Chattar</span>
-                    <button type="button" class="eatah-chat-panel__close" @onclick="() => ChatState.Close()">
+                    <button type="button" class="eatah-chat-panel__close" @onclick="CloseAsync">
                         <Icon Name="close" Size="16" />
                     </button>
                 </div>
@@ -47,7 +48,7 @@
                                 </div>
                                 <div class="eatah-chat-thread-item__info">
                                     <span class="eatah-chat-thread-item__name">@(thread.DirectPartnerDisplayName ??
-                                                                        "Okänd")</span>
+                                                                                                                "Okänd")</span>
                                         @if (thread.LastMessagePreview is not null)
                                         {
                                             <span class="eatah-chat-thread-item__preview">@thread.LastMessagePreview</span>
@@ -180,7 +181,19 @@
         ChatState.SetActiveThread(thread);
     }
 
-    private void CloseIfBackdrop() => ChatState.Close();
+    private bool _isClosing;
+
+    private async Task CloseAsync()
+    {
+        if (_isClosing) return;
+        _isClosing = true;
+        StateHasChanged();
+        await Task.Delay(200);
+        _isClosing = false;
+        ChatState.Close();
+    }
+
+    private async Task CloseIfBackdrop() => await CloseAsync();
 
     public async ValueTask DisposeAsync()
     {
