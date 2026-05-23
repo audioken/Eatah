@@ -1,5 +1,7 @@
 @namespace Eatah.Client.Components.Shared
 @inject ApiClient Api
+@inject WorkspaceState Workspaces
+@inject ToastService Toasts
 @implements IDisposable
 
 <div class="eatah-notif-bell" @onclick="ToggleDropdown">
@@ -119,14 +121,37 @@
 
     private async Task RespondAsync(Guid requestId, Guid notifId, bool accept)
     {
+        if (accept && Workspaces.Current?.MemberCount > 1)
+        {
+            Toasts.Show("Du tillhör redan ett hushåll. Lämna det först för att gå med i ett annat.");
+            return;
+        }
+
         try
         {
             await Api.RespondToFriendRequestAsync(requestId, accept);
             await Api.MarkNotificationAsReadAsync(notifId);
             await LoadAsync();
+            if (accept)
+            {
+                await Workspaces.RefreshAsync();
+            }
             await OnFriendRequestResponded.InvokeAsync();
         }
-        catch { }
+        catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.WorkspaceHouseholdAlreadyExists)
+        {
+            Toasts.Show("Du tillhör redan ett hushåll. Lämna det först för att gå med i ett annat.");
+            await LoadAsync();
+        }
+        catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.FriendRequestNotFound)
+        {
+            Toasts.Show("Inbjudan är inte längre giltig.");
+            await LoadAsync();
+        }
+        catch
+        {
+            Toasts.Show("Något gick fel. Försök igen.");
+        }
     }
 
     private string GetNotifText(NotificationResponse notif)
@@ -138,12 +163,12 @@
             {
                 NotificationType.FriendRequest =>
                     doc.RootElement.TryGetProperty("fromDisplayName", out var n)
-                        ? $"{n.GetString()} vill bli din foodbuddy och dela sin meny med dig"
-                        : "Någon vill bli din foodbuddy",
+                        ? $"{n.GetString()} undrar om du vill gå med i deras hushåll"
+                        : "Någon vill att du går med i deras hushåll",
                 NotificationType.FriendRequestAccepted =>
                     doc.RootElement.TryGetProperty("byDisplayName", out var n)
-                        ? $"{n.GetString()} accepterade din foodbuddy-förfrågan"
-                        : "Din foodbuddy-förfrågan accepterades",
+                        ? $"{n.GetString()} accepterade din inbjudan"
+                        : "Din inbjudan accepterades",
                 _ => "Ny notis"
             };
         }

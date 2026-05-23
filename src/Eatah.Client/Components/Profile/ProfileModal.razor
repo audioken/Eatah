@@ -22,8 +22,10 @@
             <div class="eatah-profile-modal__alert eatah-profile-modal__alert--error">@_error</div>
         }
 
-        @* ── Account info ── *@
+        @* ── Dina uppgifter ── *@
         <section class="eatah-profile-modal__section">
+            <h3 class="eatah-profile-modal__section-title">Dina uppgifter</h3>
+
             <div class="eatah-profile-modal__field-row">
                 <div class="eatah-profile-modal__field">
                     <label>Användarnamn</label>
@@ -69,88 +71,10 @@
                     @(_saving ? "Sparar..." : "Spara ändringar")
                 </button>
             }
-        </section>
 
-        @* ── Household ── *@
-        <section class="eatah-profile-modal__section">
-            <h3 class="eatah-profile-modal__section-title">Hushåll</h3>
-            @if (Workspaces.Current is { } household)
-            {
-                <div class="eatah-profile-modal__field-row">
-                    <div class="eatah-profile-modal__field">
-                        <label>Namn</label>
-                        @if (_editingHousehold)
-                        {
-                            <input class="eatah-profile-modal__input" @bind="_newHouseholdName" @bind:event="oninput"
-                                   placeholder="@household.Name" />
-                        }
-                        else
-                        {
-                            <span>@household.Name</span>
-                        }
-                    </div>
-                    <button type="button" class="eatah-profile-modal__edit-btn" @onclick="ToggleEditHousehold"
-                            title="Redigera hushållsnamn">
-                        <Icon Name="@(_editingHousehold ? "close" : "edit")" Size="18" />
-                    </button>
-                </div>
-
-                @if (_editingHousehold)
-                {
-                    <button type="button" class="eatah-profile-modal__btn eatah-profile-modal__btn--primary"
-                            disabled="@_saving" @onclick="SaveHouseholdNameAsync">
-                        @(_saving ? "Sparar..." : "Spara namn")
-                    </button>
-                }
-
-                <p class="eatah-profile-modal__danger-desc">
-                    @household.MemberCount @(household.MemberCount == 1 ? "medlem" : "medlemmar")
-                </p>
-
-                @if (!_confirmingLeave)
-                {
-                    <button type="button" class="eatah-profile-modal__btn eatah-profile-modal__btn--ghost"
-                            @onclick="() => _confirmingLeave = true">
-                        Lämna hushållet
-                    </button>
-                }
-                else
-                {
-                    <p class="eatah-profile-modal__danger-desc">
-                        Om du lämnar hushållet förlorar du tillgång till dess matplan, köplista och chatt.
-                    </p>
-                    <div class="eatah-profile-modal__danger-actions">
-                        <button type="button" class="eatah-profile-modal__btn eatah-profile-modal__btn--ghost"
-                                @onclick="() => _confirmingLeave = false">
-                            Avbryt
-                        </button>
-                        <button type="button" class="eatah-profile-modal__btn eatah-profile-modal__btn--danger"
-                                disabled="@_saving" @onclick="LeaveHouseholdAsync">
-                            @(_saving ? "Lämnar..." : "Bekräfta")
-                        </button>
-                    </div>
-                }
-            }
-            else
-            {
-                <p class="eatah-profile-modal__danger-desc">Du tillhör inget hushåll just nu.</p>
-                <div class="eatah-profile-modal__field-row">
-                    <div class="eatah-profile-modal__field">
-                        <label>Namn på nytt hushåll</label>
-                        <input class="eatah-profile-modal__input" @bind="_newHouseholdName" @bind:event="oninput"
-                               placeholder="Mitt hushåll" />
-                    </div>
-                </div>
-                <button type="button" class="eatah-profile-modal__btn eatah-profile-modal__btn--primary"
-                        disabled="@_saving" @onclick="CreateHouseholdAsync">
-                    @(_saving ? "Skapar..." : "Skapa hushåll")
-                </button>
-            }
-        </section>
-
-        @* ── Password ── *@
-        <section class="eatah-profile-modal__section">
-            <button type="button" class="eatah-profile-modal__section-toggle" @onclick="TogglePassword">
+            @* Byt lösenord *@
+            <button type="button" class="eatah-profile-modal__section-toggle eatah-profile-modal__section-toggle--sub"
+                    @onclick="TogglePassword">
                 <span>Byt lösenord</span>
                 <Icon Name="@(_showPassword ? "chevron-up" : "chevron-down")" Size="18" />
             </button>
@@ -172,49 +96,84 @@
             }
         </section>
 
-        @* ── Foodbuddies ── *@
-        <section class="eatah-profile-modal__section">
-            <h3 class="eatah-profile-modal__section-title">Foodbuddies</h3>
-            <div class="eatah-profile-modal__search-row">
-                <input class="eatah-profile-modal__input eatah-profile-modal__input--search"
-                       placeholder="Sök efter användare..." value="@_searchQuery" @oninput="OnSearchInput" />
-            </div>
+        @* ── Hushåll ── *@
+        @if (Workspaces.Current is { } household)
+        {
+            <section class="eatah-profile-modal__section">
+                <h3 class="eatah-profile-modal__section-title">Hushåll</h3>
 
-            @if (_searchResults.Count > 0)
-            {
-                <ul class="eatah-profile-modal__user-list">
-                    @foreach (var user in _searchResults)
+                <div class="eatah-profile-modal__field-row">
+                    <div class="eatah-profile-modal__field">
+                        <label>Namn</label>
+                        @if (_editingHousehold)
+                        {
+                            <input class="eatah-profile-modal__input" @bind="_newHouseholdName" @bind:event="oninput"
+                                   placeholder="@household.Name" />
+                        }
+                        else
+                        {
+                            <span>@household.Name</span>
+                        }
+                    </div>
+                    <button type="button" class="eatah-profile-modal__edit-btn" @onclick="ToggleEditHousehold"
+                            title="Redigera hushållsnamn">
+                        <Icon Name="@(_editingHousehold ? "close" : "edit")" Size="18" />
+                    </button>
+                </div>
+
+                @if (_editingHousehold)
+                {
+                    <button type="button" class="eatah-profile-modal__btn eatah-profile-modal__btn--primary" disabled="@_saving"
+                            @onclick="SaveHouseholdNameAsync">
+                        @(_saving ? "Sparar..." : "Spara namn")
+                    </button>
+                }
+
+                @* Hushållsmedlemmar *@
+                <div class="eatah-profile-modal__field" style="margin-top: 12px;">
+                    <label>Hushållsmedlemmar</label>
+                    <div class="eatah-profile-modal__member-tags">
+                        <span class="eatah-profile-modal__member-tag eatah-profile-modal__member-tag--self">
+                            @Auth.CurrentUser?.DisplayName
+                        </span>
+                        @foreach (var m in _members)
+                        {
+                            <span class="eatah-profile-modal__member-tag">@m.DisplayName</span>
+                        }
+                    </div>
+                </div>
+
+                @* Lägg till medlem *@
+                <div style="margin-top: 14px;">
+                    <label class="eatah-profile-modal__field-label">Lägg till medlem</label>
+                    <div class="eatah-profile-modal__search-row" style="margin-top: 6px;">
+                        <input class="eatah-profile-modal__input eatah-profile-modal__input--search"
+                               placeholder="Sök efter användare..." value="@_searchQuery" @oninput="OnSearchInput" />
+                    </div>
+                    @if (_searchResults.Count > 0)
                     {
-                        <li class="eatah-profile-modal__user-row">
-                            <span class="eatah-profile-modal__user-name">@user.DisplayName</span>
-                            <button type="button" class="eatah-profile-modal__btn eatah-profile-modal__btn--small"
-                                    @onclick="() => SendFriendRequestAsync(user)">
-                                Lägg till
-                            </button>
-                        </li>
+                        <ul class="eatah-profile-modal__user-list">
+                            @foreach (var user in _searchResults)
+                            {
+                                <li class="eatah-profile-modal__user-row">
+                                    <span class="eatah-profile-modal__user-name">@user.DisplayName</span>
+                                    <button type="button" class="eatah-profile-modal__btn eatah-profile-modal__btn--small"
+                                            @onclick="() => SendInviteAsync(user)">
+                                        Bjud in
+                                    </button>
+                                </li>
+                            }
+                        </ul>
                     }
-                </ul>
-            }
-            else if (!string.IsNullOrWhiteSpace(_searchQuery) && _searchQuery.Length >= 2 && !_searching)
-            {
-                <p class="eatah-profile-modal__empty">Ingen användare hittades.</p>
-            }
-
-            @if (_friends.Count > 0)
-            {
-                <h4 class="eatah-profile-modal__sub-title">Dina foodbuddies</h4>
-                <ul class="eatah-profile-modal__user-list">
-                    @foreach (var f in _friends)
+                    else if (!string.IsNullOrWhiteSpace(_searchQuery) && _searchQuery.Length >= 2 && !_searching)
                     {
-                        <li class="eatah-profile-modal__user-row">
-                            <span class="eatah-profile-modal__user-name">@f.DisplayName</span>
-                        </li>
+                        <p class="eatah-profile-modal__empty">Ingen användare hittades.</p>
                     }
-                </ul>
-            }
-        </section>
+                </div>
+            </section>
+        }
 
-        @* ── Sign out ── *@
+        @* ── Logga ut ── *@
         <section class="eatah-profile-modal__section">
             <button type="button" class="eatah-profile-modal__btn eatah-profile-modal__btn--ghost"
                     @onclick="LogoutAsync">
@@ -223,11 +182,41 @@
             </button>
         </section>
 
-        @* ── Danger zone ── *@
+        @* ── Riskzon ── *@
         <section class="eatah-profile-modal__section eatah-profile-modal__section--danger">
             <h3 class="eatah-profile-modal__section-title eatah-profile-modal__section-title--danger">
                 Riskzon
             </h3>
+
+            @* Lämna hushåll — only if there are co-members (not a solo household) *@
+            @if (Workspaces.Current?.MemberCount > 1)
+            {
+                @if (!_confirmingLeave)
+                {
+                    <button type="button" class="eatah-profile-modal__btn eatah-profile-modal__btn--ghost"
+                            style="margin-bottom: 12px; width: 100%;" @onclick="() => _confirmingLeave = true">
+                        Lämna hushållet
+                    </button>
+                }
+                else
+                {
+                    <p class="eatah-profile-modal__danger-desc">
+                        Dina hushållskamrater behåller all data. Du får ett nytt tomt hushåll.
+                    </p>
+                    <div class="eatah-profile-modal__danger-actions" style="margin-bottom: 12px;">
+                        <button type="button" class="eatah-profile-modal__btn eatah-profile-modal__btn--ghost"
+                                @onclick="() => _confirmingLeave = false">
+                            Avbryt
+                        </button>
+                        <button type="button" class="eatah-profile-modal__btn eatah-profile-modal__btn--danger"
+                                disabled="@_saving" @onclick="LeaveHouseholdAsync">
+                            @(_saving ? "Lämnar..." : "Bekräfta")
+                        </button>
+                    </div>
+                }
+            }
+
+            @* Radera konto *@
             <p class="eatah-profile-modal__danger-desc">
                 Att radera ditt konto är permanent och kan inte ångras. All din data tas bort.
             </p>
@@ -277,7 +266,7 @@
     private string _searchQuery = "";
     private bool _searching;
     private List<UserSearchResult> _searchResults = [];
-    private List<FriendResponse> _friends = [];
+    private List<WorkspaceMemberResponse> _members = [];
     private CancellationTokenSource? _searchCts;
 
     private bool _confirmingDelete;
@@ -290,10 +279,19 @@
     protected override async Task OnInitializedAsync()
     {
         Workspaces.OnChange += OnWorkspaceChanged;
-        try { _friends = await Api.GetFriendsAsync(); } catch { }
+        await LoadMembersAsync();
     }
 
-    private void OnWorkspaceChanged() => InvokeAsync(StateHasChanged);
+    private void OnWorkspaceChanged() => InvokeAsync(async () =>
+    {
+        await LoadMembersAsync();
+        StateHasChanged();
+    });
+
+    private async Task LoadMembersAsync()
+    {
+        try { _members = await Api.GetWorkspaceMembersAsync(); } catch { _members = []; }
+    }
 
     private void Close() => Modals.Close(Instance!);
 
@@ -418,21 +416,21 @@
         }
     }
 
-    private async Task SendFriendRequestAsync(UserSearchResult user)
+    private async Task SendInviteAsync(UserSearchResult user)
     {
         try
         {
             await Api.SendFriendRequestAsync(new SendFriendRequestRequest(user.Id));
             _searchResults = _searchResults.Where(u => u.Id != user.Id).ToList();
-            Toasts.Show($"Förfrågan skickad till {user.DisplayName}.");
+            Toasts.Show($"Inbjudan skickad till {user.DisplayName}.");
         }
         catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.FriendRequestAlreadyPending)
         {
-            Toasts.Show("En förfrågan är redan skickad.");
+            Toasts.Show("En inbjudan är redan skickad.");
         }
-        catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.WorkspaceHouseholdAlreadyExists)
+        catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.FriendRequestCannotInviteHouseholdMember)
         {
-            Toasts.Show($"{user.DisplayName} är redan foodbuddy.");
+            Toasts.Show($"{user.DisplayName} är redan med i hushållet.");
         }
         catch
         {
@@ -514,28 +512,6 @@
         catch
         {
             _error = "Kunde inte lämna hushållet. Försök igen.";
-        }
-        finally
-        {
-            _saving = false;
-        }
-    }
-
-    private async Task CreateHouseholdAsync()
-    {
-        var name = string.IsNullOrWhiteSpace(_newHouseholdName) ? "Mitt hushåll" : _newHouseholdName.Trim();
-        _saving = true;
-        _error = null;
-        try
-        {
-            var created = await Api.CreateHouseholdAsync(name);
-            if (created is not null) Workspaces.SetCurrent(created);
-            _newHouseholdName = "";
-            Toasts.Show("Hushållet skapades.");
-        }
-        catch
-        {
-            _error = "Kunde inte skapa hushåll. Försök igen.";
         }
         finally
         {

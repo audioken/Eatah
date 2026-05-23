@@ -65,6 +65,10 @@ public class WorkspaceService
         {
             await DeleteWorkspaceCascadeAsync(membership.WorkspaceId, ct);
         }
+
+        // Auto-create a new clean solo household so the user is never left workspace-less.
+        await EnsureDefaultHouseholdAsync(userId, ct);
+
         return Result.Success();
     }
 

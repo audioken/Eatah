@@ -1306,6 +1306,44 @@ body.eatah-modal-open {
     text-align: left;
 }
 
+.eatah-profile-modal__section-toggle--sub {
+    margin-top: 12px;
+    font-size: 14px;
+    color: rgba(0, 0, 0, 0.6);
+}
+
+.eatah-profile-modal__field-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(0, 0, 0, 0.5);
+}
+
+.eatah-profile-modal__member-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.eatah-profile-modal__member-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    background: rgba(0, 0, 0, 0.07);
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text-dark);
+}
+
+.eatah-profile-modal__member-tag--self {
+    background: rgba(90, 174, 0, 0.12);
+    color: var(--color-brand);
+}
+
 .eatah-profile-modal__sub {
     margin-top: 12px;
     display: flex;
