@@ -25,6 +25,10 @@ public class ShoppingStateService
 
     public bool IsLoaded { get { lock (_gate) return _loaded; } }
 
+    /// <summary>Persists expanded weeks/groups across modal opens within a session. Cleared on workspace switch.</summary>
+    public HashSet<string> ExpandedWeeks { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public HashSet<string> ExpandedGroups { get; } = new(StringComparer.OrdinalIgnoreCase);
+
     public event Action? OnChanged;
 
     public Task<List<ShoppingItemResponse>> EnsureLoadedAsync(CancellationToken ct = default)
@@ -118,6 +122,8 @@ public class ShoppingStateService
             _loaded = false;
             _inflight = null;
         }
+        ExpandedWeeks.Clear();
+        ExpandedGroups.Clear();
         if (hadAny) OnChanged?.Invoke();
     }
 }

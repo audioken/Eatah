@@ -1,9 +1,11 @@
 @namespace Eatah.Client.Components.Pantry
+@using System.Globalization
 @inject ApiClient Api
 @inject ModalService Modals
 @inject ToastService Toasts
 @inject PantryStateService PantryState
 @inject ShoppingStateService ShoppingState
+@inject WeeklyPlanStateService WeeklyPlans
 @inject IngredientCheckState CheckState
 @inject ShoppingSyncService ShoppingSync
 @inject ChatState ChatState
@@ -177,7 +179,7 @@
                                 @foreach (var weekGroup in WeekGroups)
                                 {
                                     var weekKey = weekGroup.WeekKey;
-                                    var weekExpanded = _expandedWeeks.Contains(weekKey);
+                                    var weekExpanded = ShoppingState.ExpandedWeeks.Contains(weekKey);
                                     var weekPendingCount = weekGroup.MealGroups.Sum(m => m.Views.Count);
                                     <div class="eatah-shopping-week">
                                         <button type="button" class="eatah-shopping-week__header" @onclick="() => ToggleWeek(weekKey)">
@@ -232,7 +234,7 @@
                                                     else
                                                     {
                                                         var groupKey = GetMealGroupKey(mealGroup.MealName, weekKey, mealGroup.DayIndex);
-                                                        var isExpanded = _expandedGroups.Contains(groupKey);
+                                                        var isExpanded = ShoppingState.ExpandedGroups.Contains(groupKey);
                                                         <div class="eatah-shopping-group">
                                                             <button type="button" class="eatah-shopping-group__header"
                                                                     @onclick="() => ToggleGroup(groupKey)">
@@ -432,14 +434,12 @@
     </div>
 }
 
-@using System.Globalization
-
 @code {
     [CascadingParameter] private ModalInstance? ModalInstance { get; set; }
 
     private HashSet<Guid> _selectedShoppingItems = [];
-    private HashSet<string> _expandedGroups = new(StringComparer.OrdinalIgnoreCase);
-    private HashSet<string> _expandedWeeks = new(StringComparer.OrdinalIgnoreCase);
+
+    // Expanded state lives in ShoppingStateService (singleton) so it persists across modal opens.
 
     // List mode: false = detailed week/day view, true = clean flat deduplicated view
     private bool _cleanListMode;
@@ -623,8 +623,8 @@ TotalMealCount);
 
     private void ToggleWeek(string weekKey)
     {
-        if (!_expandedWeeks.Remove(weekKey))
-            _expandedWeeks.Add(weekKey);
+        if (!ShoppingState.ExpandedWeeks.Remove(weekKey))
+            ShoppingState.ExpandedWeeks.Add(weekKey);
     }
 
     private static string GetDayName(int dayIdx) => dayIdx switch
@@ -679,6 +679,7 @@ TotalMealCount);
         return (part.Trim(), null, null, dpId);
     }
 
+    // Only show the spinner when neither cache is warm (cold open or after workspace switch).
     private bool _isLoading = true;
     private string? _error;
 
@@ -699,27 +700,27 @@ TotalMealCount);
     private void Close() => Modals.CloseTop();
 
     private void OnPantryChanged() => InvokeAsync(StateHasChanged);
-    private void OnShoppingChanged() { ReinitGroups(); InvokeAsync(StateHasChanged); }
+    private void OnShoppingChanged() => InvokeAsync(StateHasChanged);
     private void OnWorkspaceChanged() => InvokeAsync(LoadAsync);
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
     private async Task LoadAsync()
     {
-        _isLoading = true;
+        // Skip the spinner when both caches are already warm — data is available instantly.
+        _isLoading = !PantryState.IsLoaded || !ShoppingState.IsLoaded;
         _error = null;
         try
         {
-            var pantryTask = Api.GetPantryAsync();
-            var shoppingTask = Api.GetShoppingListAsync();
+            // EnsureLoadedAsync returns instantly from cache if the state service already
+            // has data; it only hits the network on a cold start or after workspace switch.
+            await Task.WhenAll(
+                PantryState.EnsureLoadedAsync(),
+                ShoppingState.EnsureLoadedAsync());
 
-            await Task.WhenAll(pantryTask, shoppingTask);
-
-            var pantry = await pantryTask;
-            PantryState.SetPantry(pantry);
+            var pantry = PantryState.Items;
             CheckState.SetPantryItems(pantry.Select(p => p.Name));
             CheckState.SetPantryIngredientIds(pantry.Select(p => (p.Name, p.IngredientId)));
-            ShoppingState.SetShopping(await shoppingTask);
             ReinitGroups();
 
             // Load active sessions for current + next week so pantry coverage counts are
@@ -747,27 +748,30 @@ TotalMealCount);
         {
             var today = DateTime.UtcNow.Date;
             var next = today.AddDays(7);
-            var currentPlanTask = Api.GetWeeklyPlanByWeekAsync(ISOWeek.GetYear(today), ISOWeek.GetWeekOfYear(today));
-            var nextPlanTask = Api.GetWeeklyPlanByWeekAsync(ISOWeek.GetYear(next), ISOWeek.GetWeekOfYear(next));
-            await Task.WhenAll(currentPlanTask, nextPlanTask);
+            var (curYear, curWeek) = (ISOWeek.GetYear(today), ISOWeek.GetWeekOfYear(today));
+            var (nextYear, nextWeek) = (ISOWeek.GetYear(next), ISOWeek.GetWeekOfYear(next));
+
+            // Use the shared WeeklyPlanStateService so we never fetch a week that the
+            // Dashboard has already loaded into cache.
+            await Task.WhenAll(
+                WeeklyPlans.EnsureLoadedAsync(curYear, curWeek),
+                WeeklyPlans.EnsureLoadedAsync(nextYear, nextWeek));
 
             var sessions = new List<IngredientCheckState.ActiveSession>();
 
-            var currentPlan = await currentPlanTask;
+            var currentPlan = WeeklyPlans.TryGet(curYear, curWeek);
             if (currentPlan is not null)
             {
                 var todayDayIdx = DayIdx(today.DayOfWeek);
-                var currentWeek = ISOWeek.GetWeekOfYear(today);
                 sessions.AddRange(currentPlan.Days
                     .Where(d => d.Meal is not null && DayIdx(d.DayOfWeek) >= todayDayIdx)
                     .Select(d => new IngredientCheckState.ActiveSession(
-                        d.Id, d.Meal!.Id, d.Meal!.Name, DayIdx(d.DayOfWeek), currentWeek)));
+                        d.Id, d.Meal!.Id, d.Meal!.Name, DayIdx(d.DayOfWeek), curWeek)));
             }
 
-            var nextPlan = await nextPlanTask;
+            var nextPlan = WeeklyPlans.TryGet(nextYear, nextWeek);
             if (nextPlan is not null)
             {
-                var nextWeek = ISOWeek.GetWeekOfYear(next);
                 sessions.AddRange(nextPlan.Days
                     .Where(d => d.Meal is not null)
                     .Select(d => new IngredientCheckState.ActiveSession(
@@ -1141,26 +1145,25 @@ TotalMealCount);
 
     private void ToggleGroup(string key)
     {
-        if (!_expandedGroups.Remove(key))
-            _expandedGroups.Add(key);
+        if (!ShoppingState.ExpandedGroups.Remove(key))
+            ShoppingState.ExpandedGroups.Add(key);
     }
 
     /// <summary>
-    /// Auto-expand: find the earliest upcoming day (today + tomorrow first) that has unchecked
-    /// items and expand that week section + its meal groups. Falls back to the next N days with
-    /// pending items if today/tomorrow are all bought.
+    /// Auto-expand on first open: find today's pending items and expand that week + meal groups.
+    /// Falls back to the single nearest upcoming day if today has nothing pending.
+    /// Skipped entirely on subsequent opens — the singleton state remembers what was expanded.
     /// </summary>
     private void ReinitGroups()
     {
-        _expandedWeeks.Clear();
-        _expandedGroups.Clear();
+        // Already initialized this session — preserve the user's expand/collapse choices.
+        if (ShoppingState.ExpandedWeeks.Count > 0 || ShoppingState.ExpandedGroups.Count > 0)
+            return;
 
         var today = DateTime.Today;
         var todayDayIdx = GetDayIndexFromDate(today);
-        var tomorrowDate = today.AddDays(1);
         var todayWeek = ISOWeek.GetWeekOfYear(today);
         var todayPair = (Week: todayWeek, Day: todayDayIdx);
-        var tomorrowPair = (Week: ISOWeek.GetWeekOfYear(tomorrowDate), Day: GetDayIndexFromDate(tomorrowDate));
 
         // Collect all unchecked items with day info parsed from notes
         var pendingByDay = ShoppingState.Items
@@ -1179,36 +1182,35 @@ TotalMealCount);
             })
             .ToList();
 
-        // Try today and tomorrow first
+        // Try today only as smart default
         var focusPairs = pendingByDay
             .Select(x => (x.Week, x.Day))
-            .Where(p => (p.Week == todayPair.Week && p.Day == todayPair.Day) ||
-                        (p.Week == tomorrowPair.Week && p.Day == tomorrowPair.Day))
+            .Where(p => p.Week == todayPair.Week && p.Day == todayPair.Day)
             .Distinct()
             .ToList();
 
         if (!focusPairs.Any())
         {
-            // Today+tomorrow are empty or all bought – find the next 2 days with pending items
+            // Today has nothing pending — find the single nearest upcoming day
             focusPairs = pendingByDay
                 .Select(x => (x.Week, x.Day))
                 .Distinct()
                 .OrderBy(p => WeekDaySortKey(p.Week, p.Day, todayPair.Week, todayPair.Day))
-                .Take(2)
+                .Take(1)
                 .ToList();
         }
 
         foreach (var (week, day) in focusPairs)
         {
             var weekKey = $"v{week}";
-            _expandedWeeks.Add(weekKey);
+            ShoppingState.ExpandedWeeks.Add(weekKey);
 
             foreach (var meal in pendingByDay
                 .Where(x => x.Week == week && x.Day == day)
                 .Select(x => x.MealName)
                 .Distinct(StringComparer.OrdinalIgnoreCase))
             {
-                _expandedGroups.Add(GetMealGroupKey(meal, weekKey, day));
+                ShoppingState.ExpandedGroups.Add(GetMealGroupKey(meal, weekKey, day));
             }
         }
     }
