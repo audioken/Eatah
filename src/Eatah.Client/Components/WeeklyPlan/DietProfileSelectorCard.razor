@@ -222,7 +222,8 @@
         }
         try
         {
-            _evaluation = await Api.EvaluateWeeklyPlanAsync(Plan.Id, _selectedProfileId.Value);
+            _evaluation = await ProfileState.EnsureEvaluationAsync(Plan.Id, _selectedProfileId.Value, _planSignature ??
+string.Empty);
         }
         catch
         {

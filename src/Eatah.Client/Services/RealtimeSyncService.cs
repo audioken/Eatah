@@ -20,6 +20,7 @@ public sealed class RealtimeSyncService : IDisposable
     private readonly WeeklyPlanStateService _weeklyPlans;
     private readonly MealsStateService _meals;
     private readonly PantryCoverageStateService _coverage;
+    private readonly DietProfileState _dietProfiles;
     private bool _started;
 
     public RealtimeSyncService(
@@ -29,7 +30,8 @@ public sealed class RealtimeSyncService : IDisposable
         ShoppingStateService shopping,
         WeeklyPlanStateService weeklyPlans,
         MealsStateService meals,
-        PantryCoverageStateService coverage)
+        PantryCoverageStateService coverage,
+        DietProfileState dietProfiles)
     {
         _hub = hub;
         _workspace = workspace;
@@ -38,6 +40,7 @@ public sealed class RealtimeSyncService : IDisposable
         _weeklyPlans = weeklyPlans;
         _meals = meals;
         _coverage = coverage;
+        _dietProfiles = dietProfiles;
     }
 
     public void Start()
@@ -89,6 +92,7 @@ public sealed class RealtimeSyncService : IDisposable
         _weeklyPlans.Clear();
         _meals.Clear();
         _coverage.Clear();
+        _dietProfiles.ClearEvaluations();
     }
 
     public void Dispose()
