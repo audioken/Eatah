@@ -1,57 +1,48 @@
 @namespace Eatah.Client.Components.Meals
 
-<div>
+<div class="eatah-ingredient-input">
 	<label class="eatah-ingredient-input__label">Ingredienser</label>
 
-	@for (var i = 0; i < Ingredients.Count; i++)
+	@if (_chips.Any())
 	{
-		var index = i;
-		<div class="eatah-ingredient-input__row">
-			<input type="text"
-				   class="eatah-ingredient-input__field"
-				   placeholder="t.ex. Tomater"
-				   value="@Ingredients[index]"
-				   @oninput="e => Update(index, e.Value?.ToString() ?? string.Empty)" />
-			<button type="button"
-					class="eatah-ingredient-input__remove"
-					disabled="@(Ingredients.Count <= 1)"
-					title="Ta bort ingrediens"
-					@onclick="() => Remove(index)">
-				<Icon Name="close" Size="14" />
-			</button>
+		<div class="eatah-ingredient-input__chips">
+			@foreach (var name in _chips)
+			{
+				var capName = name;
+				<span class="eatah-ingredient-input__chip">
+					@capName
+					<button type="button" class="eatah-ingredient-input__chip-remove" @onclick="() => Remove(capName)"
+							aria-label="Ta bort @capName">
+						<Icon Name="close" Size="10" />
+					</button>
+				</span>
+			}
 		</div>
 	}
 
-	<button type="button"
-			class="eatah-ingredient-input__add-btn"
-			@onclick="Add">
-		+ Lägg till ingrediens
-	</button>
+	<IngredientSearch Placeholder="Sök eller lägg till ingrediens…" OnSelected="AddIngredient" />
 </div>
 
 @code {
 	[Parameter] public List<string> Ingredients { get; set; } = [];
 	[Parameter] public EventCallback<List<string>> IngredientsChanged { get; set; }
 
-	private async Task Update(int index, string value)
-	{
-		Ingredients[index] = value;
-		await IngredientsChanged.InvokeAsync(Ingredients);
-	}
+	private IEnumerable<string> _chips => Ingredients.Where(i => !string.IsNullOrWhiteSpace(i));
 
-	private async Task Add()
+	private async Task AddIngredient(IngredientResponse ingredient)
 	{
-		Ingredients.Add(string.Empty);
-		await IngredientsChanged.InvokeAsync(Ingredients);
-	}
-
-	private async Task Remove(int index)
-	{
-		if (Ingredients.Count <= 1)
+		var name = ingredient.Name.Trim();
+		if (!Ingredients.Any(i => i.Equals(name, StringComparison.OrdinalIgnoreCase)))
 		{
-			return;
+			Ingredients.RemoveAll(i => string.IsNullOrWhiteSpace(i));
+			Ingredients.Add(name);
+			await IngredientsChanged.InvokeAsync(Ingredients);
 		}
-		Ingredients.RemoveAt(index);
+	}
+
+	private async Task Remove(string name)
+	{
+		Ingredients.RemoveAll(i => i.Equals(name, StringComparison.OrdinalIgnoreCase));
 		await IngredientsChanged.InvokeAsync(Ingredients);
 	}
 }
