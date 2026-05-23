@@ -23,8 +23,7 @@
             @foreach (var thread in _threads)
             {
                 var isActive = ChatState.ActiveThread?.Id == thread.Id;
-                <button type="button"
-                        class="eatah-chat-panel__tab @(isActive ? "eatah-chat-panel__tab--active" : "")"
+                <button type="button" class="eatah-chat-panel__tab @(isActive ? "eatah-chat-panel__tab--active" : "")"
                         @onclick="() => SelectThread(thread)">
                     @if (thread.Type == "Group")
                     {
