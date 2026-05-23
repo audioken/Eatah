@@ -10,89 +10,54 @@
      @onclick="CloseIfBackdrop">
     <div class="eatah-chat-panel" @onclick:stopPropagation="true">
 
-        <div class="eatah-chat-panel__body">
+        <!-- Header (matches other modals) -->
+        <div class="eatah-chat-panel__header">
+            <h2 class="eatah-chat-panel__title">Chattar</h2>
+            <button type="button" class="eatah-chat-panel__close" @onclick="CloseAsync" aria-label="Stäng">
+                <Icon Name="close" Size="20" />
+            </button>
+        </div>
 
-            <!-- Thread list sidebar -->
-            <div class="eatah-chat-panel__sidebar">
-                <div class="eatah-chat-panel__sidebar-header">
-                    <span>Chattar</span>
-                    <button type="button" class="eatah-chat-panel__close" @onclick="CloseAsync">
-                        <Icon Name="close" Size="16" />
-                    </button>
-                </div>
-
-                <div class="eatah-chat-panel__thread-list">
-                    @foreach (var thread in _threads)
+        <!-- Thread tabs -->
+        <div class="eatah-chat-panel__tabs">
+            @foreach (var thread in _threads)
+            {
+                var isActive = ChatState.ActiveThread?.Id == thread.Id;
+                <button type="button"
+                        class="eatah-chat-panel__tab @(isActive ? "eatah-chat-panel__tab--active" : "")"
+                        @onclick="() => SelectThread(thread)">
+                    @if (thread.Type == "Group")
                     {
-                        var isActive = ChatState.ActiveThread?.Id == thread.Id;
-                        <button type="button"
-                                class="eatah-chat-thread-item @(isActive ? "eatah-chat-thread-item--active" : "")"
-                                @onclick="() => SelectThread(thread)">
-                            @if (thread.Type == "Group")
-                            {
-                                <div class="eatah-chat-thread-item__avatar eatah-chat-thread-item__avatar--group">
-                                    <Icon Name="house" Size="14" />
-                                </div>
-                                <div class="eatah-chat-thread-item__info">
-                                    <span class="eatah-chat-thread-item__name">Hushållet</span>
-                                    @if (thread.LastMessagePreview is not null)
-                                    {
-                                        <span class="eatah-chat-thread-item__preview">@thread.LastMessagePreview</span>
-                                    }
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="eatah-chat-thread-item__avatar">
-                                    <Icon Name="profile" Size="14" />
-                                </div>
-                                <div class="eatah-chat-thread-item__info">
-                                    <span class="eatah-chat-thread-item__name">@(thread.DirectPartnerDisplayName ??
-                                                                                                                "Okänd")</span>
-                                        @if (thread.LastMessagePreview is not null)
-                                        {
-                                            <span class="eatah-chat-thread-item__preview">@thread.LastMessagePreview</span>
-                                        }
-                                    </div>
-                                }
-                            </button>
-                        }
-
-                        @if (_isLoading)
-                        {
-                            <div class="eatah-chat-panel__loading">Laddar…</div>
-                        }
-                    </div>
-                </div>
-
-                <!-- Active thread view -->
-                <div class="eatah-chat-panel__thread">
-                    @if (ChatState.ActiveThread is { } activeThread)
-                    {
-                        <div class="eatah-chat-panel__thread-header">
-                            @if (activeThread.Type == "Group")
-                            {
-                                <Icon Name="house" Size="15" CssClass="eatah-chat-panel__thread-icon" />
-                                <span>Hushållet</span>
-                            }
-                            else
-                            {
-                                <Icon Name="profile" Size="15" CssClass="eatah-chat-panel__thread-icon" />
-                                <span>@(activeThread.DirectPartnerDisplayName ?? "Okänd")</span>
-                            }
-                        </div>
-                        <ChatThreadView Thread="activeThread" />
+                        <Icon Name="house" Size="14" />
+                        <span>Hushållet</span>
                     }
                     else
                     {
-                        <div class="eatah-chat-panel__empty">Välj en konversation</div>
+                        <Icon Name="profile" Size="14" />
+                        <span>@(thread.DirectPartnerDisplayName ?? "Okänd")</span>
                     }
-                </div>
-
-            </div>
-
+                </button>
+            }
+            @if (_isLoading)
+            {
+                <div class="eatah-chat-panel__tabs-loading">Laddar…</div>
+            }
         </div>
+
+        <!-- Active thread view (full width) -->
+        <div class="eatah-chat-panel__thread">
+            @if (ChatState.ActiveThread is { } activeThread)
+            {
+                <ChatThreadView Thread="activeThread" />
+            }
+            else
+            {
+                <div class="eatah-chat-panel__empty">Välj en konversation</div>
+            }
+        </div>
+
     </div>
+</div>
 
 @code {
     private List<ChatThreadSummaryResponse> _threads = [];
