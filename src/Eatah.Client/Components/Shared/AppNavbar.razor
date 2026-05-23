@@ -1,83 +1,14 @@
-@inject NavigationManager Nav
-@inject ToastService Toasts
 @inject ModalService Modals
 @inject ChatState ChatState
-@implements IDisposable
 
-<nav class="eatah-navbar" aria-label="Huvudnavigering">
-    @foreach (var item in _items)
-    {
-        var isActive = IsActive(item);
-        var classes = "eatah-navbar__item" + (isActive ? " eatah-navbar__item--active" : string.Empty);
-        <button type="button" class="@classes" @onclick="() => HandleClick(item)"
-                aria-current="@(isActive ? "page" : null)">
-            <Icon Name="@item.Icon" CssClass="eatah-navbar__item-icon" />
-            <span class="eatah-navbar__item-label">@item.Label</span>
-        </button>
-    }
-</nav>
+<div class="eatah-fab-container">
+    <button type="button" class="eatah-fab" @onclick="() => Modals.Show<ShoppingModal>()" aria-label="Köplista">
+        <Icon Name="basket" Size="24" />
+    </button>
+    <button type="button" class="eatah-fab" @onclick="() => ChatState.Open()" aria-label="Chat">
+        <Icon Name="chat" Size="24" />
+    </button>
+</div>
 
 @code {
-    private record NavItem(string Label, string Icon, NavAction Action, string? Route = null);
-
-    private enum NavAction { Navigate, ComingSoon, Profile, Chat, DietProfiles, Shopping }
-
-    private readonly List<NavItem> _items = new()
-    {
-        new("Kost", "vegan", NavAction.DietProfiles),
-        new("Köplista", "basket", NavAction.Shopping),
-        new("Matplan", "calendar", NavAction.Navigate, "/"),
-        new("Chat", "chat", NavAction.Chat), // opens chat popup
-        new("Profil", "profile", NavAction.Profile), // opens profile modal
-    };
-
-    protected override void OnInitialized()
-    {
-        Nav.LocationChanged += OnLocationChanged;
-    }
-
-    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
-    {
-        InvokeAsync(StateHasChanged);
-    }
-
-    private bool IsActive(NavItem item)
-    {
-        if (item.Route is null) return false;
-        var current = Nav.ToBaseRelativePath(Nav.Uri).Trim('/');
-        var route = item.Route.Trim('/');
-        return string.Equals(current, route, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private void HandleClick(NavItem item)
-    {
-        switch (item.Action)
-        {
-            case NavAction.Navigate when item.Route is not null:
-                // Build an absolute URI respecting the app base path (important for
-                // sub-path deployments such as GitHub Pages /Eatah).
-                var target = item.Route == "/"
-                    ? Nav.BaseUri
-                    : Nav.BaseUri.TrimEnd('/') + "/" + item.Route.TrimStart('/');
-                Nav.NavigateTo(target);
-                break;
-            case NavAction.ComingSoon:
-                Toasts.Show($"{item.Label} kommer snart");
-                break;
-            case NavAction.Profile:
-                Modals.Show<ProfileModal>();
-                break;
-            case NavAction.DietProfiles:
-                Modals.Show<DietProfilesModal>();
-                break;
-            case NavAction.Chat:
-                ChatState.Open();
-                break;
-            case NavAction.Shopping:
-                Modals.Show<ShoppingModal>();
-                break;
-        }
-    }
-
-    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
 }

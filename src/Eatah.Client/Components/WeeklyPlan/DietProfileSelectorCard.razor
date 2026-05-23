@@ -5,8 +5,9 @@
 @inject ApiClient Api
 @inject ToastService Toasts
 @inject DietProfileState ProfileState
+@inject ModalService Modals
 
-<div class="eatah-card eatah-diet-card">
+<div class="eatah-card eatah-diet-card eatah-diet-card--clickable" @onclick="() => Modals.Show<DietProfilesModal>()">
     <!-- Top row: title + score pill + dropdown -->
     <div class="eatah-diet-card__header">
         <div class="eatah-diet-card__title-row">
@@ -21,7 +22,7 @@
         </div>
         @if (_profiles is { Count: > 0 })
         {
-            <div class="eatah-diet-card__select-wrap">
+            <div class="eatah-diet-card__select-wrap" @onclick:stopPropagation>
                 @if (IsLocked)
                 {
                     <span class="eatah-diet-card__select-locked">
@@ -110,7 +111,7 @@
         </div>
 
         <button type="button" class="eatah-diet-card__randomize" disabled="@(_isRandomizing || IsLocked)"
-                @onclick="HandleRandomize">
+                @onclick="HandleRandomize" @onclick:stopPropagation>
             <Icon Name="dice" Size="20" />
             <span class="eatah-diet-card__randomize-label">Slumpa maträtter</span>
         </button>
