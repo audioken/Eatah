@@ -534,6 +534,10 @@ h1:focus { outline: none; }
     z-index: 20;
 }
 
+.dashboard-fixed-card .eatah-diet-card {
+    background: linear-gradient(270deg, rgba(85, 101, 104, 1) 0%, rgba(174, 207, 214, 1) 100%);
+}
+
 /* Spacer that reserves the layout space occupied by the fixed card */
 .dashboard-card-spacer {
     height: 98px;
