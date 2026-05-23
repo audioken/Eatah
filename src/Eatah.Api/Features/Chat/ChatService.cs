@@ -1,4 +1,5 @@
 using Eatah.Api.Common;
+using Eatah.Api.Features.Push;
 using Eatah.Domain.Entities;
 using Eatah.Infrastructure.Identity;
 using Eatah.Infrastructure.Persistence;
@@ -17,13 +18,17 @@ public class ChatService
     private readonly IWorkspaceContext _ws;
     private readonly UserManager<EatahUser> _users;
     private readonly IHubContext<ChatHub> _hub;
+    private readonly IPushService _push;
+    private readonly ILogger<ChatService> _logger;
 
-    public ChatService(EatahDbContext db, IWorkspaceContext ws, UserManager<EatahUser> users, IHubContext<ChatHub> hub)
+    public ChatService(EatahDbContext db, IWorkspaceContext ws, UserManager<EatahUser> users, IHubContext<ChatHub> hub, IPushService push, ILogger<ChatService> logger)
     {
         _db = db;
         _ws = ws;
         _users = users;
         _hub = hub;
+        _push = push;
+        _logger = logger;
     }
 
     public async Task<ChatThreadResponse> GetOrCreateGroupThreadAsync(CancellationToken ct)
@@ -204,6 +209,42 @@ public class ChatService
         var authors = new Dictionary<Guid, string> { [userId] = user?.DisplayName ?? "" };
         var response = MapMessage(msg, authors);
         await _hub.Clients.Group($"thread:{threadId}").SendAsync("MessageReceived", response, ct);
+
+        // Best-effort Web Push to other members
+        if (_push.IsConfigured)
+        {
+            try
+            {
+                var senderName = user?.DisplayName ?? "Någon";
+                var pushBody = text.Length > 80 ? text[..80] + "…" : text;
+
+                List<Guid> recipientIds;
+                if (thread.Type == ChatThreadType.Group)
+                {
+                    recipientIds = await _db.WorkspaceMembers
+                        .Where(m => m.WorkspaceId == wsId && m.UserId != userId)
+                        .Select(m => m.UserId)
+                        .ToListAsync(ct);
+                }
+                else
+                {
+                    recipientIds = await _db.ChatThreadParticipants
+                        .Where(p => p.ThreadId == threadId && p.UserId != userId)
+                        .Select(p => p.UserId)
+                        .ToListAsync(ct);
+                }
+
+                foreach (var recipientId in recipientIds)
+                {
+                    await _push.SendToUserAsync(recipientId, senderName, pushBody, "ChatMessage", null, ct);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Web Push delivery failed for chat message {MessageId}", msg.Id);
+            }
+        }
+
         return response;
     }
 
