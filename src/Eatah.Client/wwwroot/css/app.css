@@ -524,6 +524,22 @@ h1:focus { outline: none; }
     }
 }
 
+/* Dashboard: diet profile card fixed below the header, never scrolls */
+.dashboard-fixed-card {
+    position: fixed;
+    top: calc(var(--header-height) + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
+    left: 0;
+    right: 0;
+    padding: 0 16px;
+    z-index: 20;
+}
+
+/* Spacer that reserves the layout space occupied by the fixed card */
+.dashboard-card-spacer {
+    height: 98px;
+    margin-bottom: 1rem;
+}
+
 /* ============================================================
    Icon component – Font Awesome solid icons. currentColor controls colour.
    ============================================================ */

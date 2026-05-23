@@ -14,20 +14,6 @@
 @implements IDisposable
 
 <div class="max-w-[1000px] mx-auto">
-	<div class="flex items-center justify-between mb-4 px-1">
-		<button
-			class="p-2 rounded-lg text-white/80 hover:bg-white/15 active:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-			@onclick="() => NavigateWeekAsync(-1)" disabled="@(_weekOffset <= -1 || _isLoading)">
-			<Icon Name="chevron-left" Size="18" />
-		</button>
-		<span class="text-sm font-semibold text-white">Vecka @_viewedWeekNumber</span>
-		<button
-			class="p-2 rounded-lg text-white/80 hover:bg-white/15 active:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-			@onclick="() => NavigateWeekAsync(1)" disabled="@(_weekOffset >= 1 || _isLoading)">
-			<Icon Name="chevron-right" Size="18" />
-		</button>
-	</div>
-
 	@if (_error is not null)
 	{
 		<div class="mb-4 p-3 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm">
@@ -48,14 +34,19 @@
 	}
 	else
 	{
-		<div class="mb-4">
-			<DietProfileSelectorCard Plan="_plan" WeekOffset="_weekOffset" OnRandomize="RandomizeAsync" />
-		</div>
+		<div class="dashboard-card-spacer"></div>
 
 		<WeekView Days="_plan.Days" WeekOffset="_weekOffset" RandomizingDay="_randomizingDay" OnDaySelected="OpenSelector"
 				  OnDayCleared="ClearDayAsync" OnDayRandomDb="RandomizeDayDbAsync" OnDayRandomAi="StartAiForDayAsync" />
 	}
 </div>
+
+@if (_plan is not null)
+{
+	<div class="dashboard-fixed-card">
+		<DietProfileSelectorCard Plan="_plan" WeekOffset="_weekOffset" OnRandomize="RandomizeAsync" />
+	</div>
+}
 
 <MealSelector IsOpen="_selectorOpen" Day="_selectedDay?.DayOfWeek" Meals="_meals" OnSelect="AssignMealAsync"
 			  OnCreate="CreateMealFromSelectorAsync" OnClose="CloseSelector" />
@@ -192,7 +183,38 @@
 
 	private void UpdateHeader()
 	{
-		Header.Set(center: builder => builder.AddContent(0, "Matplan"));
+		Header.Set(center: builder =>
+		{
+			builder.OpenElement(0, "div");
+			builder.AddAttribute(1, "class", "flex items-center gap-1");
+
+			builder.OpenElement(2, "button");
+			builder.AddAttribute(3, "class", "p-2 rounded-lg text-white/80 hover:bg-white/15 active:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors");
+			builder.AddAttribute(4, "disabled", _weekOffset <= -1 || _isLoading);
+			builder.AddAttribute(5, "onclick", EventCallback.Factory.Create(this, () => NavigateWeekAsync(-1)));
+			builder.OpenComponent<Icon>(6);
+			builder.AddAttribute(7, "Name", "chevron-left");
+			builder.AddAttribute(8, "Size", 18);
+			builder.CloseComponent();
+			builder.CloseElement();
+
+			builder.OpenElement(9, "span");
+			builder.AddAttribute(10, "class", "text-sm font-semibold text-white px-1");
+			builder.AddContent(11, $"Vecka {_viewedWeekNumber}");
+			builder.CloseElement();
+
+			builder.OpenElement(12, "button");
+			builder.AddAttribute(13, "class", "p-2 rounded-lg text-white/80 hover:bg-white/15 active:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors");
+			builder.AddAttribute(14, "disabled", _weekOffset >= 1 || _isLoading);
+			builder.AddAttribute(15, "onclick", EventCallback.Factory.Create(this, () => NavigateWeekAsync(1)));
+			builder.OpenComponent<Icon>(16);
+			builder.AddAttribute(17, "Name", "chevron-right");
+			builder.AddAttribute(18, "Size", 18);
+			builder.CloseComponent();
+			builder.CloseElement();
+
+			builder.CloseElement();
+		});
 	}
 
 	private async Task LoadAsync()
@@ -291,6 +313,7 @@
 	{
 		_weekOffset = Math.Clamp(_weekOffset + delta, -1, 1);
 		_error = null;
+		UpdateHeader();
 		// Cache-first: if the week is already loaded the swap is instant — no spinner, no flicker.
 		// Only the very first time we visit a previously-unseen week does this hit the network.
 		var (year, week) = _viewedKey;
@@ -303,6 +326,7 @@
 		{
 			_error = $"Kunde inte ladda veckoplanen: {ex.Message}";
 		}
+		UpdateHeader();
 	}
 
 	private void OpenSelector(DayPlanResponse day)
