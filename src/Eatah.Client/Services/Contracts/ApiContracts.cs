@@ -128,6 +128,12 @@ public record NotificationResponse(Guid Id, NotificationType Type, string Payloa
 public record UpdateProfileRequest(string? DisplayName, string? Email);
 public record DeleteAccountRequest(string Password);
 
+// ---- Push Notifications ----
+
+public record SubscribePushRequest(string Endpoint, string P256dh, string Auth);
+public record UnsubscribePushRequest(string Endpoint);
+public record VapidPublicKeyResponse(string PublicKey);
+
 // ---- Ingredients / Pantry / Shopping ----
 
 public record IngredientResponse(Guid Id, string Name, string? Category, bool IsSystem);

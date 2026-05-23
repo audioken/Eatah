@@ -40,3 +40,22 @@ async function onFetch(request) {
     }
     return cachedResponse || fetch(request.request);
 }
+
+self.addEventListener('push', event => {
+    if (!event.data) return;
+    const data = event.data.json();
+    event.waitUntil(
+        self.registration.showNotification(data.title || 'Eatah', {
+            body: data.body || '',
+            icon: data.icon || '/icons/app-icon.svg',
+            badge: data.badge || '/icons/app-icon.svg',
+            data: data.data
+        })
+    );
+});
+
+self.addEventListener('notificationclick', event => {
+    event.notification.close();
+    event.waitUntil(clients.openWindow('/'));
+});
+

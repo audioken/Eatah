@@ -11,6 +11,7 @@ using Eatah.Api.Features.Friends;
 using Eatah.Api.Features.Meals;
 using Eatah.Api.Features.Notifications;
 using Eatah.Api.Features.Pantry;
+using Eatah.Api.Features.Push;
 using Eatah.Api.Features.WeeklyPlan;
 using Eatah.Api.Features.Workspaces;
 using Eatah.Api.Middleware;
@@ -64,6 +65,7 @@ builder.Services.AddNotificationFeature();
 builder.Services.AddFriendFeature();
 builder.Services.AddPantryFeature();
 builder.Services.AddChatFeature();
+builder.Services.AddPushFeature(builder.Configuration);
 
 builder.Services.AddSignalR();
 
@@ -197,6 +199,7 @@ app.MapNotificationEndpoints();
 app.MapFriendEndpoints();
 app.MapPantryEndpoints();
 app.MapChatEndpoints();
+app.MapPushEndpoints();
 app.MapHub<ChatHub>("/hubs/chat").RequireAuthorization();
 
 app.Run();

@@ -30,6 +30,7 @@ public class EatahDbContext : IdentityDbContext<EatahUser, IdentityRole<Guid>, G
     public DbSet<ChatThreadParticipant> ChatThreadParticipants => Set<ChatThreadParticipant>();
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
     public DbSet<ChatReaction> ChatReactions => Set<ChatReaction>();
+    public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -25,6 +25,7 @@ builder.Services.AddSingleton<HeaderState>();
 builder.Services.AddSingleton<AuthState>();
 builder.Services.AddSingleton<WorkspaceState>();
 builder.Services.AddSingleton<ChatState>();
+builder.Services.AddSingleton<PushNotificationService>();
 var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "https://eatah.onrender.com/";
 
 builder.Services.AddSingleton<ChatHubService>(sp => new ChatHubService(

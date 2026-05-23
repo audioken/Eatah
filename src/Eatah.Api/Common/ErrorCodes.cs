@@ -75,4 +75,7 @@ public static class ErrorCodes
     public const string ChatMessageTooLong = "chat_message_too_long";
     public const string ChatReactionInvalid = "chat_reaction_invalid";
     public const string ChatNotBuddies = "chat_not_buddies";
+
+    // Push notifications
+    public const string PushNotConfigured = "push_not_configured";
 }

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Eatah.Api.Common;
+using Eatah.Api.Features.Push;
 using Eatah.Domain.Entities;
 using Eatah.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -17,20 +18,40 @@ public interface INotificationService
 public class NotificationService : INotificationService
 {
     private readonly EatahDbContext _db;
-    public NotificationService(EatahDbContext db) => _db = db;
+    private readonly IPushService _push;
+    private readonly ILogger<NotificationService> _logger;
+
+    public NotificationService(EatahDbContext db, IPushService push, ILogger<NotificationService> logger)
+    {
+        _db = db;
+        _push = push;
+        _logger = logger;
+    }
 
     public async Task NotifyAsync(Guid userId, NotificationType type, object payload, CancellationToken ct)
     {
+        var payloadJson = JsonSerializer.Serialize(payload);
         var n = new Notification
         {
             Id = Guid.NewGuid(),
             UserId = userId,
             Type = type,
-            Payload = JsonSerializer.Serialize(payload),
+            Payload = payloadJson,
             CreatedAt = DateTime.UtcNow
         };
         _db.Notifications.Add(n);
         await _db.SaveChangesAsync(ct);
+
+        // Best-effort Web Push — failures must never break the notification save.
+        var (title, body) = GetPushText(type);
+        try
+        {
+            await _push.SendToUserAsync(userId, title, body, type.ToString(), payloadJson, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Web Push delivery failed for user {UserId} ({Type})", userId, type);
+        }
     }
 
     public async Task<List<NotificationResponse>> GetMineAsync(Guid userId, bool unreadOnly, CancellationToken ct)
@@ -64,4 +85,13 @@ public class NotificationService : INotificationService
             .Where(n => n.UserId == userId && n.ReadAt == null)
             .ExecuteUpdateAsync(s => s.SetProperty(n => n.ReadAt, now), ct);
     }
+
+    private static (string title, string body) GetPushText(NotificationType type) => type switch
+    {
+        NotificationType.FriendRequest => ("Eatah", "Du har fått en ny vänförfrågan"),
+        NotificationType.FriendRequestAccepted => ("Eatah", "Din vänförfrågan accepterades"),
+        NotificationType.ChatMessage => ("Eatah", "Du har ett nytt meddelande"),
+        NotificationType.ChatMention => ("Eatah", "Du nämndes i ett meddelande"),
+        _ => ("Eatah", "Du har en ny notis")
+    };
 }

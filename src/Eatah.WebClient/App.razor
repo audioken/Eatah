@@ -1,6 +1,11 @@
 @namespace Eatah.WebClient
 @using Microsoft.AspNetCore.Components.Routing
 @using Eatah.Client.Shared
+@using Eatah.Client.Services
+@using Eatah.WebClient.Services
+@inject PushNotificationService PushNotifications
+@inject AuthState AuthState
+@implements IDisposable
 
 <Router AppAssembly="@typeof(App).Assembly"
         AdditionalAssemblies="new[] { typeof(Eatah.Client.Services.ApiClient).Assembly }">
@@ -14,3 +19,28 @@
         </LayoutView>
     </NotFound>
 </Router>
+
+@code {
+    protected override void OnInitialized()
+    {
+        AuthState.OnChange += OnAuthChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        if (AuthState.IsInitialized && AuthState.IsAuthenticated)
+            await PushNotifications.TryInitializeAsync();
+    }
+
+    private async void OnAuthChanged()
+    {
+        if (AuthState.IsAuthenticated)
+            await PushNotifications.TryInitializeAsync();
+    }
+
+    public void Dispose()
+    {
+        AuthState.OnChange -= OnAuthChanged;
+    }
+}
