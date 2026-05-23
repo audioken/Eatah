@@ -2641,6 +2641,10 @@ body.eatah-modal-open {
     animation: eatah-fade-in 0.15s ease-out;
 }
 
+.eatah-chat-overlay--hidden {
+    display: none;
+}
+
 /* Chat panel – same visual language as .eatah-modal */
 .eatah-chat-panel {
     background: linear-gradient(180deg, #f0f6f0 0%, #d8e4d8 100%);
