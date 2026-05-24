@@ -119,7 +119,7 @@ public record FriendResponse(Guid Id, string DisplayName);
 
 // ---- Notifications ----
 
-public enum NotificationType { FriendRequest = 0, FriendRequestAccepted = 1, ChatMessage = 2, ChatMention = 3 }
+public enum NotificationType { FriendRequest = 0, FriendRequestAccepted = 1, ChatMessage = 2, ChatMention = 3, HouseholdMemberLeft = 4 }
 
 public record NotificationResponse(Guid Id, NotificationType Type, string Payload, DateTime CreatedAt, DateTime? ReadAt);
 

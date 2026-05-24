@@ -226,6 +226,10 @@
                     doc.RootElement.TryGetProperty("byDisplayName", out var n)
                         ? $"{n.GetString()} accepterade din inbjudan"
                         : "Din inbjudan accepterades",
+                NotificationType.HouseholdMemberLeft =>
+                    doc.RootElement.TryGetProperty("displayName", out var dn)
+                        ? $"{dn.GetString()} lämnade hushållet"
+                        : "En medlem lämnade hushållet",
                 _ => "Ny notis"
             };
         }

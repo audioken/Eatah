@@ -19,7 +19,7 @@ public class AnthropicClient : IAiClient
         _logger = logger;
     }
 
-    public async Task<string> CompleteAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken)
+    public async Task<string> CompleteAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken, float temperature = 0.7f)
     {
         if (string.IsNullOrWhiteSpace(_settings.AnthropicApiKey))
         {
@@ -34,6 +34,7 @@ public class AnthropicClient : IAiClient
         {
             model = _settings.AnthropicModel,
             max_tokens = 2048,
+            temperature = (double)temperature,
             system = systemPrompt,
             messages = new[]
             {

@@ -21,7 +21,7 @@ public class AiServiceException : Exception
 
 public interface IAiClient
 {
-    Task<string> CompleteAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken);
+    Task<string> CompleteAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken, float temperature = 0.7f);
 }
 
 public class GeminiClient : IAiClient
@@ -37,7 +37,7 @@ public class GeminiClient : IAiClient
         _logger = logger;
     }
 
-    public async Task<string> CompleteAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken)
+    public async Task<string> CompleteAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken, float temperature = 0.7f)
     {
         if (string.IsNullOrWhiteSpace(_settings.ApiKey))
         {
@@ -63,7 +63,7 @@ public class GeminiClient : IAiClient
             },
             generationConfig = new
             {
-                temperature = 0.2,
+                temperature = (double)temperature,
                 responseMimeType = "application/json"
             }
         };

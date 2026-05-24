@@ -92,6 +92,7 @@ public class NotificationService : INotificationService
         NotificationType.FriendRequestAccepted => ("Eatah", "Din vänförfrågan accepterades"),
         NotificationType.ChatMessage => ("Eatah", "Du har ett nytt meddelande"),
         NotificationType.ChatMention => ("Eatah", "Du nämndes i ett meddelande"),
+        NotificationType.HouseholdMemberLeft => ("Eatah", "En medlem har lämnat ert hushåll"),
         _ => ("Eatah", "Du har en ny notis")
     };
 }

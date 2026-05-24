@@ -69,7 +69,7 @@ public class AiDietRuleGenerator
     {
         var userPrompt = BuildUserPrompt(request);
 
-        var raw = await _aiClient.CompleteAsync(SystemPrompt, userPrompt, cancellationToken);
+        var raw = await _aiClient.CompleteAsync(SystemPrompt, userPrompt, cancellationToken, temperature: 0.2f);
         var generated = ParseAndValidate(raw, request.Name);
 
         var profile = new DietProfile

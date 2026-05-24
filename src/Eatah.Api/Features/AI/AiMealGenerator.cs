@@ -83,7 +83,7 @@ public class AiMealGenerator
         }
 
         var userPrompt = BuildUserPrompt(request, profile, plan, allowedCategories, retryHint: null);
-        var raw = await _aiClient.CompleteAsync(SystemPrompt, userPrompt, cancellationToken);
+        var raw = await _aiClient.CompleteAsync(SystemPrompt, userPrompt, cancellationToken, temperature: 1.1f);
         var parsed = ParseAndValidate(raw);
 
         if (allowedCategories is not null && !allowedCategories.Contains(parsed.Category))
@@ -94,7 +94,7 @@ public class AiMealGenerator
 
             var retryPrompt = BuildUserPrompt(request, profile, plan, allowedCategories,
                 retryHint: $"Ditt förra förslag var {parsed.Category} vilket inte är tillåtet. Välj STRIKT en av: {string.Join(", ", allowedCategories)}.");
-            var retryRaw = await _aiClient.CompleteAsync(SystemPrompt, retryPrompt, cancellationToken);
+            var retryRaw = await _aiClient.CompleteAsync(SystemPrompt, retryPrompt, cancellationToken, temperature: 1.1f);
             parsed = ParseAndValidate(retryRaw);
 
             if (!allowedCategories.Contains(parsed.Category))
@@ -148,6 +148,20 @@ public class AiMealGenerator
         return allowed;
     }
 
+    private static readonly string[] CuisineHints =
+    [
+        "asiatisk (t.ex. thailändsk, japansk, kinesisk eller koreansk)",
+        "medelhavsinspirerad (t.ex. italiensk, grekisk eller spansk)",
+        "mellanösternsinspirerad (t.ex. libanesisk, marockansk eller turkisk)",
+        "nordisk husmanskost",
+        "mexikansk eller latinamerikansk",
+        "indisk eller sydasiatisk",
+        "fransk bistrokök",
+        "snabb vardagsrätt (max 20 min)",
+        "ugnsrätt eller gryta",
+        "soppa eller sallad som huvudrätt",
+    ];
+
     private static string BuildUserPrompt(
         GenerateMealRequest request,
         DietProfile? profile,
@@ -184,6 +198,13 @@ public class AiMealGenerator
                 : "Inga kategorier är tillåtna.");
         }
 
+        // Inject a random cuisine/style hint to drive variety across calls.
+        if (retryHint is null)
+        {
+            var hint = CuisineHints[(int)(DateTime.UtcNow.Ticks % CuisineHints.Length)];
+            sb.AppendLine($"Inspirationsstil för detta förslag: {hint}.");
+        }
+
         if (plan is not null)
         {
             var assigned = plan.Days
@@ -197,7 +218,7 @@ public class AiMealGenerator
                 {
                     sb.AppendLine($"- {line}");
                 }
-                sb.AppendLine("Föreslå gärna något som kompletterar variationen.");
+                sb.AppendLine("Du MÅSTE föreslå en rätt som varierar tydligt från de redan planerade rätterna — välj en annan proteinkälla och en annan tillagningsmetod.");
             }
         }
 

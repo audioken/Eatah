@@ -1,7 +1,10 @@
 using Eatah.Api.Common;
 using Eatah.Api.Features.Chat;
+using Eatah.Api.Features.Notifications;
 using Eatah.Domain.Entities;
+using Eatah.Infrastructure.Identity;
 using Eatah.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,12 +15,21 @@ public class WorkspaceService
     private readonly IWorkspaceRepository _repo;
     private readonly EatahDbContext _db;
     private readonly IHubContext<ChatHub> _hub;
+    private readonly INotificationService _notifications;
+    private readonly UserManager<EatahUser> _users;
 
-    public WorkspaceService(IWorkspaceRepository repo, EatahDbContext db, IHubContext<ChatHub> hub)
+    public WorkspaceService(
+        IWorkspaceRepository repo,
+        EatahDbContext db,
+        IHubContext<ChatHub> hub,
+        INotificationService notifications,
+        UserManager<EatahUser> users)
     {
         _repo = repo;
         _db = db;
         _hub = hub;
+        _notifications = notifications;
+        _users = users;
     }
 
     public async Task<List<WorkspaceResponse>> GetForUserAsync(Guid userId, CancellationToken ct)
@@ -56,12 +68,33 @@ public class WorkspaceService
             return Error.NotFound(ErrorCodes.WorkspaceNotFound, "You don't belong to any household.");
         }
 
+        // Capture remaining member IDs before removing the leaving user.
+        var remainingUserIds = await _db.WorkspaceMembers
+            .Where(m => m.WorkspaceId == membership.WorkspaceId && m.UserId != userId)
+            .Select(m => m.UserId)
+            .ToListAsync(ct);
+
         _db.WorkspaceMembers.Remove(membership);
         await _db.SaveChangesAsync(ct);
 
+        // Notify remaining members.
+        if (remainingUserIds.Count > 0)
+        {
+            var leavingUser = await _users.FindByIdAsync(userId.ToString());
+            var payload = new
+            {
+                workspaceId = membership.WorkspaceId,
+                userId,
+                displayName = leavingUser?.DisplayName ?? ""
+            };
+            foreach (var memberId in remainingUserIds)
+            {
+                await _notifications.NotifyAsync(memberId, NotificationType.HouseholdMemberLeft, payload, ct);
+            }
+        }
+
         // If the household has no remaining members, delete it (cascades all workspace-scoped data).
-        var remaining = await _db.WorkspaceMembers.CountAsync(m => m.WorkspaceId == membership.WorkspaceId, ct);
-        if (remaining == 0)
+        if (remainingUserIds.Count == 0)
         {
             await DeleteWorkspaceCascadeAsync(membership.WorkspaceId, ct);
         }

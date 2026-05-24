@@ -5,7 +5,8 @@ public enum NotificationType
     FriendRequest = 0,
     FriendRequestAccepted = 1,
     ChatMessage = 2,
-    ChatMention = 3
+    ChatMention = 3,
+    HouseholdMemberLeft = 4
 }
 
 public class Notification

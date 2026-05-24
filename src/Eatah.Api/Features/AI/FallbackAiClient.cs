@@ -21,11 +21,11 @@ public class FallbackAiClient : IAiClient
         _logger = logger;
     }
 
-    public async Task<string> CompleteAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken)
+    public async Task<string> CompleteAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken, float temperature = 0.7f)
     {
         try
         {
-            return await _primary.CompleteAsync(systemPrompt, userPrompt, cancellationToken);
+            return await _primary.CompleteAsync(systemPrompt, userPrompt, cancellationToken, temperature);
         }
         catch (AiServiceException ex) when (ex.Code == Common.ErrorCodes.AiServiceFailure)
         {
@@ -36,7 +36,7 @@ public class FallbackAiClient : IAiClient
             }
 
             _logger.LogWarning("Primary AI (Gemini) unavailable ({Message}), falling back to Anthropic Haiku.", ex.Message);
-            return await _fallback.CompleteAsync(systemPrompt, userPrompt, cancellationToken);
+            return await _fallback.CompleteAsync(systemPrompt, userPrompt, cancellationToken, temperature);
         }
     }
 }
