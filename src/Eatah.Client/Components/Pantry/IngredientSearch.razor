@@ -1,10 +1,11 @@
 @namespace Eatah.Client.Components.Pantry
 @inject ApiClient Api
+@inject IJSRuntime JS
 
 <div class="eatah-ing-search" @onfocusout="OnFocusOut">
     <div class="eatah-ing-search__input-wrap">
-        <input type="text" class="eatah-ing-search__input" placeholder="@Placeholder" value="@_query" @oninput="OnInput"
-               @onfocus="OnFocus" autocomplete="off" spellcheck="false" />
+        <input @ref="_inputRef" type="text" class="eatah-ing-search__input" placeholder="@Placeholder" value="@_query"
+               @oninput="OnInput" @onfocus="OnFocus" autocomplete="off" spellcheck="false" />
         @if (_isSearching)
         {
             <span class="eatah-ing-search__spinner" />
@@ -13,7 +14,7 @@
 
     @if (_showDropdown && _results.Count > 0)
     {
-        <ul class="eatah-ing-search__dropdown" @onmousedown:stopPropagation="true">
+        <ul class="eatah-ing-search__dropdown" style="@_dropdownStyle" @onmousedown:stopPropagation="true">
             @foreach (var r in _results)
             {
                 <li class="eatah-ing-search__option" @onclick="() => Select(r)">
@@ -35,7 +36,7 @@
     }
     else if (_showDropdown && !string.IsNullOrWhiteSpace(_query) && !_isSearching)
     {
-        <ul class="eatah-ing-search__dropdown">
+        <ul class="eatah-ing-search__dropdown" style="@_dropdownStyle">
             <li class="eatah-ing-search__option eatah-ing-search__option--new" @onclick="CreateNew">
                 <span>Lägg till "<strong>@_query</strong>"</span>
             </li>
@@ -47,11 +48,26 @@
     [Parameter] public string Placeholder { get; set; } = "Sök ingrediens…";
     [Parameter] public EventCallback<IngredientResponse> OnSelected { get; set; }
 
+    private ElementReference _inputRef;
+    private string? _dropdownStyle;
     private string _query = string.Empty;
     private List<IngredientResponse> _results = [];
     private bool _showDropdown;
     private bool _isSearching;
     private CancellationTokenSource _cts = new();
+
+    private async Task UpdateDropdownPositionAsync()
+    {
+        try
+        {
+            var rect = await JS.InvokeAsync<BoundingRect>("eatahUi.getElementRect", _inputRef);
+            _dropdownStyle = $"position: fixed; top: {rect.Bottom + 4:F0}px; left: {rect.Left:F0}px; width: {rect.Width:F0}px; right: auto;";
+        }
+        catch
+        {
+            _dropdownStyle = null;
+        }
+    }
 
     private async Task OnInput(ChangeEventArgs e)
     {
@@ -68,6 +84,7 @@
 
         _isSearching = true;
         _showDropdown = true;
+        await UpdateDropdownPositionAsync();
         try
         {
             await Task.Delay(200, _cts.Token);
@@ -80,10 +97,13 @@
         }
     }
 
-    private void OnFocus()
+    private async Task OnFocus()
     {
         if (!string.IsNullOrWhiteSpace(_query))
+        {
+            await UpdateDropdownPositionAsync();
             _showDropdown = true;
+        }
     }
 
     private void OnFocusOut()
@@ -127,4 +147,6 @@
         if (created is not null)
             await OnSelected.InvokeAsync(created);
     }
+
+    private record BoundingRect(double Top, double Bottom, double Left, double Right, double Width, double Height);
 }
