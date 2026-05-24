@@ -45,13 +45,18 @@
                     </div>
                 }
 
+                @if (isGroupStart)
+                {
+                    <span class="eatah-chat-bubble__timestamp">@FormatTime(msg.CreatedAt)</span>
+                }
+
                 <div class="@wrapperClass">
                     @if (!isMine && isGroupStart)
                     {
                         <span class="eatah-chat-bubble__author">@msg.AuthorDisplayName</span>
                     }
 
-                    <div class="eatah-chat-bubble-inner">
+                    <div class="eatah-chat-bubble-inner @(msg.Reactions.Any() ? "eatah-chat-bubble-inner--has-reactions" : "")">
                         <div class="@bubbleClass @(isDeleted ? "eatah-chat-bubble--deleted" : "")"
                              @oncontextmenu="(e) => ShowReactionPicker(msg, e)" @oncontextmenu:preventDefault="true"
                              @ontouchstart="(e) => OnTouchStart(msg, e)" @ontouchend="OnTouchEnd" @ontouchcancel="OnTouchEnd">
@@ -85,12 +90,27 @@
                             }
                         </div>
 
-                        <!-- Context menu – absolutely positioned below the bubble -->
-                        @if (_reactionPickerMessageId == msg.Id)
+                        <!-- Reactions – overlapping bottom-right of bubble -->
+                        @if (msg.Reactions.Any())
                         {
-                            <div class="eatah-chat-context-menu">
+                            <div class="eatah-chat-reactions">
+                                @foreach (var r in msg.Reactions)
+                                {
+                                    var hasMyReaction = Auth.CurrentUser?.Id is Guid myId && r.UserIds.Contains(myId);
+                                    <button type="button"
+                                            class="eatah-chat-reaction @(hasMyReaction ? "eatah-chat-reaction--mine" : "")"
+                                            @onclick="() => ToggleReactionAsync(msg.Id, r.Emoji)">
+                                        @r.Emoji <span class="eatah-chat-reaction__count">@r.Count</span>
+                                    </button>
+                                }
+                            </div>
+                        }
+
+                        @if (_reactionPickerMessageId == msg.Id && !isDeleted)
+                        {
+                            <div class="eatah-chat-context-menu" @onclick:stopPropagation="true">
                                 <ReactionPicker OnPicked="(e) => PickReactionAsync(msg.Id, e)" OnDismiss="DismissReactionPicker" />
-                                @if (isMine && !isDeleted)
+                                @if (isMine)
                                 {
                                     <button type="button" class="eatah-chat-context-menu__action" @onclick="() => StartEdit(msg)">
                                         <Icon Name="edit" Size="13" /> Redigera
@@ -103,26 +123,6 @@
                             </div>
                         }
                     </div>
-
-                    @if (isGroupEnd)
-                    {
-                        <span class="eatah-chat-bubble__timestamp">@FormatTime(msg.CreatedAt)</span>
-                    }
-
-                    <!-- Reactions row -->
-                    @if (msg.Reactions.Any())
-                    {
-                        <div class="eatah-chat-reactions">
-                            @foreach (var r in msg.Reactions)
-                            {
-                                var hasMyReaction = Auth.CurrentUser?.Id is Guid myId && r.UserIds.Contains(myId);
-                                <button type="button" class="eatah-chat-reaction @(hasMyReaction ? "eatah-chat-reaction--mine" : "")"
-                                        @onclick="() => ToggleReactionAsync(msg.Id, r.Emoji)">
-                                    @r.Emoji <span class="eatah-chat-reaction__count">@r.Count</span>
-                                </button>
-                            }
-                        </div>
-                    }
                 </div>
             }
         }
@@ -281,12 +281,15 @@
             await SendMessageAsync();
     }
 
-    private void ShowReactionPicker(ChatMessageResponse msg, MouseEventArgs _)
+    private void ShowReactionPicker(ChatMessageResponse msg, MouseEventArgs e)
     {
-        _reactionPickerMessageId = _reactionPickerMessageId == msg.Id ? null : msg.Id;
+        _reactionPickerMessageId = _reactionPickerMessageId == msg.Id ? (Guid?)null : msg.Id;
     }
 
-    private void DismissReactionPicker() => _reactionPickerMessageId = null;
+    private void DismissReactionPicker()
+    {
+        _reactionPickerMessageId = null;
+    }
 
     // ── Grouping helpers ──────────────────────────────────────────────────────
 
@@ -397,7 +400,11 @@
         _ = Task.Delay(500, token).ContinueWith(t =>
         {
             if (!t.IsCanceled)
-                InvokeAsync(() => { _reactionPickerMessageId = msg.Id; StateHasChanged(); });
+                InvokeAsync(() =>
+                {
+                    _reactionPickerMessageId = msg.Id;
+                    StateHasChanged();
+                });
         }, TaskScheduler.Default);
     }
 

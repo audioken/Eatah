@@ -38,6 +38,16 @@ window.eatahChat = {
         }
     },
 
+    // Scrolls the messages container just enough to reveal the picker popup,
+    // but only if the picker would otherwise be hidden below the visible area.
+    nudgeForPicker: function (el, pickerHeight) {
+        if (!el) return;
+        const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+        if (distanceToBottom < pickerHeight) {
+            el.scrollBy({ top: pickerHeight - distanceToBottom, behavior: 'smooth' });
+        }
+    },
+
     _visibilityHandler: null,
     _focusHandler: null,
     _onlineHandler: null,
