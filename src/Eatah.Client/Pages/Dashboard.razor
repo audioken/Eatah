@@ -11,6 +11,7 @@
 @inject PantryStateService PantryCache
 @inject PantryCoverageStateService CoverageCache
 @inject ToastService Toasts
+@inject AiMealCacheService AiMealCache
 @implements IDisposable
 
 <div class="max-w-[1000px] mx-auto">
@@ -52,7 +53,7 @@
 			  OnCreate="CreateMealFromSelectorAsync" OnClose="CloseSelector" />
 
 <AiMealPreview IsOpen="_aiPreviewOpen" Day="_aiTargetDay?.DayOfWeek" Meal="_aiMeal" IsLoading="_aiLoading"
-			   Error="@_aiError" OnSave="OpenSaveAiMealForm" OnClose="CloseAiPreview" />
+			   Error="@_aiError" OnSave="OpenSaveAiMealForm" OnClose="CloseAiPreview" OnRetry="RetryAiAsync" />
 
 <MealForm IsOpen="_aiSaveFormOpen" InitialName="@_aiMeal?.Name" InitialCategory="_aiMeal?.Category"
 		  InitialIngredients="_aiMeal?.Ingredients" InitialCookingTimeMinutes="_aiMeal?.CookingTimeMinutes"
@@ -107,6 +108,7 @@
 
 	protected override async Task OnInitializedAsync()
 	{
+		_aiMeal = AiMealCache.Meal;
 		Workspaces.OnChange += OnWorkspaceChanged;
 		WeeklyPlans.OnChanged += OnWeeklyPlanCacheChanged;
 		MealsCache.OnChanged += OnMealsCacheChanged;
@@ -161,6 +163,9 @@
 		// RealtimeSyncService.OnWorkspaceChanged has just cleared every cache for the
 		// previous workspace, so we need to repopulate for the new one. Mark loading so
 		// the spinner appears (cache is genuinely empty now).
+		AiMealCache.Clear();
+		_aiMeal = null;
+		_aiTargetDay = null;
 		_isLoading = true;
 		_ = InvokeAsync(async () =>
 		{
@@ -480,6 +485,15 @@
 			return;
 		}
 
+		// If there's an unsaved AI meal in the cache, just show it — don't regenerate.
+		if (AiMealCache.Meal is not null)
+		{
+			_aiTargetDay = day;
+			_aiMeal = AiMealCache.Meal;
+			_aiPreviewOpen = true;
+			return;
+		}
+
 		_aiTargetDay = day;
 		_aiMeal = null;
 		_aiError = null;
@@ -493,6 +507,8 @@
 				WeeklyPlanId: _plan.Id,
 				TargetDay: day.DayOfWeek);
 			_aiMeal = await Api.GenerateAiMealAsync(request);
+			if (_aiMeal is not null)
+				AiMealCache.Meal = _aiMeal;
 		}
 		catch (Exception ex)
 		{
@@ -507,9 +523,39 @@
 	private void CloseAiPreview()
 	{
 		_aiPreviewOpen = false;
+		// Keep _aiMeal, _aiError and _aiTargetDay so the result is cached
+		// and can be reused if the user opens the preview again for the same day.
+	}
+
+	private async Task RetryAiAsync()
+	{
+		if (_plan is null || _aiTargetDay is null)
+		{
+			return;
+		}
+
 		_aiMeal = null;
 		_aiError = null;
-		_aiTargetDay = null;
+		_aiLoading = true;
+		try
+		{
+			var request = new GenerateMealRequest(
+				Category: null,
+				DietProfileId: ProfileState.SelectedProfileId,
+				WeeklyPlanId: _plan.Id,
+				TargetDay: _aiTargetDay.DayOfWeek);
+			_aiMeal = await Api.GenerateAiMealAsync(request);
+			if (_aiMeal is not null)
+				AiMealCache.Meal = _aiMeal;
+		}
+		catch (Exception ex)
+		{
+			_aiError = $"AI-generering misslyckades: {ex.Message}";
+		}
+		finally
+		{
+			_aiLoading = false;
+		}
 	}
 
 	private void OpenSaveAiMealForm()
@@ -527,6 +573,7 @@
 		_aiSaveFormOpen = false;
 		_aiMeal = null;
 		_aiTargetDay = null;
+		AiMealCache.Clear();
 	}
 
 	private async Task SaveAiMealAndAssignAsync(MealForm.MealFormResult result)
@@ -566,6 +613,7 @@
 		{
 			_aiMeal = null;
 			_aiTargetDay = null;
+			AiMealCache.Clear();
 		}
 	}
 

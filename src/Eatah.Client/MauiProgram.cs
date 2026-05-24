@@ -22,6 +22,7 @@ public static class MauiProgram
 #endif
 
 		builder.Services.AddSingleton<LoadingState>();
+		builder.Services.AddSingleton<AiMealCacheService>();
 		builder.Services.AddSingleton<IngredientCheckState>();
 		builder.Services.AddSingleton<DietProfileState>();
 		builder.Services.AddSingleton<PantryStateService>();

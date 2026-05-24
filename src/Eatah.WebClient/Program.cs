@@ -10,6 +10,7 @@ builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
 builder.Services.AddSingleton<LoadingState>();
+builder.Services.AddSingleton<AiMealCacheService>();
 builder.Services.AddSingleton<IngredientCheckState>();
 builder.Services.AddSingleton<DietProfileState>();
 builder.Services.AddSingleton<PantryStateService>();

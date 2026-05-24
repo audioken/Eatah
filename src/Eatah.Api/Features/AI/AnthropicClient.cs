@@ -34,7 +34,7 @@ public class AnthropicClient : IAiClient
         {
             model = _settings.AnthropicModel,
             max_tokens = 2048,
-            temperature = (double)temperature,
+            temperature = (double)Math.Clamp(temperature, 0f, 1f),
             system = systemPrompt,
             messages = new[]
             {

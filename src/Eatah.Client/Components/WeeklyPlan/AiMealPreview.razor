@@ -24,10 +24,6 @@
                     }
                     else if (Meal is not null)
                     {
-                        <p class="eatah-modal-notice eatah-modal-notice--warning">
-                            Den här maträtten är inte sparad till databasen ännu.
-                        </p>
-
                         <div>
                             <h3 class="eatah-ai-preview__meal-title">@Meal.Name</h3>
                             <div class="eatah-ai-preview__meal-meta">
@@ -55,9 +51,16 @@
                     <button type="button" class="eatah-modal-footer__btn eatah-modal-footer__btn--ghost" @onclick="Close">
                         Avbryt
                     </button>
+                    @if (!IsLoading)
+                    {
+                        <button type="button" class="eatah-modal-footer__btn eatah-modal-footer__btn--ghost"
+                                @onclick="HandleRetry">
+                            <Icon Name="rotate" Size="16" />
+                        </button>
+                    }
                     <button type="button" class="eatah-modal-footer__btn eatah-modal-footer__btn--primary"
                             disabled="@(Meal is null || IsLoading)" @onclick="HandleSave">
-                        Spara till databasen
+                        Spara
                     </button>
                 </div>
 
@@ -74,6 +77,7 @@
     [Parameter] public string? Error { get; set; }
     [Parameter] public EventCallback OnSave { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnRetry { get; set; }
 
     private string DayLabel => Day switch
     {
@@ -100,4 +104,5 @@
     private Task Close() => OnClose.InvokeAsync();
     private Task HandleBackdrop() => Close();
     private Task HandleSave() => OnSave.InvokeAsync();
+    private Task HandleRetry() => OnRetry.InvokeAsync();
 }
