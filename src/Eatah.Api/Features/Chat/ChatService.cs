@@ -178,10 +178,27 @@ public class ChatService
             .ToListAsync(ct);
 
         var authorIds = rows.Select(r => r.AuthorUserId).Distinct().ToList();
-        var authors = await _users.Users.AsNoTracking()
+
+        // Sequential — UserManager shares the same scoped DbContext as _db; parallel
+        // queries on the same context instance cause a concurrency exception.
+        var existingUsers = await _users.Users.AsNoTracking()
             .Where(u => authorIds.Contains(u.Id))
             .Select(u => new { u.Id, u.DisplayName })
             .ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct);
+        var memberIds = (await _db.WorkspaceMembers
+            .Where(m => m.WorkspaceId == wsId && authorIds.Contains(m.UserId))
+            .Select(m => m.UserId)
+            .ToListAsync(ct)).ToHashSet();
+
+        // Build enriched name map:
+        //   deleted account  → "Raderad användare"
+        //   left workspace   → "Name (Lämnat hushållet)"
+        //   active member    → display name
+        var authors = authorIds.ToDictionary(
+            id => id,
+            id => existingUsers.TryGetValue(id, out var name)
+                ? (memberIds.Contains(id) ? name : $"{name} (Lämnat hushållet)")
+                : "Raderad användare");
 
         return rows.OrderBy(r => r.CreatedAt).Select(m => MapMessage(m, authors)).ToList();
     }
