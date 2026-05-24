@@ -3,6 +3,31 @@ window.eatahUi = {
         if (!el) return null;
         const r = el.getBoundingClientRect();
         return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height };
+    },
+
+    _notifCloseHandler: null,
+
+    // Registers a document-level click listener that invokes Close on the .NET component
+    // when the user clicks outside the notification dropdown.
+    registerNotifClose: function (dotNetRef) {
+        this.unregisterNotifClose();
+        var self = this;
+        var handler = function () {
+            self.unregisterNotifClose();
+            try { dotNetRef.invokeMethodAsync('CloseFromOutside'); } catch (e) { }
+        };
+        self._notifCloseHandler = handler;
+        // Delay by one tick so the click that opened the dropdown doesn't fire this immediately.
+        setTimeout(function () {
+            document.addEventListener('click', handler);
+        }, 0);
+    },
+
+    unregisterNotifClose: function () {
+        if (this._notifCloseHandler) {
+            document.removeEventListener('click', this._notifCloseHandler);
+            this._notifCloseHandler = null;
+        }
     }
 };
 

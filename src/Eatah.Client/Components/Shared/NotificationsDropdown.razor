@@ -2,9 +2,10 @@
 @inject ApiClient Api
 @inject WorkspaceState Workspaces
 @inject ToastService Toasts
-@implements IDisposable
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
-<div class="eatah-notif-bell" @onclick="ToggleDropdown">
+<div class="eatah-notif-bell" @onclick="ToggleDropdownAsync" @onclick:stopPropagation="true">
     <Icon Name="bell" Size="22" />
     @if (_unreadCount > 0)
     {
@@ -14,7 +15,6 @@
 
 @if (_open)
 {
-    <div class="eatah-notif-backdrop" @onclick="Close"></div>
     <div class="eatah-notif-dropdown" @onclick:stopPropagation="true">
         <div class="eatah-notif-dropdown__header">
             <span>Notiser</span>
@@ -70,9 +70,11 @@
     private List<NotificationResponse> _notifications = [];
     private int _unreadCount;
     private System.Threading.Timer? _pollTimer;
+    private DotNetObjectReference<NotificationsDropdown>? _dotNetRef;
 
     protected override async Task OnInitializedAsync()
     {
+        _dotNetRef = DotNetObjectReference.Create(this);
         await LoadAsync();
         _pollTimer = new System.Threading.Timer(async _ =>
         {
@@ -94,20 +96,26 @@
         catch { }
     }
 
-    private void ToggleDropdown()
+    private async Task ToggleDropdownAsync()
     {
         _open = !_open;
         if (_open)
         {
-            _ = InvokeAsync(async () =>
-            {
-                await LoadAsync();
-                StateHasChanged();
-            });
+            await LoadAsync();
+            await JS.InvokeVoidAsync("eatahUi.registerNotifClose", _dotNetRef);
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("eatahUi.unregisterNotifClose");
         }
     }
 
-    private void Close() => _open = false;
+    [JSInvokable]
+    public void CloseFromOutside()
+    {
+        _open = false;
+        InvokeAsync(StateHasChanged);
+    }
 
     private async Task MarkAllReadAsync()
     {
@@ -130,11 +138,17 @@
         try
         {
             await Api.RespondToFriendRequestAsync(requestId, accept);
+            // Accepting moves the user to a new workspace and deletes the old one.
+            // Reset the stale cached workspace ID now so subsequent requests don't send
+            // the old (now-deleted) workspace ID in X-Eatah-Workspace → would get 403.
+            if (accept)
+                Workspaces.Reset();
             await Api.MarkNotificationAsReadAsync(notifId);
             await LoadAsync();
             if (accept)
             {
                 await Workspaces.RefreshAsync();
+                Toasts.Show("Du har gått med i hushållet!");
             }
             await OnFriendRequestResponded.InvokeAsync();
         }
@@ -196,5 +210,10 @@
         return utc.ToLocalTime().ToString("d MMM");
     }
 
-    public void Dispose() => _pollTimer?.Dispose();
+    public async ValueTask DisposeAsync()
+    {
+        _pollTimer?.Dispose();
+        await JS.InvokeVoidAsync("eatahUi.unregisterNotifClose");
+        _dotNetRef?.Dispose();
+    }
 }
