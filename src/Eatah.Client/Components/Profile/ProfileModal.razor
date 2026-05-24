@@ -506,6 +506,7 @@
         {
             await Api.LeaveHouseholdAsync();
             _confirmingLeave = false;
+            Workspaces.Reset(); // Clear stale workspace ID so subsequent requests use the fallback (new workspace).
             await Workspaces.RefreshAsync();
             Toasts.Show("Du har lämnat hushållet.");
         }
