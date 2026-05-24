@@ -2,6 +2,7 @@
 @inject ApiClient Api
 @inject WorkspaceState Workspaces
 @inject ToastService Toasts
+@inject ModalService Modals
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
@@ -129,10 +130,10 @@
 
     private async Task RespondAsync(Guid requestId, Guid notifId, bool accept)
     {
-        if (accept && Workspaces.Current?.MemberCount > 1)
+        if (accept)
         {
-            Toasts.Show("Du tillhör redan ett hushåll. Lämna det först för att gå med i ett annat.");
-            return;
+            var confirmed = await ShowAcceptConfirmAsync(requestId);
+            if (!confirmed) return;
         }
 
         try
@@ -152,11 +153,6 @@
             }
             await OnFriendRequestResponded.InvokeAsync();
         }
-        catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.WorkspaceHouseholdAlreadyExists)
-        {
-            Toasts.Show("Du tillhör redan ett hushåll. Lämna det först för att gå med i ett annat.");
-            await LoadAsync();
-        }
         catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.FriendRequestNotFound)
         {
             Toasts.Show("Inbjudan är inte längre giltig.");
@@ -166,6 +162,53 @@
         {
             Toasts.Show("Något gick fel. Försök igen.");
         }
+    }
+
+    private async Task<bool> ShowAcceptConfirmAsync(Guid requestId)
+    {
+        var currentHousehold = Workspaces.Current;
+        var isInSharedHousehold = currentHousehold?.MemberCount > 1;
+
+        // Try to get the new household name from the notification payload
+        var notif = _notifications.FirstOrDefault(n =>
+        {
+            var parsed = ParseFriendRequestPayload(n.Payload);
+            return parsed == requestId;
+        });
+        var newHouseholdName = ParseHouseholdNameFromPayload(notif?.Payload ?? "");
+        var inviterName = ParseStringFromPayload(notif?.Payload ?? "", "fromDisplayName");
+        var displayName = !string.IsNullOrWhiteSpace(newHouseholdName)
+            ? newHouseholdName
+            : (!string.IsNullOrWhiteSpace(inviterName) ? $"{inviterName}s hushåll" : "det nya hushållet");
+
+        string title;
+        string message;
+        string confirmText;
+
+        if (isInSharedHousehold)
+        {
+            var oldName = currentHousehold!.Name;
+            title = "Byta hushåll?";
+            message = $"Du lämnar \"{oldName}\" och går med i \"{displayName}\". " +
+                      "All din nuvarande data i hushållet kopplas bort och du får det nya hushållets innehåll.";
+            confirmText = $"Lämna {oldName} och gå med i {displayName}";
+        }
+        else
+        {
+            title = "Gå med i hushåll?";
+            message = $"Du går med i \"{displayName}\". Din personliga data och maträtter raderas och ersätts med hushållets innehåll.";
+            confirmText = "Gå med";
+        }
+
+        var instance = Modals.Show<ConfirmDialog>(new Dictionary<string, object?>
+        {
+            ["Title"] = title,
+            ["Message"] = message,
+            ["ConfirmText"] = confirmText,
+            ["IsDanger"] = isInSharedHousehold,
+        });
+        var result = await instance.Result;
+        return result is true;
     }
 
     private string GetNotifText(NotificationResponse notif)
@@ -199,6 +242,21 @@
         }
         catch { }
         return Guid.Empty;
+    }
+
+    private static string ParseHouseholdNameFromPayload(string payload) =>
+        ParseStringFromPayload(payload, "householdName");
+
+    private static string ParseStringFromPayload(string payload, string key)
+    {
+        try
+        {
+            var doc = System.Text.Json.JsonDocument.Parse(payload);
+            if (doc.RootElement.TryGetProperty(key, out var val))
+                return val.GetString() ?? "";
+        }
+        catch { }
+        return "";
     }
 
     private static string FormatTime(DateTime utc)

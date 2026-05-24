@@ -124,22 +124,13 @@ public class FriendService
                 .FirstOrDefaultAsync(m => m.UserId == currentUserId, ct);
             if (currentMembership is not null && currentMembership.WorkspaceId != request.HouseholdWorkspaceId)
             {
-                // Block if the user is already in a shared household (has other members).
-                // They must leave that household first before joining another.
-                var otherMemberCount = await _db.WorkspaceMembers
-                    .CountAsync(m => m.WorkspaceId == currentMembership.WorkspaceId && m.UserId != currentUserId, ct);
-                if (otherMemberCount > 0)
-                {
-                    return Error.Conflict(ErrorCodes.WorkspaceHouseholdAlreadyExists,
-                        "You already belong to a household with other members.");
-                }
-
-                // User is in a solo household — remove it and join the new one.
+                // Remove the user from their current workspace before joining the new one.
+                // If it was a shared household, the other members keep their data.
                 var oldWorkspaceId = currentMembership.WorkspaceId;
                 _db.WorkspaceMembers.Remove(currentMembership);
                 await _db.SaveChangesAsync(ct);
 
-                // If the invitee was the last member, fully cascade-delete the old household.
+                // If the user was the last member, fully cascade-delete the old workspace.
                 var remaining = await _db.WorkspaceMembers.CountAsync(m => m.WorkspaceId == oldWorkspaceId, ct);
                 if (remaining == 0)
                 {

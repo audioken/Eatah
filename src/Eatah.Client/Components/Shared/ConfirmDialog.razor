@@ -1,0 +1,48 @@
+@namespace Eatah.Client.Components.Shared
+@inject ModalService Modals
+
+<div class="eatah-confirm-dialog">
+    <div class="eatah-confirm-dialog__header">
+        <span
+            class="eatah-confirm-dialog__icon @(IsDanger ? "eatah-confirm-dialog__icon--danger" : "eatah-confirm-dialog__icon--warning")">
+            <Icon Name="warning" Size="22" />
+        </span>
+        <h2 class="eatah-confirm-dialog__title">@Title</h2>
+    </div>
+
+    <div class="eatah-confirm-dialog__body">
+        <p class="eatah-confirm-dialog__message">@Message</p>
+        @if (ExtraContent is not null)
+        {
+            <div class="eatah-confirm-dialog__extra">
+                @ExtraContent
+            </div>
+        }
+    </div>
+
+    <div class="eatah-modal-footer">
+        <button type="button" class="eatah-modal-footer__btn eatah-modal-footer__btn--ghost" @onclick="Cancel">
+            @CancelText
+        </button>
+        <button type="button"
+                class="eatah-modal-footer__btn @(IsDanger ? "eatah-modal-footer__btn--danger" : "eatah-modal-footer__btn--primary")"
+                @onclick="Confirm">
+            @ConfirmText
+        </button>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] private ModalInstance? Instance { get; set; }
+
+    [Parameter, EditorRequired] public string Title { get; set; } = default!;
+    [Parameter, EditorRequired] public string Message { get; set; } = default!;
+
+    [Parameter] public string ConfirmText { get; set; } = "OK";
+    [Parameter] public string CancelText { get; set; } = "Avbryt";
+    [Parameter] public bool IsDanger { get; set; }
+    [Parameter] public RenderFragment? ExtraContent { get; set; }
+
+    private void Confirm() => Modals.Close(Instance!, true);
+    private void Cancel() => Modals.Close(Instance!, false);
+}

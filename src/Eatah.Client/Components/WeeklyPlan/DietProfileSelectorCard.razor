@@ -257,6 +257,19 @@ string.Empty);
     private async Task HandleRandomize()
     {
         if (_isRandomizing) return;
+
+        if (HasMealsOnActiveDays())
+        {
+            var instance = Modals.Show<ConfirmDialog>(new Dictionary<string, object?>
+            {
+                ["Title"] = "Slumpa om maträtter?",
+                ["Message"] = "Maträtter som är inlagda på aktiva dagar (idag och framåt) kommer att bytas ut. Vill du fortsätta?",
+                ["ConfirmText"] = "Slumpa",
+            });
+            var result = await instance.Result;
+            if (result is not true) return;
+        }
+
         _isRandomizing = true;
         try
         {
@@ -266,6 +279,23 @@ string.Empty);
         {
             _isRandomizing = false;
         }
+    }
+
+    private bool HasMealsOnActiveDays()
+    {
+        if (Plan is null || IsLocked) return false;
+        if (WeekOffset > 0)
+            return Plan.Days.Any(d => d.Meal is not null);
+        // Current week: only warn about today and future days
+        return Plan.Days.Any(d => d.Meal is not null && IsDayTodayOrLater(d.DayOfWeek));
+    }
+
+    private static bool IsDayTodayOrLater(DayOfWeek day)
+    {
+        var today = DateTime.Now.DayOfWeek;
+        // Normalize to ISO order (Mon=0 … Sun=6) for correct comparison
+        static int ToIso(DayOfWeek d) => d == DayOfWeek.Sunday ? 6 : (int)d - 1;
+        return ToIso(day) >= ToIso(today);
     }
 
     private DietRuleResponse? FindRule(MealCategory category)
