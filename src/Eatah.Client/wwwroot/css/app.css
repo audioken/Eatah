@@ -3252,6 +3252,22 @@ body.eatah-modal-open {
     color: var(--color-text-dark);
 }
 
+.eatah-modal-footer__btn--danger {
+    background: rgba(220, 38, 38, 0.12);
+    color: #991b1b;
+}
+
+.eatah-modal-footer__confirm-text {
+    font-size: 13px;
+    color: var(--color-text-dark);
+    opacity: 0.75;
+    margin-right: auto;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 130px;
+}
+
 /* ============================================================
    Modal notices / banners
    ============================================================ */

@@ -1,0 +1,213 @@
+@namespace Eatah.Client.Components.Pantry
+@using Eatah.Client.Services.Contracts
+@inject ApiClient Api
+@inject ModalService Modals
+@inject ToastService Toasts
+@inject PantryStateService PantryState
+@inject ShoppingStateService ShoppingState
+@inject IngredientCheckState CheckState
+
+<div class="eatah-diet-modal">
+
+    <div class="eatah-diet-modal__header">
+        <h2 class="eatah-diet-modal__title">Redigera ingrediens</h2>
+        <button type="button" class="eatah-diet-modal__close" @onclick="Close" aria-label="Stäng">
+            <Icon Name="close" Size="20" />
+        </button>
+    </div>
+
+    <div class="eatah-diet-modal__body">
+
+        @if (_error is not null)
+        {
+            <p class="eatah-modal-notice eatah-modal-notice--error">@_error</p>
+        }
+
+        <div class="eatah-diet-modal__field">
+            <label for="ing-edit-name" class="eatah-diet-modal__label">Namn</label>
+            <input id="ing-edit-name" type="text" class="eatah-diet-modal__input" @bind="_name" @bind:event="oninput" />
+        </div>
+
+        <div class="eatah-diet-modal__field">
+            <label for="ing-edit-cat" class="eatah-diet-modal__label">Kategori</label>
+            <select id="ing-edit-cat" class="eatah-diet-modal__input" @bind="_category">
+                <option value="">Övrigt</option>
+                @foreach (var cat in Categories)
+                {
+                    <option value="@cat">@cat</option>
+                }
+            </select>
+        </div>
+
+        @if (_sessions.Count > 0)
+        {
+            <div class="eatah-diet-modal__field">
+                <label class="eatah-diet-modal__label">Räcker till</label>
+                <ul class="eatah-diet-modal__list">
+                    @foreach (var s in _sessions)
+                    {
+                        <li class="eatah-diet-modal__list-item">
+                            <span>@s.MealName</span>
+                            <span class="text-white/50 text-xs ml-1">
+                                @DayName(s.DayIndex)@(s.WeekNumber.HasValue ? $", v{s.WeekNumber}" : "")
+                            </span>
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+
+    </div>
+
+    @if (!Item.IsSystem)
+    {
+        <div class="eatah-modal-footer">
+            @if (_confirmDelete)
+            {
+                <span class="eatah-modal-footer__confirm-text">Ta bort "@Item.Name"?</span>
+                <button type="button" class="eatah-modal-footer__btn eatah-modal-footer__btn--ghost" disabled="@_isDeleting"
+                        @onclick="() => _confirmDelete = false">
+                    Avbryt
+                </button>
+                <button type="button" class="eatah-modal-footer__btn eatah-modal-footer__btn--danger" disabled="@_isDeleting"
+                        @onclick="DeleteAsync">
+                    @(_isDeleting ? "Tar bort…" : "Ja, ta bort")
+                </button>
+            }
+            else
+            {
+                <button type="button" class="eatah-modal-footer__btn eatah-modal-footer__btn--ghost" disabled="@_isSaving"
+                        @onclick="() => _confirmDelete = true">
+                    Ta bort
+                </button>
+                <button type="button" class="eatah-modal-footer__btn eatah-modal-footer__btn--ghost" disabled="@_isSaving"
+                        @onclick="Close">
+                    Avbryt
+                </button>
+                <button type="button" class="eatah-modal-footer__btn eatah-modal-footer__btn--primary"
+                        disabled="@(_isSaving || string.IsNullOrWhiteSpace(_name))" @onclick="SaveAsync">
+                    @(_isSaving ? "Sparar…" : "Spara")
+                </button>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="eatah-modal-footer">
+            <button type="button" class="eatah-modal-footer__btn eatah-modal-footer__btn--ghost" @onclick="Close">
+                Stäng
+            </button>
+        </div>
+    }
+
+</div>
+
+@code {
+    [Parameter, EditorRequired] public PantryItemResponse Item { get; set; } = default!;
+    [CascadingParameter] private ModalInstance? Instance { get; set; }
+
+    private string _name = string.Empty;
+    private string _category = string.Empty;
+    private bool _isSaving;
+    private bool _isDeleting;
+    private bool _confirmDelete;
+    private string? _error;
+    private List<IngredientCheckState.ActiveSession> _sessions = [];
+
+    private static readonly string[] Categories =
+    [
+        "Frukt & Grönt",
+        "Mejeri & Ägg",
+        "Kött & Fågel",
+        "Fisk & Skaldjur",
+        "Baljväxter & Frön",
+        "Skafferi",
+    ];
+
+    protected override void OnInitialized()
+    {
+        _name = Item.Name;
+        _category = Item.Category ?? string.Empty;
+        _sessions = CheckState.GetActiveSessionsForIngredient(Item.Name).ToList();
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            _error = "Namn krävs.";
+            return;
+        }
+
+        _isSaving = true;
+        _error = null;
+
+        try
+        {
+            var category = string.IsNullOrWhiteSpace(_category) ? null : _category;
+            await Api.UpdateIngredientAsync(Item.IngredientId, new UpdateIngredientRequest(_name.Trim(), category));
+            await PantryState.RefreshIfLoadedAsync();
+            Toasts.Show("Ingrediensen uppdaterades.");
+            Modals.Close(Instance!);
+        }
+        catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.IngredientSystemProtected)
+        {
+            _error = "Det här är en systemingrediens och kan inte redigeras.";
+        }
+        catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.ValidationError)
+        {
+            _error = "Ogiltigt namn.";
+        }
+        catch (ApiException)
+        {
+            _error = "Kunde inte spara. Försök igen.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void Close() => Modals.Close(Instance!);
+
+    private async Task DeleteAsync()
+    {
+        _isDeleting = true;
+        _error = null;
+        try
+        {
+            var name = Item.Name;
+            await Api.DeleteIngredientAsync(Item.IngredientId);
+            CheckState.RemovePantryName(name);
+            await PantryState.RefreshIfLoadedAsync();
+            await ShoppingState.RefreshIfLoadedAsync();
+            Toasts.Show($"{name} togs bort.");
+            Modals.Close(Instance!);
+        }
+        catch (ApiException ex) when (ex.ErrorCode == ApiErrorCodes.IngredientSystemProtected)
+        {
+            _error = "Det här är en systemingrediens och kan inte tas bort.";
+            _confirmDelete = false;
+        }
+        catch (ApiException)
+        {
+            _error = "Kunde inte ta bort. Försök igen.";
+            _confirmDelete = false;
+        }
+        finally
+        {
+            _isDeleting = false;
+        }
+    }
+
+    private static string DayName(int d) => d switch
+    {
+        0 => "Mån",
+        1 => "Tis",
+        2 => "Ons",
+        3 => "Tor",
+        4 => "Fre",
+        5 => "Lör",
+        _ => "Sön"
+    };
+}

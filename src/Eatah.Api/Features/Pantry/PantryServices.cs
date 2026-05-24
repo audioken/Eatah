@@ -10,11 +10,13 @@ public class IngredientCatalogService
 {
     private readonly EatahDbContext _db;
     private readonly IWorkspaceContext _ws;
+    private readonly IRealtimeNotifier _realtime;
 
-    public IngredientCatalogService(EatahDbContext db, IWorkspaceContext ws)
+    public IngredientCatalogService(EatahDbContext db, IWorkspaceContext ws, IRealtimeNotifier realtime)
     {
         _db = db;
         _ws = ws;
+        _realtime = realtime;
     }
 
     public async Task<List<IngredientResponse>> SearchAsync(string? query, CancellationToken ct)
@@ -46,6 +48,53 @@ public class IngredientCatalogService
         await _db.SaveChangesAsync(ct);
         return new IngredientResponse(entity.Id, entity.Name, entity.Category, false);
     }
+
+    public async Task<Result<IngredientResponse>> UpdateAsync(Guid id, string name, string? category, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return Error.BadRequest(ErrorCodes.IngredientNameRequired, "Ingredient name is required.");
+        var wsId = _ws.RequireCurrent();
+        var entity = await _db.IngredientMaster.FirstOrDefaultAsync(i => i.Id == id, ct);
+        if (entity is null)
+            return Error.NotFound(ErrorCodes.IngredientNotFound, "Ingredient not found.");
+        if (entity.WorkspaceId is null)
+            return Error.Forbidden(ErrorCodes.IngredientSystemProtected, "System ingredients cannot be edited.");
+        if (entity.WorkspaceId != wsId)
+            return Error.Forbidden(ErrorCodes.IngredientSystemProtected, "Ingredient belongs to a different workspace.");
+        var trimmed = name.Trim();
+        var duplicate = await _db.IngredientMaster
+            .AnyAsync(i => i.WorkspaceId == wsId && i.Id != id && i.Name == trimmed, ct);
+        if (duplicate)
+            return Error.Conflict(ErrorCodes.IngredientNameRequired, "An ingredient with that name already exists.");
+        entity.Name = trimmed;
+        entity.Category = string.IsNullOrWhiteSpace(category) ? null : category.Trim();
+        await _db.SaveChangesAsync(ct);
+        return new IngredientResponse(entity.Id, entity.Name, entity.Category, false);
+    }
+
+    public async Task<Result> DeleteAsync(Guid id, CancellationToken ct)
+    {
+        var wsId = _ws.RequireCurrent();
+        var entity = await _db.IngredientMaster.FirstOrDefaultAsync(i => i.Id == id, ct);
+        if (entity is null)
+            return Error.NotFound(ErrorCodes.IngredientNotFound, "Ingredient not found.");
+        if (entity.WorkspaceId is null)
+            return Error.Forbidden(ErrorCodes.IngredientSystemProtected, "System ingredients cannot be deleted.");
+        if (entity.WorkspaceId != wsId)
+            return Error.Forbidden(ErrorCodes.IngredientSystemProtected, "Ingredient belongs to a different workspace.");
+
+        // Remove pantry items first (DB cascades to coverage rows via ON DELETE CASCADE).
+        await _db.PantryItems.Where(p => p.IngredientId == id && p.WorkspaceId == wsId).ExecuteDeleteAsync(ct);
+        // Remove shopping items.
+        await _db.ShoppingItems.Where(s => s.IngredientId == id && s.WorkspaceId == wsId).ExecuteDeleteAsync(ct);
+
+        _db.IngredientMaster.Remove(entity);
+        await _db.SaveChangesAsync(ct);
+
+        await _realtime.PantryChangedAsync(wsId, ct);
+        await _realtime.ShoppingListChangedAsync(wsId, ct);
+        return Result.Success();
+    }
 }
 
 public class PantryService
@@ -68,7 +117,7 @@ public class PantryService
             .Include(p => p.Ingredient)
             .Where(p => p.WorkspaceId == wsId)
             .OrderByDescending(p => p.AddedAt)
-            .Select(p => new PantryItemResponse(p.Id, p.IngredientId, p.Ingredient!.Name, p.Ingredient.Category, p.AddedAt))
+            .Select(p => new PantryItemResponse(p.Id, p.IngredientId, p.Ingredient!.Name, p.Ingredient.Category, p.AddedAt, p.Ingredient.WorkspaceId == null))
             .ToListAsync(ct);
     }
 
@@ -91,7 +140,7 @@ public class PantryService
         _db.PantryItems.Add(entity);
         await _db.SaveChangesAsync(ct);
         await _realtime.PantryChangedAsync(wsId, ct);
-        return new PantryItemResponse(entity.Id, ing.Id, ing.Name, ing.Category, entity.AddedAt);
+        return new PantryItemResponse(entity.Id, ing.Id, ing.Name, ing.Category, entity.AddedAt, ing.WorkspaceId == null);
     }
 
     public async Task<Result> RemoveAsync(Guid id, CancellationToken ct)

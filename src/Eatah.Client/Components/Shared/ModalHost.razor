@@ -5,18 +5,18 @@
 
 @if (Modals.Stack.Count > 0)
 {
-    <div class="eatah-modal-backdrop @(_closingInstance != null ? "eatah-modal-backdrop--closing" : "")"
-         @onclick="OnBackdropClick">
-        @foreach (var instance in Modals.Stack)
-        {
+    @foreach (var instance in Modals.Stack)
+    {
+        <div class="eatah-modal-backdrop @(instance == _closingInstance ? "eatah-modal-backdrop--closing" : "")"
+             @onclick="OnBackdropClick">
             <div class="eatah-modal @(instance == _closingInstance ? "eatah-modal--closing" : "")"
                  @onclick:stopPropagation="true">
                 <CascadingValue Value="instance" IsFixed="true">
                     <DynamicComponent Type="instance.ComponentType" Parameters="instance.Parameters" />
                 </CascadingValue>
             </div>
-        }
-    </div>
+        </div>
+    }
 }
 
 @code {

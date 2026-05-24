@@ -63,6 +63,7 @@ public static class ApiErrorCodes
 
     // Ingredients / Pantry / Shopping
     public const string IngredientNotFound = "ingredient_not_found";
+    public const string IngredientSystemProtected = "ingredient_system_protected";
     public const string PantryItemNotFound = "pantry_item_not_found";
     public const string PantryItemAlreadyExists = "pantry_item_already_exists";
     public const string ShoppingItemNotFound = "shopping_item_not_found";

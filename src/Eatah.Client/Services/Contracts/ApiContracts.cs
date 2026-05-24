@@ -138,7 +138,8 @@ public record VapidPublicKeyResponse(string PublicKey);
 
 public record IngredientResponse(Guid Id, string Name, string? Category, bool IsSystem);
 public record CreateIngredientRequest(string Name, string? Category = null);
-public record PantryItemResponse(Guid Id, Guid IngredientId, string Name, string? Category, DateTime AddedAt);
+public record UpdateIngredientRequest(string Name, string? Category = null);
+public record PantryItemResponse(Guid Id, Guid IngredientId, string Name, string? Category, DateTime AddedAt, bool IsSystem);
 public record ShoppingItemResponse(Guid Id, Guid IngredientId, string Name, string? Category, bool IsChecked, DateTime AddedAt, string? Notes);
 public record AddShoppingItemRequest(Guid IngredientId, string? Notes = null);
 public record AddPantryItemRequest(Guid IngredientId);

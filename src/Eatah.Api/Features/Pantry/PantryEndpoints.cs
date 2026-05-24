@@ -11,6 +11,10 @@ public static class PantryEndpoints
             => Results.Ok(await svc.SearchAsync(q, ct)));
         ing.MapPost("/", async (CreateIngredientRequest req, IngredientCatalogService svc, CancellationToken ct)
             => (await svc.CreateAsync(req.Name, req.Category, ct)).ToHttpResult());
+        ing.MapPatch("/{id:guid}", async (Guid id, UpdateIngredientRequest req, IngredientCatalogService svc, CancellationToken ct)
+            => (await svc.UpdateAsync(id, req.Name, req.Category, ct)).ToHttpResult());
+        ing.MapDelete("/{id:guid}", async (Guid id, IngredientCatalogService svc, CancellationToken ct)
+            => (await svc.DeleteAsync(id, ct)).ToNoContentResult());
 
         var pantry = app.MapGroup("/api/pantry").WithTags("Pantry").RequireAuthorization();
         pantry.MapGet("/", async (PantryService svc, CancellationToken ct) => Results.Ok(await svc.GetAllAsync(ct)));

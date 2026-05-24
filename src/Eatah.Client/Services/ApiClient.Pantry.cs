@@ -24,6 +24,19 @@ public partial class ApiClient
         return await response.Content.ReadFromJsonAsync<IngredientResponse>(cancellationToken: ct);
     }
 
+    public async Task<IngredientResponse?> UpdateIngredientAsync(Guid id, UpdateIngredientRequest request, CancellationToken ct = default)
+    {
+        var response = await _http.PatchAsJsonAsync($"api/ingredients/{id}", request, ct);
+        await EnsureSuccessAsync(response, ct);
+        return await response.Content.ReadFromJsonAsync<IngredientResponse>(cancellationToken: ct);
+    }
+
+    public async Task DeleteIngredientAsync(Guid id, CancellationToken ct = default)
+    {
+        var response = await _http.DeleteAsync($"api/ingredients/{id}", ct);
+        await EnsureSuccessAsync(response, ct);
+    }
+
     // ---- Pantry ----
 
     public async Task<List<PantryItemResponse>> GetPantryAsync(CancellationToken ct = default)

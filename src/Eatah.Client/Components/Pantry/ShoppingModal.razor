@@ -64,7 +64,7 @@
                                     var (pCovered, pTotal) = CheckState.GetCoverageFraction(item.Name);
                                     var pantryCount = pTotal > 0 ? pTotal : CheckState.GetSharedSessionCount(item.Name);
                                     <div class="eatah-shopping-item eatah-shopping-item--pantry">
-                                        <div class="eatah-shopping-item__body">
+                                        <div class="eatah-shopping-item__body cursor-pointer" @onclick="() => OpenEditIngredient(item)">
                                             <div class="eatah-shopping-item__name-row">
                                                 <span class="eatah-shopping-item__name">@item.Name</span>
                                                 @if (pTotal > 1 && pCovered > 0 && pCovered < pTotal)
@@ -845,6 +845,16 @@ TotalMealCount);
         {
             _error = ex.Message;
         }
+    }
+
+    private void OpenEditIngredient(PantryItemResponse item)
+    {
+        if (item.IsSystem)
+        {
+            Toasts.Show("Systemingrediens – kan ej redigeras.");
+            return;
+        }
+        Modals.Show<EditIngredientModal>(new Dictionary<string, object?> { ["Item"] = item });
     }
 
     private async Task RemoveFromPantryAsync(PantryItemResponse item)
