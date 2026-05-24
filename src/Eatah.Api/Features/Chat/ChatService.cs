@@ -19,15 +19,17 @@ public class ChatService
     private readonly UserManager<EatahUser> _users;
     private readonly IHubContext<ChatHub> _hub;
     private readonly IPushService _push;
+    private readonly IRealtimeNotifier _notifier;
     private readonly ILogger<ChatService> _logger;
 
-    public ChatService(EatahDbContext db, IWorkspaceContext ws, UserManager<EatahUser> users, IHubContext<ChatHub> hub, IPushService push, ILogger<ChatService> logger)
+    public ChatService(EatahDbContext db, IWorkspaceContext ws, UserManager<EatahUser> users, IHubContext<ChatHub> hub, IPushService push, IRealtimeNotifier notifier, ILogger<ChatService> logger)
     {
         _db = db;
         _ws = ws;
         _users = users;
         _hub = hub;
         _push = push;
+        _notifier = notifier;
         _logger = logger;
     }
 
@@ -226,6 +228,7 @@ public class ChatService
         var authors = new Dictionary<Guid, string> { [userId] = user?.DisplayName ?? "" };
         var response = MapMessage(msg, authors);
         await _hub.Clients.Group($"thread:{threadId}").SendAsync("MessageReceived", response, ct);
+        await _notifier.ChatUnreadCountChangedAsync(wsId, threadId, ct);
 
         // Best-effort Web Push to other members
         if (_push.IsConfigured)
@@ -361,5 +364,76 @@ public class ChatService
             authors.TryGetValue(m.AuthorUserId, out var name) ? name : "",
             m.DeletedAt is null ? m.Text : "",
             m.CreatedAt, m.EditedAt, m.DeletedAt, groups);
+    }
+
+    /// <summary>Returns unread message counts per thread for the given user in the current workspace.</summary>
+    public async Task<List<ChatUnreadCountResponse>> GetUnreadCountsAsync(Guid userId, CancellationToken ct)
+    {
+        var wsId = _ws.RequireCurrent();
+
+        // Collect all thread IDs accessible to this user in the workspace.
+        var groupThreadId = await _db.ChatThreads
+            .Where(t => t.WorkspaceId == wsId && t.Type == ChatThreadType.Group)
+            .Select(t => (Guid?)t.Id)
+            .FirstOrDefaultAsync(ct);
+
+        var directThreadIds = await _db.ChatThreadParticipants
+            .Where(p => p.UserId == userId && p.Thread!.WorkspaceId == wsId)
+            .Select(p => p.ThreadId)
+            .ToListAsync(ct);
+
+        var allThreadIds = directThreadIds;
+        if (groupThreadId.HasValue) allThreadIds = allThreadIds.Append(groupThreadId.Value).ToList();
+
+        if (allThreadIds.Count == 0) return [];
+
+        // Fetch last-read timestamps for user.
+        var readStatuses = await _db.ChatThreadReadStatuses
+            .Where(s => s.UserId == userId && allThreadIds.Contains(s.ThreadId))
+            .ToDictionaryAsync(s => s.ThreadId, s => s.LastReadAt, ct);
+
+        var result = new List<ChatUnreadCountResponse>();
+        foreach (var threadId in allThreadIds)
+        {
+            readStatuses.TryGetValue(threadId, out var lastRead);
+            var query = _db.ChatMessages.Where(m => m.ThreadId == threadId && m.DeletedAt == null && m.AuthorUserId != userId);
+            if (lastRead != default)
+                query = query.Where(m => m.CreatedAt > lastRead);
+            var count = await query.CountAsync(ct);
+            if (count > 0)
+                result.Add(new ChatUnreadCountResponse(threadId, count));
+        }
+        return result;
+    }
+
+    /// <summary>Marks all messages in the thread as read for the given user.</summary>
+    public async Task<Result> MarkThreadReadAsync(Guid threadId, Guid userId, CancellationToken ct)
+    {
+        var wsId = _ws.RequireCurrent();
+        // Verify thread belongs to workspace and user has access.
+        var thread = await _db.ChatThreads
+            .Include(t => t.Participants)
+            .FirstOrDefaultAsync(t => t.Id == threadId && t.WorkspaceId == wsId, ct);
+        if (thread is null) return Error.NotFound(ErrorCodes.ChatThreadNotFound, "Chat thread not found.");
+        if (thread.Type == ChatThreadType.Direct && !thread.Participants.Any(p => p.UserId == userId))
+            return Error.Forbidden(ErrorCodes.ChatThreadAccessDenied, "Access denied.");
+
+        var status = await _db.ChatThreadReadStatuses
+            .FirstOrDefaultAsync(s => s.UserId == userId && s.ThreadId == threadId, ct);
+        if (status is null)
+        {
+            _db.ChatThreadReadStatuses.Add(new ChatThreadReadStatus
+            {
+                UserId = userId,
+                ThreadId = threadId,
+                LastReadAt = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            status.LastReadAt = DateTime.UtcNow;
+        }
+        await _db.SaveChangesAsync(ct);
+        return Result.Success();
     }
 }

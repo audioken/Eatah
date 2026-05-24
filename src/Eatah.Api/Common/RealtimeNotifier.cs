@@ -20,6 +20,8 @@ public interface IRealtimeNotifier
     Task PantryChangedAsync(Guid workspaceId, CancellationToken ct = default);
     Task WeeklyPlanChangedAsync(Guid workspaceId, Guid planId, int year, int weekNumber, CancellationToken ct = default);
     Task MealsChangedAsync(Guid workspaceId, CancellationToken ct = default);
+    /// <summary>A new chat message was sent in <paramref name="threadId"/>; clients should refresh unread counts.</summary>
+    Task ChatUnreadCountChangedAsync(Guid workspaceId, Guid threadId, CancellationToken ct = default);
 }
 
 public sealed class RealtimeNotifier : IRealtimeNotifier
@@ -46,4 +48,8 @@ public sealed class RealtimeNotifier : IRealtimeNotifier
     public Task MealsChangedAsync(Guid workspaceId, CancellationToken ct = default) =>
         _hub.Clients.Group($"workspace:{workspaceId}")
             .SendAsync("MealsChanged", new { workspaceId }, ct);
+
+    public Task ChatUnreadCountChangedAsync(Guid workspaceId, Guid threadId, CancellationToken ct = default) =>
+        _hub.Clients.Group($"workspace:{workspaceId}")
+            .SendAsync("ChatUnreadCountChanged", new { workspaceId, threadId }, ct);
 }

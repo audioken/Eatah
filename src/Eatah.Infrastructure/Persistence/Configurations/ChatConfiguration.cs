@@ -64,3 +64,16 @@ public class ChatReactionConfiguration : IEntityTypeConfiguration<ChatReaction>
         b.HasIndex(x => new { x.MessageId, x.UserId, x.Emoji }).IsUnique();
     }
 }
+
+public class ChatThreadReadStatusConfiguration : IEntityTypeConfiguration<ChatThreadReadStatus>
+{
+    public void Configure(EntityTypeBuilder<ChatThreadReadStatus> b)
+    {
+        b.ToTable("chat_thread_read_statuses");
+        b.HasKey(x => new { x.UserId, x.ThreadId });
+        b.Property(x => x.UserId).HasColumnName("user_id");
+        b.Property(x => x.ThreadId).HasColumnName("thread_id");
+        b.Property(x => x.LastReadAt).HasColumnName("last_read_at");
+        b.HasIndex(x => x.ThreadId);
+    }
+}

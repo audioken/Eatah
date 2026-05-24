@@ -65,4 +65,17 @@ public partial class ApiClient
         await EnsureSuccessAsync(response, ct);
         return await response.Content.ReadFromJsonAsync<List<ChatReactionGroupResponse>>(cancellationToken: ct);
     }
+
+    public async Task<List<ChatUnreadCountResponse>> GetChatUnreadCountsAsync(CancellationToken ct = default)
+    {
+        var response = await _http.GetAsync("api/chat/unread-counts", ct);
+        await EnsureSuccessAsync(response, ct);
+        return await response.Content.ReadFromJsonAsync<List<ChatUnreadCountResponse>>(cancellationToken: ct) ?? [];
+    }
+
+    public async Task MarkChatThreadReadAsync(Guid threadId, CancellationToken ct = default)
+    {
+        var response = await _http.PostAsync($"api/chat/threads/{threadId}/mark-read", null, ct);
+        await EnsureSuccessAsync(response, ct);
+    }
 }

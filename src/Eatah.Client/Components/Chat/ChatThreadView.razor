@@ -1,6 +1,7 @@
 @inject ApiClient Api
 @inject AuthState Auth
 @inject ChatHubService Hub
+@inject ChatState ChatState
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
@@ -125,6 +126,7 @@
                 </div>
             }
         }
+        <div style="height:8px;flex-shrink:0;" aria-hidden="true"></div>
     </div>
 
     <!-- Compose bar -->
@@ -152,6 +154,7 @@
     private string _editText = string.Empty;
     private ElementReference _messagesEl;
     private Guid? _subscribedThreadId;
+    private bool _pendingScrollToBottom;
 
     private CancellationTokenSource? _longPressCts;
 
@@ -182,6 +185,7 @@
         Hub.MessageDeleted += OnMessageDeleted;
         Hub.ReactionUpdated += OnReactionUpdated;
         Hub.Reconnected += OnHubReconnected;
+        ChatState.OnChanged += OnChatStateChanged;
     }
 
     private void UnsubscribeFromHub()
@@ -191,6 +195,7 @@
         Hub.MessageDeleted -= OnMessageDeleted;
         Hub.ReactionUpdated -= OnReactionUpdated;
         Hub.Reconnected -= OnHubReconnected;
+        ChatState.OnChanged -= OnChatStateChanged;
     }
 
     private async Task LoadMessagesAsync()
@@ -203,8 +208,8 @@
         finally
         {
             _isLoading = false;
+            _pendingScrollToBottom = true;
             StateHasChanged();
-            await ScrollToBottomAsync();
         }
     }
 
@@ -213,7 +218,7 @@
         if (msg.ThreadId != Thread.Id) return;
         _messages.RemoveAll(m => m.Id == msg.Id);
         _messages.Add(msg);
-        InvokeAsync(async () => { StateHasChanged(); await ScrollToBottomAsync(); });
+        InvokeAsync(() => { _pendingScrollToBottom = true; StateHasChanged(); });
     }
 
     private void OnMessageEdited(ChatMessageResponse msg)
@@ -248,6 +253,13 @@
     {
         if (_subscribedThreadId.HasValue)
             await Hub.JoinThreadAsync(_subscribedThreadId.Value);
+    }
+
+    private void OnChatStateChanged()
+    {
+        // Scroll to bottom whenever the chat panel opens (messages are already loaded)
+        if (ChatState.IsOpen && !_isLoading && _messages.Count > 0)
+            InvokeAsync(() => { _pendingScrollToBottom = true; StateHasChanged(); });
     }
 
     private async Task SendMessageAsync()
@@ -390,6 +402,15 @@
     }
 
     private void OnTouchEnd(TouchEventArgs e) => _longPressCts?.Cancel();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_pendingScrollToBottom)
+        {
+            _pendingScrollToBottom = false;
+            await ScrollToBottomAsync();
+        }
+    }
 
     private async Task ScrollToBottomAsync()
     {

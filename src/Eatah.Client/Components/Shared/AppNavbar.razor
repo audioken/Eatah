@@ -1,14 +1,35 @@
 @inject ModalService Modals
 @inject ChatState ChatState
+@inject ChatUnreadService ChatUnread
+@implements IDisposable
 
 <div class="eatah-fab-container">
     <button type="button" class="eatah-fab" @onclick="() => Modals.Show<ShoppingModal>()" aria-label="Köplista">
         <Icon Name="basket" Size="24" />
     </button>
-    <button type="button" class="eatah-fab" @onclick="() => ChatState.Open()" aria-label="Chat">
-        <Icon Name="chat" Size="24" />
-    </button>
+    <span class="eatah-fab-wrapper">
+        <button type="button" class="eatah-fab" @onclick="() => ChatState.Open()" aria-label="Chat">
+            <Icon Name="chat" Size="24" />
+        </button>
+        @if (ChatUnread.TotalUnread > 0)
+        {
+            <span class="eatah-fab__badge" aria-label="@ChatUnread.TotalUnread olästa meddelanden">
+                @(ChatUnread.TotalUnread > 9 ? "9+" : ChatUnread.TotalUnread.ToString())
+            </span>
+        }
+    </span>
 </div>
 
 @code {
+    protected override void OnInitialized()
+    {
+        ChatUnread.OnChanged += OnUnreadChanged;
+    }
+
+    private void OnUnreadChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        ChatUnread.OnChanged -= OnUnreadChanged;
+    }
 }

@@ -65,6 +65,24 @@ public static class ChatEndpoints
                     return Error.Unauthorized(ErrorCodes.AuthNotAuthenticated, "Not authenticated.").ToHttpResult();
                 return (await svc.ToggleReactionAsync(messageId, req.Emoji, uid, ct)).ToHttpResult();
             });
+
+        // Unread counts for current user in current workspace
+        group.MapGet("/unread-counts",
+            async (ChatService svc, ICurrentUser u, CancellationToken ct) =>
+            {
+                if (u.UserId is not Guid uid)
+                    return Error.Unauthorized(ErrorCodes.AuthNotAuthenticated, "Not authenticated.").ToHttpResult();
+                return Results.Ok(await svc.GetUnreadCountsAsync(uid, ct));
+            });
+
+        // Mark a thread as read for the current user
+        group.MapPost("/threads/{threadId:guid}/mark-read",
+            async (Guid threadId, ChatService svc, ICurrentUser u, CancellationToken ct) =>
+            {
+                if (u.UserId is not Guid uid)
+                    return Error.Unauthorized(ErrorCodes.AuthNotAuthenticated, "Not authenticated.").ToHttpResult();
+                return (await svc.MarkThreadReadAsync(threadId, uid, ct)).ToNoContentResult();
+            });
     }
 
     public static IServiceCollection AddChatFeature(this IServiceCollection services)

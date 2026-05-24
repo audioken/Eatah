@@ -51,3 +51,11 @@ public class ChatReaction
     public string Emoji { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
+
+/// <summary>Tracks the last time a user read a chat thread, used to compute unread counts.</summary>
+public class ChatThreadReadStatus
+{
+    public Guid UserId { get; set; }
+    public Guid ThreadId { get; set; }
+    public DateTime LastReadAt { get; set; } = DateTime.UtcNow;
+}

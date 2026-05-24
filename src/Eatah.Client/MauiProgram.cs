@@ -70,12 +70,14 @@ public static class MauiProgram
 			sp.GetRequiredService<ITokenStore>(),
 			ApiClientOptions.GetBaseAddress(),
 			sp.GetRequiredService<ILoggerFactory>()));
+		builder.Services.AddSingleton<ChatUnreadService>();
 
 		var app = builder.Build();
 		// Subscribe to workspace-scoped invalidation events from the chat hub
 		// so the pantry/shopping caches stay in sync with mutations from other
 		// household members.
 		app.Services.GetRequiredService<RealtimeSyncService>().Start();
+		app.Services.GetRequiredService<ChatUnreadService>().Start();
 		return app;
 	}
 }

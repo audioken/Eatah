@@ -27,3 +27,6 @@ public record SendMessageRequest(string Text);
 public record EditMessageRequest(string Text);
 public record ToggleReactionRequest(string Emoji);
 public record GetOrCreateDirectThreadRequest(Guid BuddyUserId);
+
+/// <summary>Unread message count for one thread.</summary>
+public record ChatUnreadCountResponse(Guid ThreadId, int UnreadCount);

@@ -176,3 +176,4 @@ public record EditChatMessageRequest(string Text);
 public record ToggleChatReactionRequest(string Emoji);
 public record GetOrCreateDirectThreadRequest(Guid BuddyUserId);
 public record ChatGroupThreadResponse(Guid Id, Guid WorkspaceId);
+public record ChatUnreadCountResponse(Guid ThreadId, int UnreadCount);
