@@ -1511,16 +1511,7 @@ body.eatah-modal-open {
 .eatah-diet-modal__body {
     overflow-y: auto;
     flex: 1;
-    padding: 0 18px 16px;
-}
-
-/* Ingredient input sits outside the scrollable body so the dropdown
-   is never inside an overflow:auto ancestor. This prevents iOS Safari/PWA
-   from applying its native async scroll when the keyboard opens, which
-   caused the fixed-positioned dropdown to appear at the wrong position. */
-.eatah-diet-modal__ingredient-section {
-    padding: 0 18px 8px;
-    flex-shrink: 0;
+    padding: 0 18px 24px;
 }
 
 .eatah-diet-modal__section {
