@@ -34,6 +34,12 @@
 						}
 					</div>
 
+					<IngredientInput Ingredients="_ingredients" IngredientsChanged="OnIngredientsChanged" />
+					@if (_ingredientsError is not null)
+					{
+						<p class="eatah-diet-modal__error">@_ingredientsError</p>
+					}
+
 					<div class="eatah-diet-modal__field">
 						<label for="meal-category" class="eatah-diet-modal__label">Kategori</label>
 						<select id="meal-category" class="eatah-diet-modal__input" @bind="_category">
@@ -55,12 +61,6 @@
 							<p class="eatah-diet-modal__error">@_cookingTimeError</p>
 						}
 					</div>
-
-					<IngredientInput Ingredients="_ingredients" IngredientsChanged="OnIngredientsChanged" />
-					@if (_ingredientsError is not null)
-					{
-						<p class="eatah-diet-modal__error">@_ingredientsError</p>
-					}
 				</div>
 
 				<div class="eatah-modal-footer">
