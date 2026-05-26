@@ -51,6 +51,7 @@
    ============================================================ */
 html {
     background-color: #1f2a23; /* fallback while bg.png loads */
+    overscroll-behavior-y: contain;
 }
 
 body {
@@ -59,6 +60,7 @@ body {
     padding: 0;
     color: #0f172a;
     background: transparent;
+    touch-action: manipulation;
 }
 
 h1:focus { outline: none; }
@@ -2522,6 +2524,8 @@ body.eatah-modal-open {
     max-height: 220px;
     overflow-y: auto;
     animation: eatah-fade-in 0.1s ease-out;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
 }
 
 .eatah-ing-search__option {
@@ -2535,6 +2539,13 @@ body.eatah-modal-open {
 
 .eatah-ing-search__option:hover {
     background: rgba(0, 0, 0, 0.05);
+}
+
+/* iOS momentum scrolling for dropdown */
+@supports (-webkit-touch-callout: none) {
+    .eatah-ing-search__dropdown {
+        -webkit-overflow-scrolling: touch;
+    }
 }
 
 .eatah-ing-search__option-name {
