@@ -3,8 +3,8 @@
 
 <div class="eatah-ing-search" @onfocusout="OnFocusOut">
     <div class="eatah-ing-search__input-wrap">
-        <input @ref="_inputRef" type="text" class="eatah-ing-search__input" placeholder="@Placeholder" value="@_query"
-               @oninput="OnInput" @onfocus="OnFocus" autocomplete="off" spellcheck="false" />
+        <input type="text" class="eatah-ing-search__input" placeholder="@Placeholder" value="@_query" @oninput="OnInput"
+               @onfocus="OnFocus" autocomplete="off" spellcheck="false" />
         @if (_isSearching)
         {
             <span class="eatah-ing-search__spinner" />
