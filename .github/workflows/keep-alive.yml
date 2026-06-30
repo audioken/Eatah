@@ -1,0 +1,36 @@
+# Keeps the Render API warm during daytime hours (Europe/Stockholm).
+# Runs every 14 minutes around the clock, but only sends an HTTP request
+# between 08:00 and 22:00 local Stockholm time.
+name: Keep API Alive
+
+on:
+  # Run every 14 minutes (UTC – time-of-day filtering is done in the script below)
+  schedule:
+    - cron: "*/14 * * * *"
+
+  # Allow manual triggering from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping health endpoint during active hours
+        shell: bash
+        run: |
+          # Resolve current hour in Europe/Stockholm time (24-hour, zero-padded)
+          HOUR=$(TZ=Europe/Stockholm date +%H)
+          echo "Stockholm local hour: $HOUR"
+
+          # Active window: 08:00–21:59 (inclusive 08, exclusive 22)
+          if [ "$HOUR" -ge 8 ] && [ "$HOUR" -lt 22 ]; then
+            echo "Active hours – pinging API..."
+            # -f  = fail on HTTP errors (4xx/5xx)
+            # -s  = silent (no progress meter)
+            # -S  = show error message if -s hides it
+            curl -fsS https://eatah.onrender.com/health
+            echo "API pinged successfully."
+          else
+            echo "Outside active hours (08:00–22:00 Stockholm) – skipping ping."
+          fi

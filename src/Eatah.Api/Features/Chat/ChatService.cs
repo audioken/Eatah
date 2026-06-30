@@ -46,18 +46,61 @@ public class ChatService
         return new ChatThreadResponse(thread.Id, thread.WorkspaceId);
     }
 
-    /// <summary>Returns all threads accessible to the user in the current workspace (group + direct).</summary>
+    /// <summary>Returns all threads accessible to the user in the current workspace (group + direct).
+    /// Auto-creates the group thread and direct threads for all other workspace members if they don't exist yet.</summary>
     public async Task<List<ChatThreadSummaryResponse>> GetMyThreadsAsync(Guid userId, CancellationToken ct)
     {
         var wsId = _ws.RequireCurrent();
 
-        // Fetch group thread (there is at most one per workspace)
+        // Ensure the group thread exists (auto-create if missing)
         var groupThread = await _db.ChatThreads
-            .AsNoTracking()
-            .Where(t => t.WorkspaceId == wsId && t.Type == ChatThreadType.Group)
-            .FirstOrDefaultAsync(ct);
+            .FirstOrDefaultAsync(t => t.WorkspaceId == wsId && t.Type == ChatThreadType.Group, ct);
+        if (groupThread is null)
+        {
+            groupThread = new ChatThread { Id = Guid.NewGuid(), WorkspaceId = wsId, Type = ChatThreadType.Group };
+            _db.ChatThreads.Add(groupThread);
+            await _db.SaveChangesAsync(ct);
+        }
 
-        // Fetch direct threads in this workspace where the user is a participant
+        // Ensure direct threads exist for every other workspace member
+        var otherMemberIds = await _db.WorkspaceMembers
+            .Where(m => m.WorkspaceId == wsId && m.UserId != userId)
+            .Select(m => m.UserId)
+            .ToListAsync(ct);
+
+        if (otherMemberIds.Count > 0)
+        {
+            var existingDirect = await _db.ChatThreads
+                .AsNoTracking()
+                .Include(t => t.Participants)
+                .Where(t => t.WorkspaceId == wsId && t.Type == ChatThreadType.Direct
+                            && t.Participants.Any(p => p.UserId == userId))
+                .ToListAsync(ct);
+
+            var existingPartnerIds = existingDirect
+                .SelectMany(t => t.Participants.Where(p => p.UserId != userId).Select(p => p.UserId))
+                .ToHashSet();
+
+            foreach (var memberId in otherMemberIds.Where(id => !existingPartnerIds.Contains(id)))
+            {
+                _db.ChatThreads.Add(new ChatThread
+                {
+                    Id = Guid.NewGuid(),
+                    WorkspaceId = wsId,
+                    Type = ChatThreadType.Direct,
+                    Participants =
+                    [
+                        new ChatThreadParticipant { UserId = userId },
+                        new ChatThreadParticipant { UserId = memberId }
+                    ]
+                });
+            }
+
+            if (_db.ChangeTracker.HasChanges())
+                await _db.SaveChangesAsync(ct);
+        }
+
+        // Fetch direct threads (now guaranteed to exist for all members)
         var directThreads = await _db.ChatThreads
             .AsNoTracking()
             .Include(t => t.Participants)
