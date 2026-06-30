@@ -148,6 +148,19 @@ public record SyncWeeklyPlanRequest(Guid WeeklyPlanId);
 public record PantryCoverageResponse(Guid IngredientId, Guid DayPlanId, bool Covers);
 public record SetPantryCoverageRequest(Guid IngredientId, Guid DayPlanId, bool Covers);
 
+// ---- Meal Confirmations ----
+
+public record PendingConfirmationResponse(
+    Guid DayPlanId,
+    string MealName,
+    DayOfWeek DayOfWeek,
+    int WeekNumber,
+    int Year);
+
+public record ConfirmMealItem(Guid DayPlanId, bool Eaten);
+
+public record ConfirmMealsRequest(List<ConfirmMealItem> Confirmations);
+
 // ---- Chat ----
 
 public record ChatThreadSummaryResponse(

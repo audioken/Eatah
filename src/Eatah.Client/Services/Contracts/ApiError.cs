@@ -29,6 +29,7 @@ public static class ApiErrorCodes
     public const string WeeklyPlanNotFound = "weekly_plan_not_found";
     public const string WeeklyPlanConflict = "weekly_plan_conflict";
     public const string DayPlanNotFound = "day_plan_not_found";
+    public const string MealAlreadyConfirmed = "meal_already_confirmed";
 
     public const string DietProfileNotFound = "diet_profile_not_found";
 

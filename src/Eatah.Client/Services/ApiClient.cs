@@ -141,6 +141,20 @@ public partial class ApiClient
         return await response.Content.ReadFromJsonAsync<WeeklyPlanResponse>(cancellationToken: cancellationToken);
     }
 
+    public async Task<List<PendingConfirmationResponse>> GetPendingConfirmationsAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await _http.GetAsync("api/meal-confirmations/pending", cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<List<PendingConfirmationResponse>>(cancellationToken: cancellationToken)
+            ?? [];
+    }
+
+    public async Task ConfirmMealsAsync(ConfirmMealsRequest request, CancellationToken cancellationToken = default)
+    {
+        var response = await _http.PostAsJsonAsync("api/meal-confirmations", request, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
     public async Task<List<DietProfileResponse>> GetDietProfilesAsync(CancellationToken cancellationToken = default)
     {
         var response = await _http.GetAsync("api/dietprofiles", cancellationToken);

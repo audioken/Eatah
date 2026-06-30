@@ -67,6 +67,16 @@ public class DayPlanConfiguration : IEntityTypeConfiguration<DayPlan>
         builder.Property(d => d.MealId)
             .HasColumnName("meal_id");
 
+        builder.Property(d => d.ConfirmationStatus)
+            .HasColumnName("confirmation_status")
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .IsRequired(false);
+
+        builder.Property(d => d.ConfirmedAt)
+            .HasColumnName("confirmed_at")
+            .IsRequired(false);
+
         builder.Property<Guid>("weekly_plan_id");
 
         builder.HasOne(d => d.Meal)

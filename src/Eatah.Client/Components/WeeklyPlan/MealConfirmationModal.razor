@@ -1,0 +1,127 @@
+@namespace Eatah.Client.Components.WeeklyPlan
+@using System.Globalization
+@inject ModalService Modals
+@inject ApiClient Api
+@inject ToastService Toasts
+@inject ShoppingSyncService ShoppingSync
+
+<div class="eatah-confirm-meals-modal font-kanit">
+
+    <div class="px-5 pt-4 pb-2 flex-shrink-0">
+        <div class="font-bold text-[18px] uppercase tracking-tight leading-tight" style="color: var(--color-text-dark)">
+            Har ni ätit dessa rätter?
+        </div>
+        <div class="text-[13px] mt-1" style="color: rgba(51,62,47,0.6)">
+            Bocka av vad ni faktiskt åt. Skafferiet justeras automatiskt.
+        </div>
+    </div>
+
+    <div class="px-4 pb-2 max-h-[55vh] overflow-y-auto space-y-1">
+        @foreach (var weekGroup in WeekGroups)
+        {
+            <div class="font-extrabold text-[11px] uppercase tracking-[0.03em] px-[10px] py-[5px] rounded-[8px] mt-2 mb-1"
+                 style="background: rgba(0,0,0,0.07); color: rgba(51,62,47,0.55)">
+                @WeekLabel(weekGroup.Key)
+            </div>
+            @foreach (var item in weekGroup)
+            {
+                var eaten = _eatenState[item.DayPlanId];
+                var rowClass = eaten
+                    ? "bg-[#5AAE00]/15 border-[#5AAE00]/30 ring-1 ring-[#5AAE00]/20"
+                    : "bg-black/[0.04] border-black/10";
+                <label class="flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] border cursor-pointer @rowClass">
+                    <input type="checkbox" class="w-4 h-4 cursor-pointer flex-shrink-0" checked="@eaten"
+                           @onchange="@(() => Toggle(item.DayPlanId))" />
+                    <span class="text-[14px] font-semibold flex-1 min-w-0 truncate"
+                          style="color: var(--color-text-dark)">@item.MealName</span>
+                    <span class="shrink-0 text-[11px] font-medium"
+                          style="color: rgba(51,62,47,0.5)">@DayLabel(item.DayOfWeek)</span>
+                </label>
+            }
+        }
+    </div>
+
+    <div class="px-4 pb-5 pt-3 flex flex-col gap-2">
+        @if (_error is not null)
+        {
+            <div class="text-[12px] text-red-600 px-1 pb-1">@_error</div>
+        }
+        <button type="button"
+                class="w-full eatah-modal-footer__btn eatah-modal-footer__btn--primary uppercase tracking-wide"
+                disabled="@_saving" @onclick="ConfirmAsync">
+            @if (_saving)
+            {
+                <span>Sparar…</span>
+            }
+            else
+            {
+                <span>Bekräfta och justera skafferiet</span>
+            }
+        </button>
+        <button type="button" class="w-full py-2.5 rounded-[10px] text-[13px] font-semibold tracking-wide"
+                style="background: rgba(0,0,0,0.06); color: rgba(51,62,47,0.65)" @onclick="Dismiss">
+            Påminn mig senare
+        </button>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] private ModalInstance? Instance { get; set; }
+
+    [Parameter, EditorRequired] public List<PendingConfirmationResponse> Items { get; set; } = default!;
+
+    private Dictionary<Guid, bool> _eatenState = new();
+    private bool _saving;
+    private string? _error;
+
+    protected override void OnInitialized()
+    {
+        // Default: all meals are pre-checked as eaten
+        _eatenState = Items.ToDictionary(i => i.DayPlanId, _ => true);
+    }
+
+    private IEnumerable<IGrouping<int, PendingConfirmationResponse>> WeekGroups =>
+        Items.GroupBy(i => i.WeekNumber).OrderBy(g => g.Key);
+
+    private void Toggle(Guid dayPlanId)
+    {
+        if (_eatenState.TryGetValue(dayPlanId, out var current))
+            _eatenState[dayPlanId] = !current;
+    }
+
+    private async Task ConfirmAsync()
+    {
+        _saving = true;
+        _error = null;
+        try
+        {
+            var confirmations = _eatenState
+                .Select(kv => new ConfirmMealItem(kv.Key, kv.Value))
+                .ToList();
+            await Api.ConfirmMealsAsync(new ConfirmMealsRequest(confirmations));
+            ShoppingSync.TriggerSync();
+            Toasts.Show("Skafferiet är uppdaterat!");
+            Modals.Close(Instance!);
+        }
+        catch
+        {
+            _error = "Något gick fel. Försök igen.";
+            _saving = false;
+        }
+    }
+
+    private void Dismiss() => Modals.Close(Instance!);
+
+    private static string WeekLabel(int weekNumber) => $"Vecka {weekNumber}";
+
+    private static string DayLabel(DayOfWeek day) => day switch
+    {
+        DayOfWeek.Monday => "Mån",
+        DayOfWeek.Tuesday => "Tis",
+        DayOfWeek.Wednesday => "Ons",
+        DayOfWeek.Thursday => "Tor",
+        DayOfWeek.Friday => "Fre",
+        DayOfWeek.Saturday => "Lör",
+        _ => "Sön"
+    };
+}

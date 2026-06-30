@@ -19,6 +19,13 @@ public static class WeeklyPlanEndpoints
         group.MapPost("/{id:guid}/days/{dayOfWeek}/randomize", RandomizeDay.Handle).WithName(nameof(RandomizeDay));
         group.MapPut("/{id:guid}/diet-profile", UpdateWeeklyPlanDietProfile.Handle).WithName(nameof(UpdateWeeklyPlanDietProfile));
 
+        var confirmGroup = app.MapGroup("/api/meal-confirmations")
+            .WithTags("MealConfirmations")
+            .RequireAuthorization();
+
+        confirmGroup.MapGet("/pending", GetPendingConfirmations.Handle).WithName(nameof(GetPendingConfirmations));
+        confirmGroup.MapPost("/", ConfirmMeals.Handle).WithName(nameof(ConfirmMeals));
+
         return app;
     }
 }
@@ -34,6 +41,7 @@ public static class WeeklyPlanServiceExtensions
         services.AddScoped<IValidator<AssignMealRequest>, AssignMealRequestValidator>();
         services.AddScoped<IValidator<RandomizeWeeklyPlanRequest>, RandomizeWeeklyPlanRequestValidator>();
         services.AddScoped<IValidator<RandomizeDayRequest>, RandomizeDayRequestValidator>();
+        services.AddScoped<MealConfirmationService>();
         return services;
     }
 }

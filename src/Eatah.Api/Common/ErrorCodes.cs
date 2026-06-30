@@ -21,6 +21,7 @@ public static class ErrorCodes
     public const string WeeklyPlanNotFound = "WEEKLY_PLAN_NOT_FOUND";
     public const string WeeklyPlanConflict = "WEEKLY_PLAN_CONFLICT";
     public const string DayPlanNotFound = "DAY_PLAN_NOT_FOUND";
+    public const string MealAlreadyConfirmed = "meal_already_confirmed";
 
     // DietRules
     public const string DietProfileNotFound = "DIET_PROFILE_NOT_FOUND";

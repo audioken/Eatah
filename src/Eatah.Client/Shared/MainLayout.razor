@@ -1,6 +1,10 @@
 ﻿@inherits LayoutComponentBase
 @inject ISafeAreaInsetsProvider SafeAreaInsetsProvider
 @inject IJSRuntime JS
+@inject WorkspaceState WorkspaceState
+@inject ModalService Modals
+@inject ApiClient Api
+@implements IDisposable
 
 <div class="eatah-bg" aria-hidden="true"></div>
 
@@ -21,6 +25,8 @@
 <ChatPopup />
 
 @code {
+	private bool _confirmationCheckDone;
+
 	protected override async Task OnAfterRenderAsync(bool firstRender)
 	{
 		if (firstRender)
@@ -30,7 +36,48 @@
 			{
 				await JS.InvokeVoidAsync("applyInsets", top, bottom);
 			}
+
+			WorkspaceState.OnChange += OnWorkspaceChanged;
+
+			// If workspace is already loaded when layout first renders, check immediately.
+			if (WorkspaceState.CurrentId is not null)
+				TriggerConfirmationCheck();
 		}
+	}
+
+	private void OnWorkspaceChanged()
+	{
+		if (WorkspaceState.CurrentId is not null && !_confirmationCheckDone)
+			TriggerConfirmationCheck();
+	}
+
+	private void TriggerConfirmationCheck()
+	{
+		_confirmationCheckDone = true;
+		_ = CheckPendingConfirmationsAsync();
+	}
+
+	private async Task CheckPendingConfirmationsAsync()
+	{
+		try
+		{
+			var pending = await Api.GetPendingConfirmationsAsync();
+			if (pending.Count > 0)
+			{
+				await InvokeAsync(() =>
+					Modals.Show<Eatah.Client.Components.WeeklyPlan.MealConfirmationModal>(
+						new Dictionary<string, object?> { ["Items"] = pending }));
+			}
+		}
+		catch
+		{
+			// Silent – confirmation check must never interrupt the user experience
+		}
+	}
+
+	public void Dispose()
+	{
+		WorkspaceState.OnChange -= OnWorkspaceChanged;
 	}
 }
 
